@@ -6,6 +6,24 @@
 #include <set>
 #include <algorithm>
 
+typedef struct Deny_Access_Libs
+{
+	const wchar_t* szName;
+	int iNameLen;
+}Deny_Access_Libs;
+
+const Deny_Access_Libs g_pszDenyAccessLib[] = {
+	{ L"ntdll.dll", 9},
+	{ L"kernel32.dll", 12},
+	{ L"user32.dll", 10},
+	{ L"advapi32.dll", 12},
+	{ L"shell32.dll", 11},
+	{ L"ole32.dll", 9},
+	{ L"netapi32.dll", 12},
+	{ L"iphlpapi.dll", 12}
+};
+
+const int g_iDenyAccessLibCount = sizeof(g_pszDenyAccessLib)/sizeof(g_pszDenyAccessLib[0]);
 
 //////////////////////////////////////////////////////////////////////////
 //Event
@@ -207,25 +225,23 @@ NTSTATUS NTAPI Hook_NtCreateFile( OUT PHANDLE FileHandle,
 	{
 		std::wstring strCmpName(ObjectAttributes->ObjectName->Buffer,
 			ObjectAttributes->ObjectName->Length/sizeof(wchar_t));
+
 		//管道;
 		if (strCmpName.find(L"\\??\\pipe\\") !=  std::wstring::npos)
-		{/* \??\pipe\ */	
-			//if (strCmpName.find(L"{BE6D2570-E5E5-40f0-9A53-CBDDE9C422BD}") == std::wstring::npos)
-			{
-				PUNICODE_STRING pOldName =  ObjectAttributes->ObjectName;
-				UNICODE_STRING struW = {0};
+		{/* \??\pipe\ */			
+			PUNICODE_STRING pOldName =  ObjectAttributes->ObjectName;
+			UNICODE_STRING struW = {0};
 
-				strCmpName += g_pData->GetNewNameW();						
-				struW.Buffer = (wchar_t*)strCmpName.c_str();					
-				struW.Length = struW.MaximumLength = strCmpName.length()*sizeof(wchar_t);
-				ObjectAttributes->ObjectName = &struW;						
-				ret = TrueNtCreateFile.Call()(FileHandle,
-					DesiredAccess,ObjectAttributes,IoStatusBlock,AllocationSize,
-					FileAttributes,ShareAccess,CreateDisposition,CreateOptions,
-					EaBuffer,EaLength);											
-				ObjectAttributes->ObjectName = pOldName;						
-				//return ret;			
-			}			
+			strCmpName += g_pData->GetNewNameW();						
+			struW.Buffer = (wchar_t*)strCmpName.c_str();					
+			struW.Length = struW.MaximumLength = strCmpName.length()*sizeof(wchar_t);
+			ObjectAttributes->ObjectName = &struW;						
+			ret = TrueNtCreateFile.Call()(FileHandle,
+				DesiredAccess,ObjectAttributes,IoStatusBlock,AllocationSize,
+				FileAttributes,ShareAccess,CreateDisposition,CreateOptions,
+				EaBuffer,EaLength);											
+			ObjectAttributes->ObjectName = pOldName;						
+			//return ret;					
 		}		
 // 		else if (strCmpName.find(L"\\??\\PhysicalDrive") != std::wstring::npos)
 // 		{//\??\PhysicalDrive
@@ -238,10 +254,18 @@ NTSTATUS NTAPI Hook_NtCreateFile( OUT PHANDLE FileHandle,
 		else
 		{//文件;
 			std::transform(strCmpName.begin(), strCmpName.end(), strCmpName.begin(), tolower);
-			if (strCmpName.find(L"ntdll") != std::wstring::npos)
+			size_t nIndex = 0;
+			size_t nSize = strCmpName.size();
+
+			for (int i =0;i<g_iDenyAccessLibCount;i++)
 			{
-				return (NTSTATUS)0xC0000022L;
-			}
+				nIndex = strCmpName.rfind(g_pszDenyAccessLib[i].szName);
+				if (nIndex != std::wstring::npos
+					&& nIndex == nSize - g_pszDenyAccessLib[i].iNameLen)
+				{
+					return (NTSTATUS)0xC0000022L;
+				}
+			}			
 		}
 	}
 
@@ -271,12 +295,20 @@ NTSTATUS NTAPI Hook_NtOpenFile(OUT PHANDLE FileHandle, IN ACCESS_MASK DesiredAcc
 	{
 		std::wstring strCmpName(ObjectAttributes->ObjectName->Buffer,
 			ObjectAttributes->ObjectName->Length/sizeof(wchar_t));
-		std::transform(strCmpName.begin(), strCmpName.end(), strCmpName.begin(), tolower);
 
-		if (strCmpName.find(L"ntdll") != std::wstring::npos)
+		std::transform(strCmpName.begin(), strCmpName.end(), strCmpName.begin(), tolower);
+		size_t nIndex = 0;
+		size_t nSize = strCmpName.size();
+
+		for (int i =0;i<g_iDenyAccessLibCount;i++)
 		{
-			return (NTSTATUS)0xC0000022L;
-		}
+			nIndex = strCmpName.rfind(g_pszDenyAccessLib[i].szName);
+			if (nIndex != std::wstring::npos
+				&& nIndex == nSize - g_pszDenyAccessLib[i].iNameLen)
+			{
+				return (NTSTATUS)0xC0000022L;
+			}
+		}	
 	}
 
 	return TrueNtOpenFile.Call()(FileHandle,

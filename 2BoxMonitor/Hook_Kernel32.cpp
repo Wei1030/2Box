@@ -43,12 +43,8 @@ BOOL WINAPI Hook_WaitNamedPipeW( __in LPCWSTR lpNamedPipeName, __in DWORD nTimeO
 {
 	if (lpNamedPipeName)
 	{
-		std::wstring strNewName = lpNamedPipeName;
-		
-		//if (strNewName.find(L"{BE6D2570-E5E5-40f0-9A53-CBDDE9C422BD}") == std::string::npos)
-		{			
-			strNewName += g_pData->GetNewNameW();	
-		}
+		std::wstring strNewName = lpNamedPipeName;				
+		strNewName += g_pData->GetNewNameW();		
 		return TrueWaitNamedPipeW.Call()(strNewName.c_str(),nTimeOut);
 	}
 	return TrueWaitNamedPipeW.Call()(lpNamedPipeName,nTimeOut);
