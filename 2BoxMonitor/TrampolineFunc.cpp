@@ -4,53 +4,6 @@
 
 CTrampolineFuncBase* CTrampolineFuncBase::s_pHead = NULL;
 
-HMODULE CTrampolineFuncBase::s_hNtdll = NULL;
-
-CTrampolineFuncBase::CTrampolineFuncBase( PROC sourceFunc,PROC detourFunc )
-: m_sourceFunc(sourceFunc)
-, m_detourFunc(detourFunc)
-, m_pNext(s_pHead)
-{
-	if (NULL == s_pHead)
-	{
-		s_hNtdll = GetModuleHandleW(L"ntdll.dll");
-	}
-	s_pHead = this;
-}
-
-CTrampolineFuncBase::CTrampolineFuncBase( LPCWSTR lpLibFileName,LPCSTR lpProcName,PROC detourFunc)
-: m_sourceFunc(NULL)
-, m_detourFunc(detourFunc)
-, m_pNext(s_pHead)
-{
-	if (NULL == s_pHead)
-	{
-		s_hNtdll = GetModuleHandleW(L"ntdll.dll");
-	}
-	s_pHead = this;
-	HMODULE hDll = LoadLibraryW(lpLibFileName);
-	if (hDll)
-	{
-		m_sourceFunc = GetProcAddress(hDll,lpProcName);
-	}
-}
-
-CTrampolineFuncBase::CTrampolineFuncBase(LPCSTR lpNtProcName,PROC detourFunc )
-: m_sourceFunc(NULL)
-, m_detourFunc(detourFunc)
-, m_pNext(s_pHead)
-{
-	if (NULL == s_pHead)
-	{
-		s_hNtdll = GetModuleHandleW(L"ntdll.dll");
-	}
-	s_pHead = this;
-	if (s_hNtdll)
-	{
-		m_sourceFunc = GetProcAddress(s_hNtdll,lpNtProcName);
-	}
-}
-
 BOOL CTrampolineFuncBase::HookAll()
 {
 	DetourTransactionBegin();
@@ -66,6 +19,22 @@ BOOL CTrampolineFuncBase::HookAll()
 
 	LONG error = DetourTransactionCommit();
 	return (error == NO_ERROR ? TRUE : FALSE);
+}
+
+CTrampolineFuncBase::CTrampolineFuncBase( PROC sourceFunc,PROC detourFunc )
+: m_sourceFunc(sourceFunc)
+, m_detourFunc(detourFunc)
+, m_pNext(s_pHead)
+{	
+	s_pHead = this;
+}
+
+CTrampolineFuncBase::CTrampolineFuncBase()
+: m_sourceFunc(NULL)
+, m_detourFunc(NULL)
+, m_pNext(s_pHead)
+{
+	s_pHead = this;
 }
 
 BOOL CTrampolineFuncBase::RestoreThisHook()

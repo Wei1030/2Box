@@ -3,7 +3,7 @@
 
 typedef struct _NEW_PROC_DATA
 {
-	int		iPid;
+	DWORD		iPid;
 	unsigned long long	hNewProcHandleInBox;
 	//unsigned long long	hBoxHandleInNewProc;
 	//unsigned long long	hHookedEventInNewProc;
@@ -13,7 +13,7 @@ typedef struct _NEW_PROC_DATA
 
 typedef struct _EMBED_INFO
 {
-	int					iPid;
+	DWORD				iPid;
 	unsigned long long	hWnd;
 	DWORD				dwExStyle;
 	DWORD				dwStyle;
@@ -22,7 +22,7 @@ typedef struct _EMBED_INFO
 
 typedef struct _WND_INFO
 {
-	int					iPid;
+	DWORD				iPid;
 	unsigned long long	hWnd;
 }WND_INFO;
 

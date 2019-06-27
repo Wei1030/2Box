@@ -1,14 +1,44 @@
-#include "stdafx.h"
-#include "Hook_Netapi32.h"
+#include "StdAfx.h"
+#include "Netapi32Hook.h"
 #include "InitialData.h"
 #include "TrampolineFunc.h"
 
 #pragma comment (lib, "Netapi32.lib")
 
-CTrampolineFunc<UCHAR(APIENTRY*)(PNCB)>
-TrueNetbios(&Netbios,Hook_Netbios);
+TRAMPOLINE(UCHAR(APIENTRY*)(PNCB),Netbios);
 
-UCHAR APIENTRY Hook_Netbios( PNCB pcnb )
+CNetapi32Hook::CNetapi32Hook(void)
+{
+}
+
+CNetapi32Hook::~CNetapi32Hook(void)
+{
+}
+
+BOOL CNetapi32Hook::Init(CDbghelpWrapper* pHelper)
+{
+	BOOL bValRet = FALSE;
+
+	do 
+	{		
+		CBaseHook::InitFakeFile(L"netapi32");				
+
+		HMODULE hMod = LoadLibraryW(L"netapi32.dll");
+		if (NULL == hMod)
+		{
+			break;
+		}
+
+		HOOK(CNetapi32Hook,hMod,Netbios,pHelper);
+
+		bValRet = TRUE;
+
+	} while (0);
+
+	return bValRet;
+}
+
+UCHAR APIENTRY CNetapi32Hook::Netbios(PNCB pcnb)
 {
 	UCHAR ret = TrueNetbios.Call()(pcnb);
 

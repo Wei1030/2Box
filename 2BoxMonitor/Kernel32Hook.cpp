@@ -1,27 +1,75 @@
-#include "stdafx.h"
-#include "Hook_Kernel32.h"
+#include "StdAfx.h"
+#include "Kernel32Hook.h"
 #include "InitialData.h"
 #include "TrampolineFunc.h"
 #include "detours.h"
 
 extern void* g_pClient;
 
-// LPTOP_LEVEL_EXCEPTION_FILTER
-// WINAPI
-// Hook_SetUnhandledExceptionFilter(
-// 								 __in LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter
-// 								 )
-// {
-// 	return NULL;
-// }
-// 
-// CTrampolineFunc<LPTOP_LEVEL_EXCEPTION_FILTER (WINAPI*)(LPTOP_LEVEL_EXCEPTION_FILTER )> 
-// TrueSetUnhandledExceptionFilter(&SetUnhandledExceptionFilter,&Hook_SetUnhandledExceptionFilter);
+TRAMPOLINE(BOOL(WINAPI*)(LPCSTR,DWORD),WaitNamedPipeA);
+TRAMPOLINE(BOOL(WINAPI*)(LPCWSTR,DWORD),WaitNamedPipeW);
 
-CTrampolineFunc<BOOL(WINAPI*)(LPCSTR,DWORD)>
-TrueWaitNamedPipeA(&WaitNamedPipeA,&Hook_WaitNamedPipeA);
+TRAMPOLINE(BOOL(WINAPI*)( LPCSTR,LPSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL, 
+		   DWORD,LPVOID,LPCSTR,LPSTARTUPINFOA,LPPROCESS_INFORMATION),
+		   CreateProcessA);
+TRAMPOLINE(BOOL(WINAPI*)(LPCWSTR,LPWSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL,
+		   DWORD,LPVOID,LPCWSTR,LPSTARTUPINFOW,LPPROCESS_INFORMATION),
+		   CreateProcessW);
 
-BOOL WINAPI Hook_WaitNamedPipeA( __in LPCSTR lpNamedPipeName, __in DWORD nTimeOut )
+TRAMPOLINE(BOOL(WINAPI*)(HANDLE,LPCSTR,LPSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL, 
+		   DWORD,LPVOID,LPCSTR,LPSTARTUPINFOA,LPPROCESS_INFORMATION),
+		   CreateProcessAsUserA);
+TRAMPOLINE(BOOL(WINAPI*)(HANDLE,LPCWSTR,LPWSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL,
+		   DWORD,LPVOID,LPCWSTR,LPSTARTUPINFOW,LPPROCESS_INFORMATION),
+		   CreateProcessAsUserW);
+
+TRAMPOLINE(UINT(WINAPI*)(LPCSTR,UINT), WinExec);
+
+TRAMPOLINE(BOOL(WINAPI*)(HANDLE,HANDLE), AssignProcessToJobObject);
+
+TRAMPOLINE(BOOL(WINAPI*)(HANDLE,DWORD,LPVOID,DWORD,LPVOID,DWORD,LPDWORD,LPOVERLAPPED), DeviceIoControl);
+
+CKernel32Hook::CKernel32Hook(void)
+: CBaseHook()
+{
+}
+
+CKernel32Hook::~CKernel32Hook(void)
+{
+}
+
+BOOL CKernel32Hook::Init(CDbghelpWrapper* pHelper)
+{
+	BOOL bValRet = FALSE;
+
+	do 
+	{		
+		CBaseHook::InitFakeFile(L"kernel32");				
+		
+		HMODULE hMod = LoadLibraryW(L"kernel32.dll");
+		if (NULL == hMod)
+		{
+			break;
+		}
+
+		HOOK(CKernel32Hook,hMod,WaitNamedPipeA,pHelper);
+		HOOK(CKernel32Hook,hMod,WaitNamedPipeW,pHelper);
+		HOOK_FROM_FILE_EAT(CKernel32Hook,hMod,CreateProcessA,pHelper);
+		HOOK_FROM_FILE_EAT(CKernel32Hook,hMod,CreateProcessW,pHelper);
+		HOOK(CKernel32Hook,hMod,CreateProcessAsUserA,pHelper);
+		HOOK(CKernel32Hook,hMod,CreateProcessAsUserW,pHelper);
+		HOOK_FROM_FILE_EAT(CKernel32Hook,hMod,WinExec,pHelper);
+		HOOK(CKernel32Hook,hMod,AssignProcessToJobObject,pHelper);
+		HOOK(CKernel32Hook,hMod,DeviceIoControl,pHelper);
+
+		bValRet = TRUE;
+
+	} while (0);
+
+	return bValRet;
+}
+
+BOOL WINAPI CKernel32Hook::WaitNamedPipeA(__in LPCSTR lpNamedPipeName,__in DWORD nTimeOut)
 {
 	if (lpNamedPipeName)
 	{
@@ -30,16 +78,13 @@ BOOL WINAPI Hook_WaitNamedPipeA( __in LPCSTR lpNamedPipeName, __in DWORD nTimeOu
 		int wChs = MultiByteToWideChar(CP_ACP,0,lpNamedPipeName,-1,szNameW,MAX_PATH);
 		if (wChs)
 		{
-			return WaitNamedPipeW(szNameW,nTimeOut);
+			return ::WaitNamedPipeW(szNameW,nTimeOut);
 		}
 	}
 	return TrueWaitNamedPipeA.Call()(lpNamedPipeName,nTimeOut);
 }
 
-CTrampolineFunc<BOOL(WINAPI*)(LPCWSTR,DWORD)>
-TrueWaitNamedPipeW(&WaitNamedPipeW,&Hook_WaitNamedPipeW);
-
-BOOL WINAPI Hook_WaitNamedPipeW( __in LPCWSTR lpNamedPipeName, __in DWORD nTimeOut )
+BOOL WINAPI CKernel32Hook::WaitNamedPipeW(__in LPCWSTR lpNamedPipeName, __in DWORD nTimeOut)
 {
 	if (lpNamedPipeName)
 	{
@@ -50,23 +95,13 @@ BOOL WINAPI Hook_WaitNamedPipeW( __in LPCWSTR lpNamedPipeName, __in DWORD nTimeO
 	return TrueWaitNamedPipeW.Call()(lpNamedPipeName,nTimeOut);
 }
 
-CTrampolineFunc<BOOL(WINAPI*)( LPCSTR,LPSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL, 
-							   DWORD,LPVOID,LPCSTR,LPSTARTUPINFOA,LPPROCESS_INFORMATION)>
-TrueCreateProcessA(&CreateProcessA,&Hook_CreateProcessA);
-
-BOOL
-WINAPI Hook_CreateProcessA( __in_opt LPCSTR lpApplicationName, 
-						   __inout_opt LPSTR lpCommandLine, __in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
-						   __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, __in BOOL bInheritHandles, 
-						   __in DWORD dwCreationFlags, __in_opt LPVOID lpEnvironment, 
-						   __in_opt LPCSTR lpCurrentDirectory,
-						   __in LPSTARTUPINFOA lpStartupInfo, __out LPPROCESS_INFORMATION lpProcessInformation )
+BOOL WINAPI CKernel32Hook::CreateProcessA(__in_opt LPCSTR lpApplicationName, __inout_opt LPSTR lpCommandLine,
+										  __in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes, 
+										  __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, 
+										  __in BOOL bInheritHandles, __in DWORD dwCreationFlags, 
+										  __in_opt LPVOID lpEnvironment, __in_opt LPCSTR lpCurrentDirectory,
+										  __in LPSTARTUPINFOA lpStartupInfo, __out LPPROCESS_INFORMATION lpProcessInformation)
 {
-	if (lpCommandLine && strstr(lpCommandLine,"tasklist"))
-	{
-		return FALSE;
-	}
-	
 	dwCreationFlags &= ~CREATE_BREAKAWAY_FROM_JOB; //不允许脱离job;
 
 	BOOL bOrigSuspended = dwCreationFlags & CREATE_SUSPENDED;
@@ -121,7 +156,7 @@ WINAPI Hook_CreateProcessA( __in_opt LPCSTR lpApplicationName,
 
 	BOOL bRet = DetourCreateProcessWithDllExA(lpApplicationName,lpCommandLine,lpProcessAttributes,
 		lpThreadAttributes,bInheritHandles,dwCreationFlags,lpNewEnv,lpCurrentDirectory,
-		lpStartupInfo,lpProcessInformation,g_pData->GetDllPath(),TrueCreateProcessA.Call());
+		lpStartupInfo,lpProcessInformation,g_pData->GetDllPathA(),TrueCreateProcessA.Call());
 
 	if (bRet)
 	{
@@ -145,23 +180,13 @@ WINAPI Hook_CreateProcessA( __in_opt LPCSTR lpApplicationName,
 	return bRet;
 }
 
-CTrampolineFunc<BOOL(WINAPI*)(LPCWSTR,LPWSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL,
-							  DWORD,LPVOID,LPCWSTR,LPSTARTUPINFOW,LPPROCESS_INFORMATION)>
-TrueCreateProcessW(&CreateProcessW,&Hook_CreateProcessW);
-
-BOOL
-WINAPI Hook_CreateProcessW( __in_opt LPCWSTR lpApplicationName, __inout_opt LPWSTR lpCommandLine, 
-						   __in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
-						   __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, __in BOOL bInheritHandles, 
-						   __in DWORD dwCreationFlags, __in_opt LPVOID lpEnvironment, 
-						   __in_opt LPCWSTR lpCurrentDirectory, __in LPSTARTUPINFOW lpStartupInfo, 
-						   __out LPPROCESS_INFORMATION lpProcessInformation )
+BOOL WINAPI CKernel32Hook::CreateProcessW(__in_opt LPCWSTR lpApplicationName, __inout_opt LPWSTR lpCommandLine, 
+										  __in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes, 
+										  __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, 
+										  __in BOOL bInheritHandles, __in DWORD dwCreationFlags, 
+										  __in_opt LPVOID lpEnvironment, __in_opt LPCWSTR lpCurrentDirectory, 
+										  __in LPSTARTUPINFOW lpStartupInfo, __out LPPROCESS_INFORMATION lpProcessInformation)
 {
-	if (lpCommandLine && wcsstr(lpCommandLine,L"tasklist"))
-	{
-		return FALSE;
-	}
-
 	dwCreationFlags &= ~CREATE_BREAKAWAY_FROM_JOB; //不允许脱离job;
 
 	BOOL bOrigSuspended = dwCreationFlags & CREATE_SUSPENDED;
@@ -216,7 +241,7 @@ WINAPI Hook_CreateProcessW( __in_opt LPCWSTR lpApplicationName, __inout_opt LPWS
 
 	BOOL bRet = DetourCreateProcessWithDllExW(lpApplicationName,lpCommandLine,lpProcessAttributes,
 		lpThreadAttributes,bInheritHandles,dwCreationFlags,lpNewEnv,lpCurrentDirectory,
-		lpStartupInfo,lpProcessInformation,g_pData->GetDllPath(),TrueCreateProcessW.Call());
+		lpStartupInfo,lpProcessInformation,g_pData->GetDllPathA(),TrueCreateProcessW.Call());
 
 	if (bRet)
 	{
@@ -240,43 +265,33 @@ WINAPI Hook_CreateProcessW( __in_opt LPCWSTR lpApplicationName, __inout_opt LPWS
 	return bRet;
 }
 
-CTrampolineFunc<BOOL(WINAPI*)(HANDLE,LPCSTR,LPSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL, 
-							  DWORD,LPVOID,LPCSTR,LPSTARTUPINFOA,LPPROCESS_INFORMATION)>
-TrueCreateProcessAsUserA(&CreateProcessAsUserA,&Hook_CreateProcessAsUserA);
-
-BOOL
-WINAPI Hook_CreateProcessAsUserA( __in_opt HANDLE hToken, __in_opt LPCSTR lpApplicationName, 
-								 __inout_opt LPSTR lpCommandLine, __in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
-								 __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, __in BOOL bInheritHandles, 
-								 __in DWORD dwCreationFlags, __in_opt LPVOID lpEnvironment, 
-								 __in_opt LPCSTR lpCurrentDirectory, __in LPSTARTUPINFOA lpStartupInfo, 
-								 __out LPPROCESS_INFORMATION lpProcessInformation )
+BOOL WINAPI CKernel32Hook::CreateProcessAsUserA(__in_opt HANDLE hToken, __in_opt LPCSTR lpApplicationName, 
+												__inout_opt LPSTR lpCommandLine, 
+												__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes, 
+												__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, 
+												__in BOOL bInheritHandles, __in DWORD dwCreationFlags, 
+												__in_opt LPVOID lpEnvironment, __in_opt LPCSTR lpCurrentDirectory, 
+												__in LPSTARTUPINFOA lpStartupInfo, 
+												__out LPPROCESS_INFORMATION lpProcessInformation)
 {
 	return CreateProcessA(lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,
 		dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation);
 }
 
-CTrampolineFunc<BOOL(WINAPI*)(HANDLE,LPCWSTR,LPWSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL,
-							  DWORD,LPVOID,LPCWSTR,LPSTARTUPINFOW,LPPROCESS_INFORMATION)>
-TrueCreateProcessAsUserW(&CreateProcessAsUserW,&Hook_CreateProcessAsUserW);
-
-BOOL
-WINAPI Hook_CreateProcessAsUserW( __in_opt HANDLE hToken, __in_opt LPCWSTR lpApplicationName,
-								 __inout_opt LPWSTR lpCommandLine, __in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
-								 __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, __in BOOL bInheritHandles, 
-								 __in DWORD dwCreationFlags, __in_opt LPVOID lpEnvironment, 
-								 __in_opt LPCWSTR lpCurrentDirectory, __in LPSTARTUPINFOW lpStartupInfo, 
-								 __out LPPROCESS_INFORMATION lpProcessInformation )
+BOOL WINAPI CKernel32Hook::CreateProcessAsUserW(__in_opt HANDLE hToken, __in_opt LPCWSTR lpApplicationName,
+												__inout_opt LPWSTR lpCommandLine,
+												__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
+												__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, 
+												__in BOOL bInheritHandles, __in DWORD dwCreationFlags, 
+												__in_opt LPVOID lpEnvironment, __in_opt LPCWSTR lpCurrentDirectory, 
+												__in LPSTARTUPINFOW lpStartupInfo,
+												__out LPPROCESS_INFORMATION lpProcessInformation)
 {
 	return CreateProcessW(lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,
 		dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation);
 }
 
-CTrampolineFunc<UINT(WINAPI*)(LPCSTR,UINT)>
-TrueWinExec(&WinExec,&Hook_WinExec);
-
-UINT
-WINAPI Hook_WinExec( __in LPCSTR lpCmdLine,__in UINT uCmdShow )
+UINT WINAPI CKernel32Hook::WinExec(__in LPCSTR lpCmdLine,__in UINT uCmdShow)
 {
 	if (NULL == lpCmdLine)
 	{
@@ -284,7 +299,7 @@ WINAPI Hook_WinExec( __in LPCSTR lpCmdLine,__in UINT uCmdShow )
 	}
 
 	PROCESS_INFORMATION ProcInfo	= {0};  
-	STARTUPINFOA StartupInfo			= {0};
+	STARTUPINFOA StartupInfo		= {0};
 	StartupInfo.cb = sizeof(StartupInfo);
 	StartupInfo.dwFlags = STARTF_USESHOWWINDOW;
 	StartupInfo.wShowWindow = uCmdShow;
@@ -311,14 +326,10 @@ WINAPI Hook_WinExec( __in LPCSTR lpCmdLine,__in UINT uCmdShow )
 	return 33;
 }
 
-BOOL
-WINAPI
-Hook_AssignProcessToJobObject(HANDLE hJob, HANDLE hProcess)
+BOOL WINAPI CKernel32Hook::AssignProcessToJobObject(HANDLE hJob, HANDLE hProcess)
 {
 	return TRUE;
 }
-
-CTrampolineFunc<BOOL(WINAPI*)(HANDLE,HANDLE)> TrueAssignProcessToJobObject(&AssignProcessToJobObject,&Hook_AssignProcessToJobObject);
 
 #define  IDE_ATAPI_IDENTIFY  0xA1  //  Returns ID sector for ATAPI.
 #define  IDE_ATA_IDENTIFY    0xEC  //  Returns ID sector for ATA.
@@ -381,18 +392,14 @@ typedef struct _SRB_IO_CONTROL
 
 #pragma pack()
 
-CTrampolineFunc<BOOL(WINAPI*)(HANDLE,DWORD,LPVOID,DWORD,LPVOID,DWORD,LPDWORD,LPOVERLAPPED)>
-TrueDeviceIoControl(&DeviceIoControl,&Hook_DeviceIoControl);
-
-BOOL
-WINAPI Hook_DeviceIoControl( __in HANDLE hDevice,
-							__in DWORD dwIoControlCode,
-							__in_bcount_opt(nInBufferSize) LPVOID lpInBuffer, 
-							__in DWORD nInBufferSize,
-							__out_bcount_part_opt(nOutBufferSize, *lpBytesReturned) LPVOID lpOutBuffer, 
-							__in DWORD nOutBufferSize, 
-							__out_opt LPDWORD lpBytesReturned,
-							__inout_opt LPOVERLAPPED lpOverlapped )
+BOOL WINAPI CKernel32Hook::DeviceIoControl(__in HANDLE hDevice, 
+										   __in DWORD dwIoControlCode, 
+										   __in_bcount_opt(nInBufferSize) LPVOID lpInBuffer, 
+										   __in DWORD nInBufferSize, 
+										   __out_bcount_part_opt(nOutBufferSize, *lpBytesReturned) LPVOID lpOutBuffer, 
+										   __in DWORD nOutBufferSize, 
+										   __out_opt LPDWORD lpBytesReturned,
+										   __inout_opt LPOVERLAPPED lpOverlapped)
 {
 	BOOL bProcessed = FALSE;
 
@@ -447,7 +454,7 @@ WINAPI Hook_DeviceIoControl( __in HANDLE hDevice,
 			}
 			SRB_IO_CONTROL *p = (SRB_IO_CONTROL *) lpInBuffer;
 			SENDCMDINPARAMS *pin =(SENDCMDINPARAMS *) ((char*)lpInBuffer + sizeof (SRB_IO_CONTROL));
-			
+
 			if (sizeof (SRB_IO_CONTROL) != p->HeaderLength
 				&& IOCTL_SCSI_MINIPORT_IDENTIFY != p->ControlCode
 				&& _stricmp((char*)p->Signature,"SCSIDISK") != 0
@@ -496,7 +503,7 @@ WINAPI Hook_DeviceIoControl( __in HANDLE hDevice,
 				lpOutBuffer,nOutBufferSize,
 				lpBytesReturned,NULL);
 
-			DWORD iNewLen = strlen(g_pData->GetNewNameA());
+			DWORD iNewLen = (DWORD)strlen(g_pData->GetNewNameA());
 			DWORD iMinLen = sizeof(STORAGE_DEVICE_DESCRIPTOR);
 			PSTORAGE_DEVICE_DESCRIPTOR sdn = (PSTORAGE_DEVICE_DESCRIPTOR)lpOutBuffer;
 			sdn->Size = iMinLen + iNewLen;
@@ -517,7 +524,7 @@ WINAPI Hook_DeviceIoControl( __in HANDLE hDevice,
 			}
 
 			sdn->RawPropertiesLength = iNewLen;
-			
+
 			sdn->VendorIdOffset			= iMinLen;
 			sdn->ProductIdOffset		= iMinLen;
 			sdn->ProductRevisionOffset	= iMinLen;

@@ -35,6 +35,10 @@ public:
 
 	CStringA GetSelfPathA() const {return m_strSelfPathA;}
 
+	CStringW GetSelfPathW() const {return m_strSelfPathW;}
+
+	void StartFileSysCleanup(DWORD dwPid);
+
 // ÖØÐ´
 public:
 	virtual BOOL InitInstance();
@@ -50,7 +54,7 @@ public:
 
 private:
 	BOOL InitSelfPath();
-	//BOOL InitResource();
+	BOOL InitResource();
 	//BOOL CreateResource(LPCTSTR lpResName,const CString& FilePath);
 	BOOL InitEnv();
 	BOOL ProcUnknownEnvStringsW(const void* pszzEnv,
@@ -62,6 +66,7 @@ private:
 
 private:
 	static void* SRPC_API NewFileThread( void* usr);
+	static void* SRPC_API DeleteFileWork( void* usr);
 	
 private:
 	CStringW m_strSelfPathW;

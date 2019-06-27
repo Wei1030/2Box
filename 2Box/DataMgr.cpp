@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "DataMgr.h"
+#include "2Box.h"
 
 CProcessData::CProcessData()
 {
@@ -17,6 +18,8 @@ CProcessData::~CProcessData(void)
 	{
 		TerminateProcess((HANDLE)m_rpc_data.hNewProcHandleInBox,0);
 		CloseHandle((HANDLE)m_rpc_data.hNewProcHandleInBox);
+
+		theApp.StartFileSysCleanup(m_rpc_data.iPid);
 	}
 }
 

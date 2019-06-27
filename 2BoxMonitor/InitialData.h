@@ -1,7 +1,5 @@
 #pragma once
 
-#include "RPCData.h"
-
 class CInitialData
 {
 public:
@@ -14,10 +12,16 @@ public:
 	const char* GetNewNameA(){return m_szNewNameA;}
 	const wchar_t* GetNewNameW(){return m_szNewNameW;}
 
-	const char* GetDllPath() const {return m_strDllPath.c_str();}
+	const char* GetDllPathA() const {return m_strDllPath.c_str();}
+	const wchar_t* GetSelfPathW() const {return m_szSelfPathW;}
+
+	const wchar_t* GetSysPathW() const {return m_szSysPathW;}
 
 	BOOL ProcUnknownEnvStringsW(const void* pszzEnv,std::wstring& strOut) const;
 	BOOL ProcUnknownEnvStringsA(const void* pszzEnv,std::string& strOut) const;
+
+	void AddFilesToMgr(const std::wstring& sysFile,const std::wstring& fakeFile);
+	BOOL TryToChangeFileName(std::wstring& sysFile);
 
 private:
 	unsigned long long m_llData;
@@ -25,9 +29,13 @@ private:
 	wchar_t m_szNewNameW[32];
 
 	wchar_t m_szSelfPathW[MAX_PATH+1];
-	char	m_szSelfPathA[MAX_PATH+1];	
+	char	m_szSelfPathA[MAX_PATH+1];
+
+	wchar_t m_szSysPathW[MAX_PATH+1];
 
 	std::string m_strDllPath;
+
+	std::map<std::wstring,std::wstring> m_mapFiles;
 };
 
 extern CInitialData* g_pData;

@@ -1,7 +1,8 @@
 // dllmain.cpp : 定义 DLL 应用程序的入口点。
 #include "stdafx.h"
 #include "InitialData.h"
-#include "TrampolineFunc.h"
+#include "HookMgr.h"
+#include "DbghelpWrapper.h"
 #include "detours.h"
 
 void* g_pClient = NULL;
@@ -49,22 +50,6 @@ int Init()
 	return 0;
 }
 
-// typedef int(* PFNMain)();
-// 
-// CTrampolineFunc<PFNMain>* g_pTrampolineMain = NULL;
-// 
-// int BeforeEntryMain()
-// {	
-// 	//真正入口点前初始化;
-// 	Init();
-// 
-// 	//还原入口点hook;
-// 	g_pTrampolineMain->RestoreThisHook();
-// 
-// 	//调用真正的入口点;
-// 	return g_pTrampolineMain->Call()();
-// }
-
 void InitHook()
 {
 //	SetUnhandledExceptionFilter(MyFilter);	
@@ -75,24 +60,20 @@ void InitHook()
 		return;
 	}
 
-	//dllmain里只做hook，不能做复杂的初始化，将复杂的初始化放到程序入口点之前;
-	//获得程序入口点;
-// 	PFNMain pMainAddr = (PFNMain)DetourGetEntryPoint(GetModuleHandle(NULL));
-// 	if (NULL == pMainAddr)
-// 	{
-// 		TerminateProcess(GetCurrentProcess(),0);
-// 		return;
-// 	}
+	CHookMgr hookMgr;
+	CDbghelpWrapper helper;
+	CDbghelpWrapper* pHelper = &helper;
 
-	//hook程序入口点;
-//	g_pTrampolineMain = new CTrampolineFunc<PFNMain>(pMainAddr,&BeforeEntryMain);
+	if (FALSE == helper.Init())
+	{
+		pHelper = NULL;
+	}
 
-	CTrampolineFuncBase* pHead = CTrampolineFuncBase::GetHead();
-	if (NULL == pHead || FALSE == pHead->HookAll())
+	if (FALSE == hookMgr.Init(pHelper))
 	{
 		TerminateProcess(GetCurrentProcess(),0);
 		return;
-	}	
+	}
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,

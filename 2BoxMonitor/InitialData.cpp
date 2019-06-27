@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "InitialData.h"
-#include "RPCData.h"
+
+#include <algorithm>
 
 CInitialData* g_pData = new CInitialData;
 
@@ -21,6 +22,7 @@ CInitialData::CInitialData(void)
 	memset(m_szNewNameW,0,sizeof(m_szNewNameW));
 	memset(m_szSelfPathW,0,sizeof(m_szSelfPathW));
 	memset(m_szSelfPathA,0,sizeof(m_szSelfPathA));
+	memset(m_szSysPathW,0,sizeof(m_szSysPathW));
 
 	//memset(&m_procData,0,sizeof(NEW_PROC_DATA));
 }
@@ -34,6 +36,11 @@ BOOL CInitialData::Init()
 	BOOL bRetVal = FALSE;
 	do 
 	{
+		if (0 == GetSystemDirectoryW(m_szSysPathW,MAX_PATH))
+		{
+			break;
+		}
+
 		wchar_t szNewNameW[32] = {0};
 		DWORD dwSize = GetEnvironmentVariableW(L"BoxLLData",szNewNameW,32);
 		if (0 == dwSize || dwSize > 32)
@@ -211,6 +218,29 @@ BOOL CInitialData::ProcUnknownEnvStringsA(const void* pszzEnv,std::string& strOu
 	}
 
 	strOut += '\0';
+	return TRUE;
+}
+
+void CInitialData::AddFilesToMgr(const std::wstring& sysFile,const std::wstring& fakeFile)
+{
+	std::wstring lowerSysFile = sysFile;
+	std::wstring lowerFakeFile = fakeFile;
+
+	std::transform(lowerSysFile.begin(), lowerSysFile.end(), lowerSysFile.begin(), tolower);
+	std::transform(lowerFakeFile.begin(), lowerFakeFile.end(), lowerFakeFile.begin(), tolower);
+
+	m_mapFiles.insert(std::make_pair(lowerSysFile,lowerFakeFile));
+}
+
+BOOL CInitialData::TryToChangeFileName(std::wstring& sysFile)
+{
+	std::map<std::wstring,std::wstring>::const_iterator it = m_mapFiles.find(sysFile);
+	if (it == m_mapFiles.end())
+	{
+		return FALSE;
+	}
+	
+	sysFile = it->second;
 	return TRUE;
 }
 

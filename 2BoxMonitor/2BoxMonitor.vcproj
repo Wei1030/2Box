@@ -354,6 +354,14 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\BaseHook.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\DbghelpWrapper.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\dllmain.cpp"
 				>
 				<FileConfiguration
@@ -392,6 +400,14 @@
 						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\FileModule.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\HookMgr.cpp"
+				>
 			</File>
 			<File
 				RelativePath=".\InitialData.cpp"
@@ -441,11 +457,11 @@
 				Name="Netapi32"
 				>
 				<File
-					RelativePath=".\Hook_Netapi32.cpp"
+					RelativePath=".\Netapi32Hook.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\Hook_Netapi32.h"
+					RelativePath=".\Netapi32Hook.h"
 					>
 				</File>
 			</Filter>
@@ -453,11 +469,11 @@
 				Name="Iphlpapi"
 				>
 				<File
-					RelativePath=".\Hook_Iphlpapi.cpp"
+					RelativePath=".\IphlpapiHook.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\Hook_Iphlpapi.h"
+					RelativePath=".\IphlpapiHook.h"
 					>
 				</File>
 			</Filter>
@@ -465,11 +481,11 @@
 				Name="com"
 				>
 				<File
-					RelativePath=".\Hook_Com.cpp"
+					RelativePath=".\Ole32Hook.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\Hook_Com.h"
+					RelativePath=".\Ole32Hook.h"
 					>
 				</File>
 			</Filter>
@@ -477,23 +493,11 @@
 				Name="Kernel32"
 				>
 				<File
-					RelativePath=".\Hook_Kernel32.cpp"
+					RelativePath=".\Kernel32Hook.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\Hook_Kernel32.h"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="other"
-				>
-				<File
-					RelativePath=".\Hook_Other.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Hook_Other.h"
+					RelativePath=".\Kernel32Hook.h"
 					>
 				</File>
 			</Filter>
@@ -501,11 +505,11 @@
 				Name="User32"
 				>
 				<File
-					RelativePath=".\Hook_User32.cpp"
+					RelativePath=".\User32Hook.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\Hook_User32.h"
+					RelativePath=".\User32Hook.h"
 					>
 				</File>
 			</Filter>
@@ -513,11 +517,35 @@
 				Name="ntdll"
 				>
 				<File
-					RelativePath=".\Hook_Ntdll.cpp"
+					RelativePath=".\NtdllHook.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\Hook_Ntdll.h"
+					RelativePath=".\NtdllHook.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Shell32"
+				>
+				<File
+					RelativePath=".\Shell32Hook.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\Shell32Hook.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Advapi32"
+				>
+				<File
+					RelativePath=".\Advapi32Hook.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\Advapi32Hook.h"
 					>
 				</File>
 			</Filter>
@@ -527,6 +555,22 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
+			<File
+				RelativePath=".\BaseHook.h"
+				>
+			</File>
+			<File
+				RelativePath=".\DbghelpWrapper.h"
+				>
+			</File>
+			<File
+				RelativePath=".\FileModule.h"
+				>
+			</File>
+			<File
+				RelativePath=".\HookMgr.h"
+				>
+			</File>
 			<File
 				RelativePath=".\InitialData.h"
 				>

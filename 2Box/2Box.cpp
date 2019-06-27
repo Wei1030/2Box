@@ -119,6 +119,43 @@ void* SRPC_API CMy2BoxApp::NewFileThread( void* usr )
 	return 0;
 }
 
+const wchar_t* g_files_to_del[] = {
+	L"kernel32",
+	L"advapi32",
+	L"ole32",
+	L"iphlpapi",
+	L"netapi32",
+	L"ntdll",
+	L"shell32",
+	L"user32"
+};
+
+const unsigned int g_files_count = sizeof(g_files_to_del)/sizeof(wchar_t*);
+
+void* SRPC_API CMy2BoxApp::DeleteFileWork(void* usr)
+{
+	DWORD dwPid = (DWORD)usr;
+	wchar_t szFileToDel[MAX_PATH+1];
+	int iTryCount = 5;
+
+	for (unsigned int i = 0;i<g_files_count;i++)
+	{
+		memset(szFileToDel,0,sizeof(szFileToDel));
+		swprintf_s(szFileToDel,MAX_PATH,L"%s2BoxFileSystem\\%s_%u.dll",
+			theApp.GetSelfPathW(),
+			g_files_to_del[i],
+			dwPid);
+		
+		while (FALSE == DeleteFileW(szFileToDel)
+			&& iTryCount > 0)
+		{
+			iTryCount --;
+			Sleep(1000);
+		}				
+	}		
+	return 0;
+}
+
 // CMy2BoxApp 构造
 
 CMy2BoxApp::CMy2BoxApp()
@@ -174,11 +211,11 @@ BOOL CMy2BoxApp::InitInstance()
 		return FALSE;
 	}
 
-// 	if (FALSE == InitResource())
-// 	{
-// 		AfxMessageBox(_T("资源文件损坏"));
-// 		return FALSE;
-// 	}
+	if (FALSE == InitResource())
+	{
+		AfxMessageBox(_T("资源文件损坏"));
+		return FALSE;
+	}
 
 	SRPC_SetAcptEventCb(NULL,&RpcServer::AcptEvent,NULL);
 
@@ -334,6 +371,11 @@ BOOL CMy2BoxApp::GetNewEnv(std::wstring& strOut) const
 	return TRUE;
 }
 
+void CMy2BoxApp::StartFileSysCleanup(DWORD dwPid)
+{
+	SRPC_ThreadPoolWork(NULL,&DeleteFileWork,(void*)dwPid);
+}
+
 BOOL CMy2BoxApp::InitEnv()
 {
 	LPWCH pEnv = GetEnvironmentStringsW();
@@ -429,21 +471,33 @@ BOOL CMy2BoxApp::InitSelfPath()
 	m_strSelfPathW = m_strSelfPathW.Left(m_strSelfPathW.ReverseFind('\\')+1);
 
 	m_strSelfPathA = szPathA;
-	m_strSelfPathA = m_strSelfPathA.Left(m_strSelfPathA.ReverseFind('\\')+1);
+	m_strSelfPathA = m_strSelfPathA.Left(m_strSelfPathA.ReverseFind('\\')+1);	
 	return TRUE;
 }
 
-// BOOL CMy2BoxApp::InitResource()
-// {
+BOOL CMy2BoxApp::InitResource()
+{
+	wchar_t szPathW[MAX_PATH + 2] = {0};
+	swprintf_s(szPathW,MAX_PATH,L"%s%s",(const wchar_t*)m_strSelfPathW,L"2BoxFileSystem");
+
+	SHFILEOPSTRUCTW Op = {0};
+	Op.wFunc = FO_DELETE; 	
+	Op.pFrom = szPathW;     
+	Op.fFlags = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_NOCONFIRMMKDIR; 
+
+	SHFileOperationW(&Op);
+
+	CreateDirectoryW( szPathW,NULL);
+
 // 	if (FALSE == CreateResource(MAKEINTRESOURCE(IDR_PE_HELPER),m_strSelfPathW + _T("2Box_x64_helper.dll"))
 // 		|| FALSE == CreateResource(MAKEINTRESOURCE(IDR_PE_MONITOR32),m_strSelfPathW + _T("2BoxMonitor32.dll"))
 // 		|| FALSE == CreateResource(MAKEINTRESOURCE(IDR_PE_MONITOR64),m_strSelfPathW + _T("2BoxMonitor64.dll")))
 // 	{
 // 		return FALSE;
 // 	}
-// 
-// 	return TRUE;
-// }
+
+	return TRUE;
+}
 
 // BOOL CMy2BoxApp::CreateResource(LPCTSTR lpResName,const CString& FilePath)
 // {
