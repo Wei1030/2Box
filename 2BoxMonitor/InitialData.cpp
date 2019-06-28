@@ -221,26 +221,16 @@ BOOL CInitialData::ProcUnknownEnvStringsA(const void* pszzEnv,std::string& strOu
 	return TRUE;
 }
 
-void CInitialData::AddFilesToMgr(const std::wstring& sysFile,const std::wstring& fakeFile)
+void CInitialData::AddFilesToMgr(const std::wstring& sysFile)
 {
 	std::wstring lowerSysFile = sysFile;
-	std::wstring lowerFakeFile = fakeFile;
-
 	std::transform(lowerSysFile.begin(), lowerSysFile.end(), lowerSysFile.begin(), tolower);
-	std::transform(lowerFakeFile.begin(), lowerFakeFile.end(), lowerFakeFile.begin(), tolower);
 
-	m_mapFiles.insert(std::make_pair(lowerSysFile,lowerFakeFile));
+	m_mapFiles.insert(lowerSysFile);
 }
 
-BOOL CInitialData::TryToChangeFileName(std::wstring& sysFile)
+BOOL CInitialData::IsAllowedAccess(std::wstring& sysFile)
 {
-	std::map<std::wstring,std::wstring>::const_iterator it = m_mapFiles.find(sysFile);
-	if (it == m_mapFiles.end())
-	{
-		return FALSE;
-	}
-	
-	sysFile = it->second;
-	return TRUE;
+	return (m_mapFiles.find(sysFile) == m_mapFiles.end());
 }
 

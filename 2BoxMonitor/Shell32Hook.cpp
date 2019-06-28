@@ -16,27 +16,28 @@ CShell32Hook::~CShell32Hook(void)
 {
 }
 
-BOOL CShell32Hook::Init(CDbghelpWrapper* pHelper)
+BOOL CShell32Hook::Init()
 {
+	CBaseHook::InitFile(L"shell32");
+
 	BOOL bValRet = FALSE;
 
 	do 
-	{		
-		CBaseHook::InitFakeFile(L"shell32");			
-
+	{
 		HMODULE hMod = LoadLibraryW(L"shell32.dll");
 		if (NULL == hMod)
 		{
 			break;
 		}
 
-		HOOK(CShell32Hook,hMod,ShellExecuteExA,pHelper);
-		HOOK(CShell32Hook,hMod,ShellExecuteExW,pHelper);
+		HOOK(CShell32Hook,hMod,ShellExecuteExA);
+		HOOK(CShell32Hook,hMod,ShellExecuteExW);
 
 		bValRet = TRUE;
 
 	} while (0);
 
+	CBaseHook::UninitFile();
 	return bValRet;
 }
 

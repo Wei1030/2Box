@@ -8,7 +8,7 @@ public:
 	CNtdllHook(void);
 	~CNtdllHook(void);
 
-	virtual BOOL Init(CDbghelpWrapper* pHelper) override;
+	virtual BOOL Init() override;
 
 private:
 	//////////////////////////////////////////////////////////////////////////

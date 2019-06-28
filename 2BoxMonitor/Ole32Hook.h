@@ -8,7 +8,7 @@ public:
 	COle32Hook(void);
 	~COle32Hook(void);
 
-	virtual BOOL Init(CDbghelpWrapper* pHelper) override;
+	virtual BOOL Init() override;
 
 private:
 	static HRESULT STDAPICALLTYPE CoCreateInstance( 

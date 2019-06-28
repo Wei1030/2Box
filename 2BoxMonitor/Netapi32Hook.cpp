@@ -15,26 +15,27 @@ CNetapi32Hook::~CNetapi32Hook(void)
 {
 }
 
-BOOL CNetapi32Hook::Init(CDbghelpWrapper* pHelper)
+BOOL CNetapi32Hook::Init()
 {
+	CBaseHook::InitFile(L"netapi32");	
+
 	BOOL bValRet = FALSE;
 
 	do 
-	{		
-		CBaseHook::InitFakeFile(L"netapi32");				
-
+	{
 		HMODULE hMod = LoadLibraryW(L"netapi32.dll");
 		if (NULL == hMod)
 		{
 			break;
 		}
 
-		HOOK(CNetapi32Hook,hMod,Netbios,pHelper);
+		HOOK(CNetapi32Hook,hMod,Netbios);
 
 		bValRet = TRUE;
 
 	} while (0);
 
+	CBaseHook::UninitFile();
 	return bValRet;
 }
 

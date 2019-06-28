@@ -20,8 +20,8 @@ public:
 	BOOL ProcUnknownEnvStringsW(const void* pszzEnv,std::wstring& strOut) const;
 	BOOL ProcUnknownEnvStringsA(const void* pszzEnv,std::string& strOut) const;
 
-	void AddFilesToMgr(const std::wstring& sysFile,const std::wstring& fakeFile);
-	BOOL TryToChangeFileName(std::wstring& sysFile);
+	void AddFilesToMgr(const std::wstring& sysFile);
+	BOOL IsAllowedAccess(std::wstring& sysFile);
 
 private:
 	unsigned long long m_llData;
@@ -35,7 +35,7 @@ private:
 
 	std::string m_strDllPath;
 
-	std::map<std::wstring,std::wstring> m_mapFiles;
+	std::set<std::wstring> m_mapFiles;
 };
 
 extern CInitialData* g_pData;

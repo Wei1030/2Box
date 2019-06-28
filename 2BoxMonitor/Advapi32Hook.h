@@ -7,7 +7,7 @@ public:
 	CAdvapi32Hook(void);
 	~CAdvapi32Hook(void);
 
-	virtual BOOL Init(CDbghelpWrapper* pHelper) override;
+	virtual BOOL Init() override;
 
 private:
 	static BOOL WINAPI CreateProcessWithLogonW(

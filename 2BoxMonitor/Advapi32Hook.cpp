@@ -23,25 +23,26 @@ CAdvapi32Hook::~CAdvapi32Hook(void)
 {
 }
 
-BOOL CAdvapi32Hook::Init(CDbghelpWrapper* pHelper)
+BOOL CAdvapi32Hook::Init()
 {
+	CBaseHook::InitFile(L"advapi32");
+
 	BOOL bValRet = TRUE; 
 
 	do 
-	{		
-		CBaseHook::InitFakeFile(L"advapi32");				
-
+	{
 		HMODULE hMod = LoadLibraryW(L"advapi32.dll");
 		if (NULL == hMod)
 		{
 			break;
 		}
 
-		HOOK(CAdvapi32Hook,hMod,CreateProcessWithLogonW,pHelper);
-		HOOK(CAdvapi32Hook,hMod,CreateProcessWithTokenW,pHelper);
+		HOOK(CAdvapi32Hook,hMod,CreateProcessWithLogonW);
+		HOOK(CAdvapi32Hook,hMod,CreateProcessWithTokenW);
 
 	} while (0);
 
+	CBaseHook::UninitFile();
 	return bValRet;
 }
 

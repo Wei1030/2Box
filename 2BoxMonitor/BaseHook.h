@@ -12,29 +12,21 @@ public:
 	virtual ~CBaseHook(void);
 
 	static CBaseHook* GetHead() {return s_pHead;}
-	static BOOL HookAll(CDbghelpWrapper* pHelper);	
+	static BOOL HookAll();	
 
-	virtual BOOL Init(CDbghelpWrapper* pHelper){ return FALSE;}
+	virtual BOOL Init(){ return FALSE;}
 
 protected:
-	BOOL InitFakeFile(const wchar_t* pszSysFileName);
-	void SavedAndUnmapFakeFile();
+	BOOL InitFile(const wchar_t* pszSysFileName,BOOL bDenyAcess = TRUE);
+	void UninitFile();
 
 	template<typename FuncPtrType>
 	BOOL InitTrampolineFunc(
 		CTrampolineFunc<FuncPtrType>* pTrampoline,
 		HMODULE hMod,
 		const char* pszProcName,
-		FuncPtrType pfnDetour ,
-		CDbghelpWrapper* pHelper,
+		FuncPtrType pfnDetour ,		 
 		BOOL bFromFile = false);
-
-	template<typename FuncPtrType>
-	BOOL InitTrampolineFuncInFakeFile(
-		CTrampolineFunc<FuncPtrType>* pTrampoline,
-		const char* pszProcName,
-		FuncPtrType pfnDetour ,
-		CDbghelpWrapper* pHelper);
 
 private:
 	static CBaseHook* s_pHead;
@@ -48,8 +40,7 @@ BOOL CBaseHook::InitTrampolineFunc(
 	CTrampolineFunc<FuncPtrType>* pTrampoline, 
 	HMODULE hMod, 
 	const char* pszProcName, 
-	FuncPtrType pfnDetour , 
-	CDbghelpWrapper* pHelper, 
+	FuncPtrType pfnDetour ,	 
 	BOOL bFromFile /*= false*/)
 {
 	FuncPtrType pfnSrc = NULL;
@@ -57,8 +48,7 @@ BOOL CBaseHook::InitTrampolineFunc(
 
 	if (bFromFile
 		&& m_bFileCreateSucc
-		&& pHelper
-		&& (pRva = m_fm.GetProcRVA(pszProcName,pHelper)))
+		&& (pRva = m_fm.GetProcRVA(pszProcName)))
 	{
 		pfnSrc = (FuncPtrType)((size_t)hMod + pRva);
 	}
@@ -72,35 +62,13 @@ BOOL CBaseHook::InitTrampolineFunc(
 	return TRUE;
 }
 
-template<typename FuncPtrType>
-BOOL CBaseHook::InitTrampolineFuncInFakeFile(
-	CTrampolineFunc<FuncPtrType>* pTrampoline, 
-	const char* pszProcName, 
-	FuncPtrType pfnDetour , 
-	CDbghelpWrapper* pHelper)
-{
-
-	if (FALSE == m_bFileCreateSucc
-		|| NULL == pHelper)
-	{
-		return FALSE;
-	}
-
-	FuncPtrType pSrcInFile = (FuncPtrType)m_fm.GetProcVA(pszProcName,pHelper);
-	pTrampoline->SetHook(pSrcInFile,pfnDetour);
-	return TRUE;	
-}
-
 #define TRAMPOLINE(functype,procname) \
-	CTrampolineFunc<functype> True##procname;\
-	CTrampolineFunc<functype> True##procname##Infile
+	CTrampolineFunc<functype> True##procname;
 
-#define HOOK(classname,hmod,procname,helper) \
-	CBaseHook::InitTrampolineFunc(&True##procname,hmod,#procname,&classname::##procname,helper);\
-	CBaseHook::InitTrampolineFuncInFakeFile(&True##procname##Infile,#procname,&classname::##procname,helper)
+#define HOOK(classname,hmod,procname) \
+	CBaseHook::InitTrampolineFunc(&True##procname,hmod,#procname,&classname::##procname);
 
 //程序兼容模式运行时，部分函数会被微软兼容助手库（Acllayer.dll 等库）IAT hook，可使用此宏hook正确的API地址;
-#define HOOK_FROM_FILE_EAT(classname,hmod,procname,helper) \
-	CBaseHook::InitTrampolineFunc(&True##procname,hmod,#procname,&classname::##procname,helper,TRUE);\
-	CBaseHook::InitTrampolineFuncInFakeFile(&True##procname##Infile,#procname,&classname::##procname,helper)
+#define HOOK_FROM_FILE_EAT(classname,hmod,procname) \
+	CBaseHook::InitTrampolineFunc(&True##procname,hmod,#procname,&classname::##procname,TRUE);
 

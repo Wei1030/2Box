@@ -1,10 +1,13 @@
 #include "StdAfx.h"
 #include "FileModule.h"
-#include "DbghelpWrapper.h"
 
 CFileModule::CFileModule(void)
 : m_hFileMapping(NULL)
 , m_pMemory(NULL)
+, m_pDosHeader(NULL)
+, m_pNTHeader(NULL)
+, m_pOpHeaderAddr(NULL)
+, m_pExportDir(NULL)
 {
 }
 
@@ -21,7 +24,7 @@ BOOL CFileModule::Create(HANDLE hFile)
 	{
 		m_hFileMapping = CreateFileMappingW(hFile,
 			NULL,
-			PAGE_EXECUTE_READWRITE | SEC_IMAGE,
+			PAGE_READONLY | SEC_IMAGE,
 			0,0,NULL);
 
 		if (NULL == m_hFileMapping)
@@ -29,13 +32,20 @@ BOOL CFileModule::Create(HANDLE hFile)
 			break;
 		}
 
-		m_pMemory = MapViewOfFile(m_hFileMapping,FILE_MAP_EXECUTE | FILE_MAP_READ | FILE_MAP_WRITE,0,0,0);
+		m_pMemory = MapViewOfFile(m_hFileMapping,FILE_MAP_READ,0,0,0);
 		if (NULL == m_pMemory)
 		{
 			break;
-		}
-
-		bValRet = TRUE;
+		}		
+		m_pDosHeader = (PIMAGE_DOS_HEADER)m_pMemory;
+		//pe头地址;
+		m_pNTHeader = (PIMAGE_NT_HEADERS)((size_t)m_pMemory + (m_pDosHeader->e_lfanew));
+		//可选头;
+		m_pOpHeaderAddr = (void*)((size_t)m_pNTHeader + FIELD_OFFSET(IMAGE_NT_HEADERS, OptionalHeader));
+		//导出表;
+		m_pExportDir = (PIMAGE_EXPORT_DIRECTORY)GetImageDirectoryEntry(IMAGE_DIRECTORY_ENTRY_EXPORT,NULL);
+		
+		bValRet = TRUE;				
 	} while (0);
 
 	if (FALSE == bValRet)
@@ -50,7 +60,6 @@ void CFileModule::Destroy()
 {
 	if (m_pMemory)
 	{
-		FlushViewOfFile(m_pMemory,0);
 		UnmapViewOfFile(m_pMemory);
 		m_pMemory = NULL;
 	}
@@ -62,38 +71,32 @@ void CFileModule::Destroy()
 	}
 }
 
-DWORD CFileModule::GetProcRVA(const char* pszProcName,CDbghelpWrapper* pHelper)
+DWORD CFileModule::GetProcRVA(const char* pszProcName)
 {
-	DWORD fnRVA = 0;
-	
-// 	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)m_pMemory;
-// 	PIMAGE_NT_HEADERS pNTHeader = (PIMAGE_NT_HEADERS)((size_t)m_pMemory + (pDosHeader->e_lfanew));
- 	PIMAGE_SECTION_HEADER pSectionHeader = NULL;
-	ULONG ulSize;
-	PIMAGE_EXPORT_DIRECTORY pExportDir = (PIMAGE_EXPORT_DIRECTORY)pHelper->ImageDirectoryEntryToDataEx(
-		m_pMemory, TRUE, IMAGE_DIRECTORY_ENTRY_EXPORT, &ulSize,&pSectionHeader);	
-	if (pExportDir == NULL)
+	if (m_pExportDir == NULL)
 	{
 		return 0;
 	}
 
+	DWORD fnRVA = 0;	
+
 	PDWORD pdwNamesRvas = (PDWORD)
-		((PBYTE)m_pMemory + pExportDir->AddressOfNames);
+		((PBYTE)m_pMemory + m_pExportDir->AddressOfNames);
 		//pHelper->ImageRvaToVa(pNTHeader,m_pMemory,pExportDir->AddressOfNames,&pSectionHeader);
 	
 	PWORD pdwNameOrdinals = (PWORD)
-		((PBYTE)m_pMemory + pExportDir->AddressOfNameOrdinals);
+		((PBYTE)m_pMemory + m_pExportDir->AddressOfNameOrdinals);
 		//pHelper->ImageRvaToVa(pNTHeader,m_pMemory,pExportDir->AddressOfNameOrdinals,&pSectionHeader);
 
 	PDWORD pdwFunctionAddresses = (PDWORD)
-		((PBYTE)m_pMemory + pExportDir->AddressOfFunctions);
+		((PBYTE)m_pMemory + m_pExportDir->AddressOfFunctions);
 		//pHelper->ImageRvaToVa(pNTHeader,m_pMemory,pExportDir->AddressOfFunctions,&pSectionHeader);
 
 	std::string strFuncName;
 	std::string strToFind = pszProcName;
 
 	// Walk the array of this module's function names 
-	for (DWORD n = 0; n < pExportDir->NumberOfNames; n++) 
+	for (DWORD n = 0; n < m_pExportDir->NumberOfNames; n++) 
 	{
 		// Get the function name
 		strFuncName = (PSTR)
@@ -118,64 +121,35 @@ DWORD CFileModule::GetProcRVA(const char* pszProcName,CDbghelpWrapper* pHelper)
 	return fnRVA;
 }
 
-size_t CFileModule::GetProcVA(const char* pszProcName,CDbghelpWrapper* pHelper)
+void* CFileModule::GetImageDirectoryEntry(__in USHORT DirectoryEntry, __out PULONG pOutSize)
 {
-	size_t fnVA = 0;
+	WORD wOpMagic = *(WORD*)m_pOpHeaderAddr; // IMAGE_OPTIONAL_HEADER 的 magic字段;
+	DWORD Size = 0;
+	DWORD VirtualAddress = 0;
 
-// 	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)m_pMemory;
-// 	PIMAGE_NT_HEADERS pNTHeader = (PIMAGE_NT_HEADERS)((size_t)m_pMemory + (pDosHeader->e_lfanew));
-	PIMAGE_SECTION_HEADER pSectionHeader = NULL;
-	ULONG ulSize;
-	PIMAGE_EXPORT_DIRECTORY pExportDir = (PIMAGE_EXPORT_DIRECTORY)pHelper->ImageDirectoryEntryToDataEx(
-		m_pMemory, TRUE, IMAGE_DIRECTORY_ENTRY_EXPORT, &ulSize,&pSectionHeader);	
-	if (pExportDir == NULL)
+	if (wOpMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
 	{
-		return 0;
+		IMAGE_OPTIONAL_HEADER32* pOpHeader = (IMAGE_OPTIONAL_HEADER32*)m_pOpHeaderAddr;
+		Size = pOpHeader->DataDirectory[DirectoryEntry].Size;
+		VirtualAddress = pOpHeader->DataDirectory[DirectoryEntry].VirtualAddress;
+	}
+	else if (wOpMagic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+	{
+		IMAGE_OPTIONAL_HEADER64* pOpHeader = (IMAGE_OPTIONAL_HEADER64*)m_pOpHeaderAddr;
+		Size = pOpHeader->DataDirectory[DirectoryEntry].Size;
+		VirtualAddress = pOpHeader->DataDirectory[DirectoryEntry].VirtualAddress;
 	}
 
-	PDWORD pdwNamesRvas = (PDWORD)
-		((PBYTE)m_pMemory + pExportDir->AddressOfNames);
-	//pHelper->ImageRvaToVa(pNTHeader,m_pMemory,pExportDir->AddressOfNames,&pSectionHeader);
-
-	PWORD pdwNameOrdinals = (PWORD)
-		((PBYTE)m_pMemory + pExportDir->AddressOfNameOrdinals);
-	//pHelper->ImageRvaToVa(pNTHeader,m_pMemory,pExportDir->AddressOfNameOrdinals,&pSectionHeader);
-
-	PDWORD pdwFunctionAddresses = (PDWORD)
-		((PBYTE)m_pMemory + pExportDir->AddressOfFunctions);
-	//pHelper->ImageRvaToVa(pNTHeader,m_pMemory,pExportDir->AddressOfFunctions,&pSectionHeader);
-
-	std::string strFuncName;
-	std::string strToFind = pszProcName;
-
-	// Walk the array of this module's function names 
-	for (DWORD n = 0; n < pExportDir->NumberOfNames; n++) 
+	if (Size == 0 || VirtualAddress == 0)
 	{
-		// Get the function name
-		strFuncName = (PSTR)
-			((PBYTE)m_pMemory + pdwNamesRvas[n]);
-		//pHelper->ImageRvaToVa(pNTHeader,m_pMemory,pdwNamesRvas[n],&pSectionHeader);	
-
-		if (strFuncName != strToFind)
-		{
-			continue;
-		}
-
-		// We found the specified function
-		// --> Get this function's ordinal value
-		WORD ordinal = pdwNameOrdinals[n];
-
-		// Get the address of this function's address
-		//没有判断fnRVA 是否是 Forwarder RVA; fix later;
-		DWORD fnRVA = (DWORD)pdwFunctionAddresses[ordinal];
-		if (fnRVA)
-		{
-			fnVA = (size_t)
-				((PBYTE)m_pMemory + fnRVA);
-				//pHelper->ImageRvaToVa(pNTHeader,m_pMemory,fnRVA,&pSectionHeader);
-		}		
-		break;  // We did it, get out
+		return NULL;
 	}
 
-	return fnVA;
+	if (pOutSize)
+	{
+		*pOutSize = Size;
+	}
+
+	return (void*)
+		((size_t)m_pMemory + VirtualAddress);
 }

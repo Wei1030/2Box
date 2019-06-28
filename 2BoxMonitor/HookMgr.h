@@ -1,6 +1,5 @@
 #pragma once
 
-class CDbghelpWrapper;
 class CKernel32Hook;
 class COle32Hook;
 class CIphlpapiHook;
@@ -16,7 +15,7 @@ public:
 	CHookMgr(void);
 	~CHookMgr(void);
 
-	BOOL Init(CDbghelpWrapper* pHelper);
+	BOOL Init();
 
 private:
 	CKernel32Hook* m_pKernel32Hook;

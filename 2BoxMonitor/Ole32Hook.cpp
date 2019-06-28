@@ -15,27 +15,28 @@ COle32Hook::~COle32Hook(void)
 {
 }
 
-BOOL COle32Hook::Init(CDbghelpWrapper* pHelper)
+BOOL COle32Hook::Init()
 {
+	CBaseHook::InitFile(L"ole32");	
+
 	BOOL bValRet = FALSE;
 
 	do 
-	{		
-		CBaseHook::InitFakeFile(L"ole32");				
-
+	{
 		HMODULE hMod = LoadLibraryW(L"ole32.dll");
 		if (NULL == hMod)
 		{
 			break;
 		}
 
-		HOOK(COle32Hook,hMod,CoCreateInstance,pHelper);
-		HOOK(COle32Hook,hMod,CoCreateInstanceEx,pHelper);
+		HOOK(COle32Hook,hMod,CoCreateInstance);
+		HOOK(COle32Hook,hMod,CoCreateInstanceEx);
 
 		bValRet = TRUE;
 
 	} while (0);
 
+	CBaseHook::UninitFile();
 	return bValRet;
 }
 

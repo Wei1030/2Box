@@ -44,41 +44,42 @@ CUser32Hook::~CUser32Hook(void)
 {
 }
 
-BOOL CUser32Hook::Init(CDbghelpWrapper* pHelper)
+BOOL CUser32Hook::Init()
 {
+	CBaseHook::InitFile(L"user32",FALSE);
+
 	BOOL bValRet = FALSE;
 
 	do 
-	{		
-		CBaseHook::InitFakeFile(L"user32");				
-
+	{
 		HMODULE hMod = LoadLibraryW(L"user32.dll");
 		if (NULL == hMod)
 		{
 			break;
 		}
 
-		HOOK(CUser32Hook,hMod,DispatchMessageA,pHelper);
-		HOOK(CUser32Hook,hMod,DispatchMessageW,pHelper);
+		HOOK(CUser32Hook,hMod,DispatchMessageA);
+		HOOK(CUser32Hook,hMod,DispatchMessageW);
 
-		HOOK(CUser32Hook,hMod,CreateWindowExA,pHelper);
-		HOOK(CUser32Hook,hMod,CreateWindowExW,pHelper);
+		HOOK(CUser32Hook,hMod,CreateWindowExA);
+		HOOK(CUser32Hook,hMod,CreateWindowExW);
 
-		HOOK(CUser32Hook,hMod,FindWindowA,pHelper);
-		HOOK(CUser32Hook,hMod,FindWindowW,pHelper);
+		HOOK(CUser32Hook,hMod,FindWindowA);
+		HOOK(CUser32Hook,hMod,FindWindowW);
 
-		HOOK(CUser32Hook,hMod,FindWindowExA,pHelper);
-		HOOK(CUser32Hook,hMod,FindWindowExW,pHelper);
+		HOOK(CUser32Hook,hMod,FindWindowExA);
+		HOOK(CUser32Hook,hMod,FindWindowExW);
 
-		HOOK(CUser32Hook,hMod,EnumWindows,pHelper);
-		HOOK(CUser32Hook,hMod,EnumChildWindows,pHelper);
-		HOOK(CUser32Hook,hMod,GetWindow,pHelper);
-		HOOK(CUser32Hook,hMod,GetTopWindow,pHelper);
+		HOOK(CUser32Hook,hMod,EnumWindows);
+		HOOK(CUser32Hook,hMod,EnumChildWindows);
+		HOOK(CUser32Hook,hMod,GetWindow);
+		HOOK(CUser32Hook,hMod,GetTopWindow);
 
 		bValRet = TRUE;
 
 	} while (0);
 
+	CBaseHook::UninitFile();
 	return bValRet;
 }
 

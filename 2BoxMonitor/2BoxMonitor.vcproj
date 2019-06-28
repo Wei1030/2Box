@@ -358,10 +358,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\DbghelpWrapper.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\dllmain.cpp"
 				>
 				<FileConfiguration
@@ -557,10 +553,6 @@
 			>
 			<File
 				RelativePath=".\BaseHook.h"
-				>
-			</File>
-			<File
-				RelativePath=".\DbghelpWrapper.h"
 				>
 			</File>
 			<File

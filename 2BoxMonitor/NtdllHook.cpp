@@ -3,7 +3,6 @@
 #include "InitialData.h"
 #include "TrampolineFunc.h"
 
-#include <set>
 #include <algorithm>
 
 //////////////////////////////////////////////////////////////////////////
@@ -70,48 +69,49 @@ CNtdllHook::~CNtdllHook(void)
 {
 }
 
-BOOL CNtdllHook::Init(CDbghelpWrapper* pHelper)
+BOOL CNtdllHook::Init()
 {
+	CBaseHook::InitFile(L"ntdll");
+
 	BOOL bValRet = FALSE;
 
 	do 
-	{		
-		CBaseHook::InitFakeFile(L"ntdll");			
-
+	{
 		HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
 		if (NULL == hMod)
 		{
 			break;
 		}
 
-		HOOK(CNtdllHook,hMod,NtCreateEvent,pHelper);
-		HOOK(CNtdllHook,hMod,NtOpenEvent,pHelper);
+		HOOK(CNtdllHook,hMod,NtCreateEvent);
+		HOOK(CNtdllHook,hMod,NtOpenEvent);
 
-		HOOK(CNtdllHook,hMod,NtCreateMutant,pHelper);
-		HOOK(CNtdllHook,hMod,NtOpenMutant,pHelper);
+		HOOK(CNtdllHook,hMod,NtCreateMutant);
+		HOOK(CNtdllHook,hMod,NtOpenMutant);
 
-		HOOK(CNtdllHook,hMod,NtCreateSection,pHelper);
-		HOOK(CNtdllHook,hMod,NtOpenSection,pHelper);
+		HOOK(CNtdllHook,hMod,NtCreateSection);
+		HOOK(CNtdllHook,hMod,NtOpenSection);
 
-		HOOK(CNtdllHook,hMod,NtCreateSemaphore,pHelper);
-		HOOK(CNtdllHook,hMod,NtOpenSemaphore,pHelper);
+		HOOK(CNtdllHook,hMod,NtCreateSemaphore);
+		HOOK(CNtdllHook,hMod,NtOpenSemaphore);
 
-		HOOK(CNtdllHook,hMod,NtCreateTimer,pHelper);
-		HOOK(CNtdllHook,hMod,NtOpenTimer,pHelper);
+		HOOK(CNtdllHook,hMod,NtCreateTimer);
+		HOOK(CNtdllHook,hMod,NtOpenTimer);
 
-		HOOK(CNtdllHook,hMod,NtCreateJobObject,pHelper);
-		HOOK(CNtdllHook,hMod,NtOpenJobObject,pHelper);
+		HOOK(CNtdllHook,hMod,NtCreateJobObject);
+		HOOK(CNtdllHook,hMod,NtOpenJobObject);
 
-		HOOK(CNtdllHook,hMod,NtCreateNamedPipeFile,pHelper);
-		HOOK(CNtdllHook,hMod,NtCreateFile,pHelper);
+		HOOK(CNtdllHook,hMod,NtCreateNamedPipeFile);
+		HOOK(CNtdllHook,hMod,NtCreateFile);
 
-		HOOK(CNtdllHook,hMod,NtOpenFile,pHelper);
-		HOOK(CNtdllHook,hMod,NtQuerySystemInformation,pHelper);
+		HOOK(CNtdllHook,hMod,NtOpenFile);
+		HOOK(CNtdllHook,hMod,NtQuerySystemInformation);
 
 		bValRet = TRUE;
 
 	} while (0);
 
+	CBaseHook::UninitFile();
 	return bValRet;
 }
 //////////////////////////////////////////////////////////////////////////
@@ -289,24 +289,10 @@ NTSTATUS NTAPI CNtdllHook::NtCreateFile(OUT PHANDLE FileHandle, IN ACCESS_MASK D
 		std::wstring strFileName = strCmpName.substr(nPos);
 		//wprintf_s(L"create:%s,find:%s\r\n",strCmpName.c_str(),strFileName.c_str());
 
-		if (g_pData->TryToChangeFileName(strFileName))
+		if (FALSE == g_pData->IsAllowedAccess(strFileName))
 		{
-			strCmpName.replace(nPos,-1,strFileName);				
-
-			PUNICODE_STRING pOldName =  ObjectAttributes->ObjectName;
-			UNICODE_STRING struW = {0};
-
-			struW.Buffer = (wchar_t*)strCmpName.c_str();					
-			struW.Length = struW.MaximumLength = (USHORT)strCmpName.length()*sizeof(wchar_t);
-			ObjectAttributes->ObjectName = &struW;						
-			ret = TrueNtCreateFile.Call()(FileHandle,
-				DesiredAccess,ObjectAttributes,IoStatusBlock,AllocationSize,
-				FileAttributes,ShareAccess,CreateDisposition,CreateOptions,
-				EaBuffer,EaLength);										
-			ObjectAttributes->ObjectName = pOldName;
-
-			//wprintf_s(L"changed:%s,ret:%d\r\n",strCmpName.c_str(),ret);
-			break;
+			wprintf_s(L"create not access:%s\r\n",strFileName.c_str());
+			return (NTSTATUS)0xC0000022L;
 		}
 	} while (0);
 
@@ -351,22 +337,10 @@ NTSTATUS NTAPI CNtdllHook::NtOpenFile(OUT PHANDLE FileHandle, IN ACCESS_MASK Des
 		std::wstring strFileName = strCmpName.substr(nPos);
 		//wprintf_s(L"open:%s,find:%s\r\n",strCmpName.c_str(),strFileName.c_str());
 
-		if (g_pData->TryToChangeFileName(strFileName))
+		if (FALSE == g_pData->IsAllowedAccess(strFileName))
 		{
-			strCmpName.replace(nPos,-1,strFileName);				
-
-			PUNICODE_STRING pOldName =  ObjectAttributes->ObjectName;
-			UNICODE_STRING struW = {0};
-
-			struW.Buffer = (wchar_t*)strCmpName.c_str();					
-			struW.Length = struW.MaximumLength = (USHORT)strCmpName.length()*sizeof(wchar_t);
-			ObjectAttributes->ObjectName = &struW;						
-			ret = TrueNtOpenFile.Call()(FileHandle,
-				DesiredAccess,ObjectAttributes,IoStatusBlock,ShareAccess,OpenOptions);										
-			ObjectAttributes->ObjectName = pOldName;				
-
-			//wprintf_s(L"changed:%s,ret:%d,DesiredAccess:%d\r\n",strCmpName.c_str(),ret,DesiredAccess);
-			break;
+			wprintf_s(L"open not access:%s\r\n",strFileName.c_str());
+			return (NTSTATUS)0xC0000022L;
 		}
 
 	} while (0);

@@ -9,7 +9,7 @@ public:
 	CIphlpapiHook(void);
 	~CIphlpapiHook(void);
 
-	virtual BOOL Init(CDbghelpWrapper* pHelper) override;
+	virtual BOOL Init() override;
 
 private:
 	static ULONG WINAPI GetAdaptersInfo(PIP_ADAPTER_INFO AdapterInfo,PULONG SizePointer);

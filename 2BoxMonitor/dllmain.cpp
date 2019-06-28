@@ -2,7 +2,6 @@
 #include "stdafx.h"
 #include "InitialData.h"
 #include "HookMgr.h"
-#include "DbghelpWrapper.h"
 #include "detours.h"
 
 void* g_pClient = NULL;
@@ -60,16 +59,9 @@ void InitHook()
 		return;
 	}
 
-	CHookMgr hookMgr;
-	CDbghelpWrapper helper;
-	CDbghelpWrapper* pHelper = &helper;
+	CHookMgr hookMgr;	
 
-	if (FALSE == helper.Init())
-	{
-		pHelper = NULL;
-	}
-
-	if (FALSE == hookMgr.Init(pHelper))
+	if (FALSE == hookMgr.Init())
 	{
 		TerminateProcess(GetCurrentProcess(),0);
 		return;

@@ -8,7 +8,7 @@ public:
 	CNetapi32Hook(void);
 	~CNetapi32Hook(void);
 
-	virtual BOOL Init(CDbghelpWrapper* pHelper) override;
+	virtual BOOL Init() override;
 
 private:
 	static UCHAR APIENTRY Netbios(PNCB pcnb);

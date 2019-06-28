@@ -16,27 +16,28 @@ CIphlpapiHook::~CIphlpapiHook(void)
 {
 }
 
-BOOL CIphlpapiHook::Init(CDbghelpWrapper* pHelper)
+BOOL CIphlpapiHook::Init()
 {
+	CBaseHook::InitFile(L"iphlpapi");
+
 	BOOL bValRet = FALSE;
 
 	do 
-	{		
-		CBaseHook::InitFakeFile(L"iphlpapi");			
-
+	{
 		HMODULE hMod = LoadLibraryW(L"iphlpapi.dll");
 		if (NULL == hMod)
 		{
 			break;
 		}
 
-		HOOK(CIphlpapiHook,hMod,GetAdaptersInfo,pHelper);
-		HOOK(CIphlpapiHook,hMod,GetAdaptersAddresses,pHelper);
+		HOOK(CIphlpapiHook,hMod,GetAdaptersInfo);
+		HOOK(CIphlpapiHook,hMod,GetAdaptersAddresses);
 
 		bValRet = TRUE;
 
 	} while (0);
 
+	CBaseHook::UninitFile();
 	return bValRet;
 }
 

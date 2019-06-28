@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include "HookMgr.h"
-#include "DbghelpWrapper.h"
 #include "Kernel32Hook.h"
 #include "Ole32Hook.h"
 #include "IphlpapiHook.h"
@@ -26,7 +25,7 @@ CHookMgr::~CHookMgr(void)
 {
 }
 
-BOOL CHookMgr::Init(CDbghelpWrapper* pHelper)
+BOOL CHookMgr::Init()
 {
-	return CBaseHook::HookAll(pHelper);
+	return CBaseHook::HookAll();
 }

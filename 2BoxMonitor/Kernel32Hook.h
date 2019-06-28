@@ -9,7 +9,7 @@ public:
 	CKernel32Hook(void);
 	~CKernel32Hook(void);
 
-	virtual BOOL Init(CDbghelpWrapper* pHelper) override;
+	virtual BOOL Init() override;
 
 private:
 	static BOOL WINAPI WaitNamedPipeA(__in LPCSTR lpNamedPipeName,__in DWORD nTimeOut);

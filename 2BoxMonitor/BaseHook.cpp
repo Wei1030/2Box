@@ -5,23 +5,17 @@
 
 CBaseHook* CBaseHook::s_pHead = NULL;
 
-BOOL CBaseHook::HookAll(CDbghelpWrapper* pHelper)
+BOOL CBaseHook::HookAll()
 {
 	for (CBaseHook* p = s_pHead; p != NULL; p = p->m_pNext) 
 	{
-		if (FALSE == p->Init(pHelper))
+		if (FALSE == p->Init())
 		{
 			return FALSE;
 		}
 	}
 
-	BOOL bValRet = CTrampolineFuncBase::HookAll();
-
-	for (CBaseHook* p = s_pHead; p != NULL; p = p->m_pNext) 
-	{
-		p->SavedAndUnmapFakeFile();
-	}
-	return bValRet;
+	return CTrampolineFuncBase::HookAll();
 }
 
 CBaseHook::CBaseHook(void)
@@ -35,57 +29,49 @@ CBaseHook::~CBaseHook(void)
 {	
 }
 
-BOOL CBaseHook::InitFakeFile(const wchar_t* pszSysFileName)
+BOOL CBaseHook::InitFile(const wchar_t* pszSysFileName,BOOL bDenyAcess /*= TRUE*/)
 {
 	BOOL bValRet = FALSE;
-	HANDLE hFakeFile = INVALID_HANDLE_VALUE;
+	HANDLE hFile = INVALID_HANDLE_VALUE;
 
 	do 
-	{		
-		wchar_t szFakeFileName[MAX_PATH+1] = {0};
-		swprintf_s(szFakeFileName,MAX_PATH,L"%s2BoxFileSystem\\%s_%d.dll",
-			g_pData->GetSelfPathW(),
-			pszSysFileName,
-			GetCurrentProcessId());
-
+	{
 		wchar_t szTrueFileName[MAX_PATH+1] = {0};
 		swprintf_s(szTrueFileName,MAX_PATH,L"%s\\%s.dll",
 			g_pData->GetSysPathW(),
-			pszSysFileName);
+			pszSysFileName);			
 
-		if (FALSE == CopyFileW(szTrueFileName,szFakeFileName,TRUE))
-		{
-			break;
-		}		
-
-		hFakeFile =CreateFileW(szFakeFileName,
-			GENERIC_EXECUTE | GENERIC_READ | GENERIC_WRITE,
-			FILE_SHARE_READ,
+		hFile =CreateFileW(szTrueFileName,
+			GENERIC_READ,
+			FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
 			NULL,
 			OPEN_EXISTING,
 			FILE_ATTRIBUTE_NORMAL,
 			NULL);
 
-		if (INVALID_HANDLE_VALUE == hFakeFile)
+		if (INVALID_HANDLE_VALUE == hFile)
 		{
 			break;
 		}		
 
-		m_bFileCreateSucc = m_fm.Create(hFakeFile);
-		g_pData->AddFilesToMgr(szTrueFileName,szFakeFileName);
+		m_bFileCreateSucc = m_fm.Create(hFile);
+		if (bDenyAcess)
+		{
+			g_pData->AddFilesToMgr(szTrueFileName);
+		}		
 		bValRet = TRUE;
 
 	} while (0);
 
-	if (INVALID_HANDLE_VALUE != hFakeFile)
+	if (INVALID_HANDLE_VALUE != hFile)
 	{
-		CloseHandle(hFakeFile);
+		CloseHandle(hFile);
 	}
 	
 	return bValRet;
 }
 
-void CBaseHook::SavedAndUnmapFakeFile()
+void CBaseHook::UninitFile()
 {
 	if (m_bFileCreateSucc)
 	{
