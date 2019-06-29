@@ -17,27 +17,19 @@ COle32Hook::~COle32Hook(void)
 
 BOOL COle32Hook::Init()
 {
-	CBaseHook::InitFile(L"ole32");	
+// 	HMODULE hMod = LoadLibraryW(L"ole32.dll");
+// 	if (NULL == hMod)
+// 	{
+// 		return TRUE;
+// 	}
 
-	BOOL bValRet = FALSE;
+	CBaseHook::InitFile(L"ole32");		
 
-	do 
-	{
-		HMODULE hMod = LoadLibraryW(L"ole32.dll");
-		if (NULL == hMod)
-		{
-			break;
-		}
+	HOOK(COle32Hook,CoCreateInstance);
+	HOOK(COle32Hook,CoCreateInstanceEx);
 
-		HOOK(COle32Hook,hMod,CoCreateInstance);
-		HOOK(COle32Hook,hMod,CoCreateInstanceEx);
-
-		bValRet = TRUE;
-
-	} while (0);
-
-	CBaseHook::UninitFile();
-	return bValRet;
+	CBaseHook::UninitFile();	
+	return TRUE;
 }
 
 HRESULT STDAPICALLTYPE COle32Hook::CoCreateInstance(REFCLSID rclsid, 

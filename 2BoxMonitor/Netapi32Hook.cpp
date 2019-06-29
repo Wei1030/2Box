@@ -17,26 +17,18 @@ CNetapi32Hook::~CNetapi32Hook(void)
 
 BOOL CNetapi32Hook::Init()
 {
-	CBaseHook::InitFile(L"netapi32");	
+// 	HMODULE hMod = GetModuleHandleW(L"netapi32.dll");
+// 	if (NULL == hMod)
+// 	{
+// 		return TRUE;
+// 	}
 
-	BOOL bValRet = FALSE;
+	CBaseHook::InitFile(L"netapi32");		
 
-	do 
-	{
-		HMODULE hMod = LoadLibraryW(L"netapi32.dll");
-		if (NULL == hMod)
-		{
-			break;
-		}
-
-		HOOK(CNetapi32Hook,hMod,Netbios);
-
-		bValRet = TRUE;
-
-	} while (0);
+	HOOK(CNetapi32Hook,Netbios);
 
 	CBaseHook::UninitFile();
-	return bValRet;
+	return TRUE;
 }
 
 UCHAR APIENTRY CNetapi32Hook::Netbios(PNCB pcnb)

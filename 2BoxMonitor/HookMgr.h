@@ -5,7 +5,6 @@ class COle32Hook;
 class CIphlpapiHook;
 class CNetapi32Hook;
 class CAdvapi32Hook;
-class CShell32Hook;
 class CUser32Hook;
 class CNtdllHook;
 
@@ -23,7 +22,6 @@ private:
 	CIphlpapiHook* m_pIphlpapiHook;
 	CNetapi32Hook* m_pNetapi32Hook;
 	CAdvapi32Hook* m_pAdvapi32Hook;
-	CShell32Hook* m_pShell32Hook;
 	CUser32Hook* m_pUser32Hook;
 	CNtdllHook* m_pNtdllHook;
 };

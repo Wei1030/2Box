@@ -522,18 +522,6 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="Shell32"
-				>
-				<File
-					RelativePath=".\Shell32Hook.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Shell32Hook.h"
-					>
-				</File>
-			</Filter>
-			<Filter
 				Name="Advapi32"
 				>
 				<File

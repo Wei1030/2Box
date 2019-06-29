@@ -46,41 +46,27 @@ CUser32Hook::~CUser32Hook(void)
 
 BOOL CUser32Hook::Init()
 {
-	CBaseHook::InitFile(L"user32",FALSE);
+	//CBaseHook::InitFile(L"user32",FALSE);
 
-	BOOL bValRet = FALSE;
+	HOOK(CUser32Hook,DispatchMessageA);
+	HOOK(CUser32Hook,DispatchMessageW);
 
-	do 
-	{
-		HMODULE hMod = LoadLibraryW(L"user32.dll");
-		if (NULL == hMod)
-		{
-			break;
-		}
+	HOOK(CUser32Hook,CreateWindowExA);
+	HOOK(CUser32Hook,CreateWindowExW);
 
-		HOOK(CUser32Hook,hMod,DispatchMessageA);
-		HOOK(CUser32Hook,hMod,DispatchMessageW);
+	HOOK(CUser32Hook,FindWindowA);
+	HOOK(CUser32Hook,FindWindowW);
 
-		HOOK(CUser32Hook,hMod,CreateWindowExA);
-		HOOK(CUser32Hook,hMod,CreateWindowExW);
+	HOOK(CUser32Hook,FindWindowExA);
+	HOOK(CUser32Hook,FindWindowExW);
 
-		HOOK(CUser32Hook,hMod,FindWindowA);
-		HOOK(CUser32Hook,hMod,FindWindowW);
+	HOOK(CUser32Hook,EnumWindows);
+	HOOK(CUser32Hook,EnumChildWindows);
+ 	HOOK(CUser32Hook,GetWindow);
+ 	HOOK(CUser32Hook,GetTopWindow);
 
-		HOOK(CUser32Hook,hMod,FindWindowExA);
-		HOOK(CUser32Hook,hMod,FindWindowExW);
-
-		HOOK(CUser32Hook,hMod,EnumWindows);
-		HOOK(CUser32Hook,hMod,EnumChildWindows);
-		HOOK(CUser32Hook,hMod,GetWindow);
-		HOOK(CUser32Hook,hMod,GetTopWindow);
-
-		bValRet = TRUE;
-
-	} while (0);
-
-	CBaseHook::UninitFile();
-	return bValRet;
+	//CBaseHook::UninitFile();
+	return TRUE;
 }
 
 LRESULT
@@ -435,6 +421,7 @@ HWND
 WINAPI CUser32Hook::GetWindow(__in HWND hWnd, __in UINT uCmd)
 {
 	HWND hRet = TrueGetWindow.Call()(hWnd,uCmd);
+	
 	if (NULL == hRet)
 	{
 		return hRet;

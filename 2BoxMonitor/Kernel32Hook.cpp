@@ -40,34 +40,30 @@ CKernel32Hook::~CKernel32Hook(void)
 
 BOOL CKernel32Hook::Init()
 {
-	CBaseHook::InitFile(L"kernel32",FALSE);	
+	HMODULE hMod = GetModuleHandleW(L"kernel32.dll");
+	if (NULL == hMod)
+	{
+		return FALSE;
+	}
 
-	BOOL bValRet = FALSE;
+	CBaseHook::InitFile(L"kernel32",FALSE);			
 
-	do 
-	{		
-		HMODULE hMod = LoadLibraryW(L"kernel32.dll");
-		if (NULL == hMod)
-		{
-			break;
-		}
+	HOOK(CKernel32Hook,WaitNamedPipeA);
+	HOOK(CKernel32Hook,WaitNamedPipeW);
 
-		HOOK(CKernel32Hook,hMod,WaitNamedPipeA);
-		HOOK(CKernel32Hook,hMod,WaitNamedPipeW);
-		HOOK_FROM_FILE_EAT(CKernel32Hook,hMod,CreateProcessA);
-		HOOK_FROM_FILE_EAT(CKernel32Hook,hMod,CreateProcessW);
-		HOOK(CKernel32Hook,hMod,CreateProcessAsUserA);
-		HOOK(CKernel32Hook,hMod,CreateProcessAsUserW);
-		HOOK_FROM_FILE_EAT(CKernel32Hook,hMod,WinExec);
-		HOOK(CKernel32Hook,hMod,AssignProcessToJobObject);
-		HOOK(CKernel32Hook,hMod,DeviceIoControl);
+	HOOK_SRC_FROM_FILE_EAT(CKernel32Hook,hMod,CreateProcessA);
+	HOOK_SRC_FROM_FILE_EAT(CKernel32Hook,hMod,CreateProcessW);
 
-		bValRet = TRUE;
+	HOOK(CKernel32Hook,CreateProcessAsUserA);
+	HOOK(CKernel32Hook,CreateProcessAsUserW);
 
-	} while (0);
+	HOOK_SRC_FROM_FILE_EAT(CKernel32Hook,hMod,WinExec);
+
+	HOOK(CKernel32Hook,AssignProcessToJobObject);
+	HOOK(CKernel32Hook,DeviceIoControl);
 
 	CBaseHook::UninitFile();
-	return bValRet;
+	return TRUE;
 }
 
 BOOL WINAPI CKernel32Hook::WaitNamedPipeA(__in LPCSTR lpNamedPipeName,__in DWORD nTimeOut)

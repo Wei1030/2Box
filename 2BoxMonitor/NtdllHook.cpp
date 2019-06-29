@@ -71,48 +71,40 @@ CNtdllHook::~CNtdllHook(void)
 
 BOOL CNtdllHook::Init()
 {
-	CBaseHook::InitFile(L"ntdll");
-
-	BOOL bValRet = FALSE;
-
-	do 
+	HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
+	if (NULL == hMod)
 	{
-		HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
-		if (NULL == hMod)
-		{
-			break;
-		}
+		return FALSE;
+	}
 
-		HOOK(CNtdllHook,hMod,NtCreateEvent);
-		HOOK(CNtdllHook,hMod,NtOpenEvent);
+	CBaseHook::InitFile(L"ntdll");		
 
-		HOOK(CNtdllHook,hMod,NtCreateMutant);
-		HOOK(CNtdllHook,hMod,NtOpenMutant);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtCreateEvent);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtOpenEvent);
 
-		HOOK(CNtdllHook,hMod,NtCreateSection);
-		HOOK(CNtdllHook,hMod,NtOpenSection);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtCreateMutant);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtOpenMutant);
 
-		HOOK(CNtdllHook,hMod,NtCreateSemaphore);
-		HOOK(CNtdllHook,hMod,NtOpenSemaphore);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtCreateSection);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtOpenSection);
 
-		HOOK(CNtdllHook,hMod,NtCreateTimer);
-		HOOK(CNtdllHook,hMod,NtOpenTimer);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtCreateSemaphore);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtOpenSemaphore);
 
-		HOOK(CNtdllHook,hMod,NtCreateJobObject);
-		HOOK(CNtdllHook,hMod,NtOpenJobObject);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtCreateTimer);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtOpenTimer);
 
-		HOOK(CNtdllHook,hMod,NtCreateNamedPipeFile);
-		HOOK(CNtdllHook,hMod,NtCreateFile);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtCreateJobObject);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtOpenJobObject);
 
-		HOOK(CNtdllHook,hMod,NtOpenFile);
-		HOOK(CNtdllHook,hMod,NtQuerySystemInformation);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtCreateNamedPipeFile);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtCreateFile);
 
-		bValRet = TRUE;
-
-	} while (0);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtOpenFile);
+	HOOK_SRC_FROM_MEM(CNtdllHook,hMod,NtQuerySystemInformation);
 
 	CBaseHook::UninitFile();
-	return bValRet;
+	return TRUE;
 }
 //////////////////////////////////////////////////////////////////////////
 //event
@@ -291,7 +283,7 @@ NTSTATUS NTAPI CNtdllHook::NtCreateFile(OUT PHANDLE FileHandle, IN ACCESS_MASK D
 
 		if (FALSE == g_pData->IsAllowedAccess(strFileName))
 		{
-			wprintf_s(L"create not access:%s\r\n",strFileName.c_str());
+			//wprintf_s(L"create not access:%s\r\n",strFileName.c_str());
 			return (NTSTATUS)0xC0000022L;
 		}
 	} while (0);
@@ -339,7 +331,7 @@ NTSTATUS NTAPI CNtdllHook::NtOpenFile(OUT PHANDLE FileHandle, IN ACCESS_MASK Des
 
 		if (FALSE == g_pData->IsAllowedAccess(strFileName))
 		{
-			wprintf_s(L"open not access:%s\r\n",strFileName.c_str());
+			//wprintf_s(L"open not access:%s\r\n",strFileName.c_str());
 			return (NTSTATUS)0xC0000022L;
 		}
 

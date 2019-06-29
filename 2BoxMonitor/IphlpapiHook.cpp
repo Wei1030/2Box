@@ -18,27 +18,19 @@ CIphlpapiHook::~CIphlpapiHook(void)
 
 BOOL CIphlpapiHook::Init()
 {
-	CBaseHook::InitFile(L"iphlpapi");
+// 	HMODULE hMod = LoadLibraryW(L"iphlpapi.dll");
+// 	if (NULL == hMod)
+// 	{
+// 		return TRUE;
+// 	}
 
-	BOOL bValRet = FALSE;
+	CBaseHook::InitFile(L"iphlpapi");		
 
-	do 
-	{
-		HMODULE hMod = LoadLibraryW(L"iphlpapi.dll");
-		if (NULL == hMod)
-		{
-			break;
-		}
-
-		HOOK(CIphlpapiHook,hMod,GetAdaptersInfo);
-		HOOK(CIphlpapiHook,hMod,GetAdaptersAddresses);
-
-		bValRet = TRUE;
-
-	} while (0);
+	HOOK(CIphlpapiHook,GetAdaptersInfo);
+	HOOK(CIphlpapiHook,GetAdaptersAddresses);
 
 	CBaseHook::UninitFile();
-	return bValRet;
+	return TRUE;
 }
 
 ULONG WINAPI CIphlpapiHook::GetAdaptersInfo(PIP_ADAPTER_INFO AdapterInfo,PULONG SizePointer)

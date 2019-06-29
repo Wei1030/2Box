@@ -25,25 +25,17 @@ CAdvapi32Hook::~CAdvapi32Hook(void)
 
 BOOL CAdvapi32Hook::Init()
 {
+	HMODULE hMod = GetModuleHandleW(L"advapi32.dll");
+
 	CBaseHook::InitFile(L"advapi32");
 
-	BOOL bValRet = TRUE; 
+	BOOL bValRet = TRUE;		
 
-	do 
-	{
-		HMODULE hMod = LoadLibraryW(L"advapi32.dll");
-		if (NULL == hMod)
-		{
-			break;
-		}
-
-		HOOK(CAdvapi32Hook,hMod,CreateProcessWithLogonW);
-		HOOK(CAdvapi32Hook,hMod,CreateProcessWithTokenW);
-
-	} while (0);
+	HOOK(CAdvapi32Hook,CreateProcessWithLogonW);
+	HOOK_SRC_FROM_MEM(CAdvapi32Hook,hMod,CreateProcessWithTokenW);
 
 	CBaseHook::UninitFile();
-	return bValRet;
+	return TRUE;
 }
 
 BOOL WINAPI CAdvapi32Hook::CreateProcessWithLogonW(__in LPCWSTR lpUsername, __in_opt LPCWSTR lpDomain, 
