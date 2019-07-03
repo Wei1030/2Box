@@ -16,6 +16,7 @@ public:
 	const wchar_t* GetSelfPathW() const {return m_szSelfPathW;}
 
 	const wchar_t* GetSysPathW() const {return m_szSysPathW;}
+	const wchar_t* GetWinPathW() const {return m_szWinPathW;}
 
 	BOOL ProcUnknownEnvStringsW(const void* pszzEnv,std::wstring& strOut) const;
 	BOOL ProcUnknownEnvStringsA(const void* pszzEnv,std::string& strOut) const;
@@ -32,6 +33,7 @@ private:
 	char	m_szSelfPathA[MAX_PATH+1];
 
 	wchar_t m_szSysPathW[MAX_PATH+1];
+	wchar_t m_szWinPathW[MAX_PATH+1];
 
 	std::string m_strDllPath;
 

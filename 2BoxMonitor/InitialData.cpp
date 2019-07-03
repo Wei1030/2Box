@@ -23,6 +23,7 @@ CInitialData::CInitialData(void)
 	memset(m_szSelfPathW,0,sizeof(m_szSelfPathW));
 	memset(m_szSelfPathA,0,sizeof(m_szSelfPathA));
 	memset(m_szSysPathW,0,sizeof(m_szSysPathW));
+	memset(m_szWinPathW,0,sizeof(m_szWinPathW));
 
 	//memset(&m_procData,0,sizeof(NEW_PROC_DATA));
 }
@@ -37,6 +38,11 @@ BOOL CInitialData::Init()
 	do 
 	{
 		if (0 == GetSystemDirectoryW(m_szSysPathW,MAX_PATH))
+		{
+			break;
+		}
+
+		if (0 == GetWindowsDirectoryW(m_szWinPathW,MAX_PATH))
 		{
 			break;
 		}

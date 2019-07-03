@@ -39,7 +39,13 @@ BOOL CBaseHook::InitFile(const wchar_t* pszSysFileName,BOOL bDenyAcess /*= TRUE*
 		wchar_t szTrueFileName[MAX_PATH+1] = {0};
 		swprintf_s(szTrueFileName,MAX_PATH,L"%s\\%s.dll",
 			g_pData->GetSysPathW(),
-			pszSysFileName);			
+			pszSysFileName);	
+#ifndef _WIN64
+		wchar_t szWow64FileName[MAX_PATH+1] = {0};
+		swprintf_s(szWow64FileName,MAX_PATH,L"%s\\syswow64\\%s.dll",
+			g_pData->GetWinPathW(),
+			pszSysFileName);
+#endif
 
 		hFile =CreateFileW(szTrueFileName,
 			GENERIC_READ,
@@ -58,6 +64,9 @@ BOOL CBaseHook::InitFile(const wchar_t* pszSysFileName,BOOL bDenyAcess /*= TRUE*
 		if (bDenyAcess)
 		{
 			g_pData->AddFilesToMgr(szTrueFileName);
+#ifndef _WIN64
+			g_pData->AddFilesToMgr(szWow64FileName);
+#endif
 		}		
 		bValRet = TRUE;
 
