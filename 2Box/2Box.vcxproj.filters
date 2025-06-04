@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{8080b650-21e2-488d-8cda-a053b4fbea8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="res">
+      <UniqueIdentifier>{c749b57a-57be-4026-bc38-212a7ebbef5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\app">
+      <UniqueIdentifier>{d33625a2-b29f-4443-a4ae-437087759324}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui">
+      <UniqueIdentifier>{bb1f8071-90c2-4638-91dc-bd54f4ec4d1a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="common">
+      <UniqueIdentifier>{21d13f25-75e4-4184-87ae-29703b8212b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="common\dynamic_win_api">
+      <UniqueIdentifier>{ee01b15a-2e9a-44e3-92fd-e8d8242f18b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="common\utility">
+      <UniqueIdentifier>{05423ed6-e37c-49fe-9b33-6a0b4733d189}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\2Box.ico">
+      <Filter>res</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="res\2Box.rc">
+      <Filter>res</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="res\resource.h">
+      <Filter>res</Filter>
+    </ClInclude>
+    <ClInclude Include="framework.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="framework.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="app\MainApp.ixx">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="app\MainApp.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\UI.WindowBase.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\UI.WindowBase.ixx">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\dynamic_win_api\DynamicWin32Api.ixx">
+      <Filter>common\dynamic_win_api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\utility\Utility.LiteralName.ixx">
+      <Filter>common\utility</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\UI.MainWindow.ixx">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\UI.MainWindow.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
