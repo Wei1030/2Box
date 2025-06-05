@@ -1,7 +1,3 @@
-module;
-#ifdef __INTELLISENSE__
-#include "framework.h"
-#endif
 module MainApp;
 
 import "framework.h";
@@ -17,10 +13,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 	try
 	{
 		MainApp::getInstance().initialize(hInstance, lpCmdLine, nCmdShow);
+
 		ui::MainWindow mainWnd;
 		ui::g_main_wnd = &mainWnd;
-		mainWnd.setExitAppWhenWindowDestroyed(true);
 		mainWnd.show(MainApp::getCmdShow());
+
 		MainApp::getInstance().runMessageLoop();
 	}
 	catch (const std::exception& e)

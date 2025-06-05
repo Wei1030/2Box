@@ -1,8 +1,5 @@
 module;
 #include "res/resource.h"
-#ifdef __INTELLISENSE__
-#include "framework.h"
-#endif
 module UI.WindowBase;
 
 import "framework.h";

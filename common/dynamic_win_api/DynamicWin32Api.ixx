@@ -11,7 +11,7 @@ import Utility.LiteralName;
 namespace win32_api
 {
 	template <typename CharType, CharType... C>
-	using LiteralName = utility::LiteralName<CharType, C...>;
+	using LiteralName = utils::LiteralName<CharType, C...>;
 	
 	template <LiteralName LibName>
 	class LibLoader
@@ -83,16 +83,16 @@ namespace win32_api
 		}
 	};
 
-	inline constexpr auto KERNEL32_LIB_NAME = utility::make_literal_name<L"Kernel32">();
-	inline constexpr auto USER32_LIB_NAME = utility::make_literal_name<L"User32">();
+	inline constexpr auto KERNEL32_LIB_NAME = utils::make_literal_name<L"Kernel32">();
+	inline constexpr auto USER32_LIB_NAME = utils::make_literal_name<L"User32">();
 	
 	// 微软文档化的,头文件中直接有函数定义的, 用这个宏
 #define DECL_WIN32_API(libName, apiName) \
-	inline ApiProxy<libName, utility::make_literal_name<#apiName>(), decltype(::apiName)> apiName
+	inline ApiProxy<libName, utils::make_literal_name<#apiName>(), decltype(::apiName)> apiName
 	
 	// 微软未文档化的,头文件中找不到函数定义的, 用这个宏,但需要自己额外定义一下api形状传入
 #define DECL_WIN32_API_BY_API_SHAPE(libName, apiName, apiShape) \
-	inline ApiProxy<libName, utility::make_literal_name<#apiName>(), apiShape> apiName
+	inline ApiProxy<libName, utils::make_literal_name<#apiName>(), apiShape> apiName
 	
 	
 	export

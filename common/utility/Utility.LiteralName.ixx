@@ -2,7 +2,7 @@ export module Utility.LiteralName;
 
 import std;
 
-namespace utility
+namespace utils
 {
 	template <typename CharType, size_t N>
 	struct StringLiteral

@@ -72,5 +72,8 @@
     <ClCompile Include="ui\UI.MainWindow.cpp">
       <Filter>src\ui</Filter>
     </ClCompile>
+    <ClCompile Include="..\common\utility\Utility.Toolhelp.ixx">
+      <Filter>common\utility</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
