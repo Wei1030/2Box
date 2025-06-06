@@ -10,11 +10,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2Box", "2Box\2Box.vcxproj",
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MemoryDll", "MemoryDll\MemoryDll.vcxproj", "{9B1F363A-4917-4F28-8E03-2740C247D9A6}"
-	ProjectSection(ProjectDependencies) = postProject
-		{A78EFBDE-DCA5-4EFD-8BF6-048B7722BF11} = {A78EFBDE-DCA5-4EFD-8BF6-048B7722BF11}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BuildDllHelper", "BuildDllHelper\BuildDllHelper.vcxproj", "{A78EFBDE-DCA5-4EFD-8BF6-048B7722BF11}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9B1F363A-4917-4F28-8E03-2740C247D9A6} = {9B1F363A-4917-4F28-8E03-2740C247D9A6}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common", "common\common.vcxproj", "{50FD867C-9CE7-4B59-923C-24C956E2181A}"
 EndProject

@@ -50,10 +50,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\MemoryDll32.dll">
-      <Filter>res</Filter>
-    </None>
-    <None Include="res\MemoryDll64.dll">
+    <None Include="res\embed_dll.rc">
       <Filter>res</Filter>
     </None>
   </ItemGroup>
