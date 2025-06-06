@@ -1,7 +1,5 @@
-module;
-#include "framework.h"
-#include <tlhelp32.h>
 export module Utility.Toolhelp;
+import "sys_defs.h";
 
 namespace utils
 {

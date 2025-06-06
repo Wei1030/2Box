@@ -1,11 +1,12 @@
 #pragma once
-#ifndef _FRAMEWORK_H_
-#define _FRAMEWORK_H_
+#ifndef _SYS_DEFS_H_
+#define _SYS_DEFS_H_
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN             // 从 Windows 头文件中排除极少使用的内容
 // Windows 头文件
 #include <windows.h>
+#include <tlhelp32.h>
 #include <d2d1.h>
 
 template <class Interface>

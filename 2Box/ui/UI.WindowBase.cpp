@@ -2,10 +2,10 @@ module;
 #include "res/resource.h"
 module UI.WindowBase;
 
-import "framework.h";
-#ifndef _FRAMEWORK_H_
+import "sys_defs.h";
+#ifndef _SYS_DEFS_H_
 #pragma message("Just for IntelliSense. You should not see this message!")
-import "framework.hpp";
+import "sys_defs.hpp";
 #endif
 
 import MainApp;

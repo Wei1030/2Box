@@ -1,7 +1,7 @@
 export module UI.WindowBase;
 
 import std;
-import "framework.h";
+import "sys_defs.h";
 
 namespace ui
 {
