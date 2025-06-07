@@ -1,4 +1,5 @@
 export module Utility.Toolhelp;
+
 import "sys_defs.h";
 
 namespace utils
@@ -35,7 +36,28 @@ namespace utils
 			}
 			else
 			{
-				m_hSnapshot = CreateToolhelp32Snapshot(dwFlags, dwProcessID);
+				if (dwFlags & TH32CS_SNAPMODULE
+					|| dwFlags & TH32CS_SNAPMODULE32)
+				{
+					int tryCount = 200;
+					while (tryCount--)
+					{
+						m_hSnapshot = CreateToolhelp32Snapshot(dwFlags, dwProcessID);
+						if (m_hSnapshot != INVALID_HANDLE_VALUE)
+						{
+							break;
+						}
+						if (GetLastError() != ERROR_BAD_LENGTH)
+						{
+							break;
+						}
+						Sleep(1);
+					}
+				}
+				else
+				{
+					m_hSnapshot = CreateToolhelp32Snapshot(dwFlags, dwProcessID);
+				}
 			}
 			return m_hSnapshot != INVALID_HANDLE_VALUE;
 		}

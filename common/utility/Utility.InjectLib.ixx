@@ -7,6 +7,12 @@ import Utility.Toolhelp;
 
 namespace utils
 {
+	export struct ReflectiveInjectParams
+	{
+		unsigned long long kernel32BaseAddress;
+		unsigned long long dllFileAddress;
+		unsigned int dllFileSize;
+	};
 	export inline void injectMemoryDllToProcess(std::uint32_t dwProcessId, const char* sRawDll, std::uint32_t dwSize)
 	{
 		struct Res
@@ -42,8 +48,8 @@ namespace utils
 		{
 			throw std::runtime_error(std::format("OpenProcess fail, error:{}", GetLastError()));
 		}
-
-		res.fileRemoteAddr = static_cast<char*>(VirtualAllocEx(res.hProcess, nullptr, dwSize, MEM_COMMIT | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE));
+		unsigned int totalSize = dwSize + sizeof(ReflectiveInjectParams);
+		res.fileRemoteAddr = static_cast<char*>(VirtualAllocEx(res.hProcess, nullptr, totalSize, MEM_COMMIT | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE));
 		if (res.fileRemoteAddr == nullptr)
 		{
 			throw std::runtime_error(std::format("VirtualAllocEx fail, error:{}", GetLastError()));
@@ -55,7 +61,7 @@ namespace utils
 		}
 
 		const PEParser parser(sRawDll, dwSize);
-		DWORD loadSelfFuncOffset = parser.getProcFOA([](std::string_view funcName)
+		DWORD loadSelfFuncOffset = parser.getProcOffset([](std::string_view funcName)
 		{
 			return funcName == "load_self";
 		});
@@ -73,12 +79,30 @@ namespace utils
 		res.hThread = nullptr;
 
 		// 枚举目标进程模块，找到kernel32基址
-		const CToolhelp thModules(TH32CS_SNAPMODULE, dwProcessId);
+		const CToolhelp thModules(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, dwProcessId);
 		MODULEENTRY32W me = {sizeof(me)};
 		if (!thModules.moduleFind(L"kernel32.dll", &me))
 		{
 			throw std::runtime_error(std::format("Module find fail, error:{}", GetLastError()));
 		}
-		return;
+		
+		ReflectiveInjectParams injectParams;
+		injectParams.kernel32BaseAddress = reinterpret_cast<unsigned long long>(me.modBaseAddr);
+		injectParams.dllFileAddress = reinterpret_cast<unsigned long long>(res.fileRemoteAddr);
+		injectParams.dllFileSize = dwSize;
+		if (!WriteProcessMemory(res.hProcess, res.fileRemoteAddr + dwSize, &injectParams, sizeof(ReflectiveInjectParams), nullptr))
+		{
+			throw std::runtime_error(std::format("WriteProcessMemory fail, error:{}", GetLastError()));
+		}
+		// 再次创建远程线程，这次将injectParams作为线程参数
+		res.hThread = CreateRemoteThread(res.hProcess, nullptr, 0, loadSelfFuncAddress, res.fileRemoteAddr + dwSize, 0, nullptr);
+		if (res.hThread == nullptr)
+		{
+			throw std::runtime_error(std::format("CreateRemoteThread fail, error:{}", GetLastError()));
+		}
+		// Wait for the remote thread to terminate
+		WaitForSingleObject(res.hThread, INFINITE);
+		// 置空,不要让res销毁时销毁
+		res.fileRemoteAddr = nullptr;
 	}
 }
