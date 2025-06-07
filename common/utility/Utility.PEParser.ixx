@@ -130,21 +130,17 @@ namespace utils
 			// 	DWORD   AddressOfNameOrdinals;  // RVA from base of image
 			// } IMAGE_EXPORT_DIRECTORY;
 			// 遍历时，以NumberOfNames为遍历次数比较方便，其index直接与NameOrdinals一一对应， NameOrdinals中的值又直接对应AddressOfFunctions的下标
-			const IMAGE_EXPORT_DIRECTORY* pExportDir;
-			const DWORD* pdwNames;
-			const WORD* pdwNameOrdinals;
-			const DWORD* pdwFunctionAddresses;
+			const IMAGE_EXPORT_DIRECTORY* pExportDir{nullptr};
+			const DWORD* pdwNames{nullptr};
+			const WORD* pdwNameOrdinals{nullptr};
+			const DWORD* pdwFunctionAddresses{nullptr};
 		};
 		const ExportDirInfo& getExportDirInfo() const
 		{
-			struct InitOnceHelper
+			if (!m_exportDirInfo.pExportDir)
 			{
-				explicit InitOnceHelper(PEParser* parser)
-				{
-					parser->initExportDirInfo();
-				}
-			};
-			[[maybe_unused]] static InitOnceHelper initOnce(const_cast<PEParser*>(this));
+				const_cast<PEParser*>(this)->initExportDirInfo();
+			}
 			return m_exportDirInfo;
 		}
 
