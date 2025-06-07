@@ -86,31 +86,27 @@ namespace utils
 
 		BOOL moduleFind(PVOID pvBaseAddr, PMODULEENTRY32 pme) const
 		{
-			BOOL fFound = FALSE;
 			for (BOOL fOk = moduleFirst(pme); fOk; fOk = moduleNext(pme))
 			{
-				fFound = pme->modBaseAddr == pvBaseAddr;
-				if (fFound)
+				if (pme->modBaseAddr == pvBaseAddr)
 				{
-					break;
+					return TRUE;
 				}
 			}
-			return fFound;
+			return FALSE;
 		}
 
-		BOOL moduleFind(PTSTR pszModName, PMODULEENTRY32 pme) const
+		BOOL moduleFind(PCTSTR pszModName, PMODULEENTRY32 pme) const
 		{
-			BOOL fFound = FALSE;
 			for (BOOL fOk = moduleFirst(pme); fOk; fOk = moduleNext(pme))
 			{
-				fFound = lstrcmpi(pme->szModule, pszModName) == 0 ||
-					lstrcmpi(pme->szExePath, pszModName) == 0;
-				if (fFound)
+				if (lstrcmpi(pme->szModule, pszModName) == 0 ||
+					lstrcmpi(pme->szExePath, pszModName) == 0)
 				{
-					break;
+					return TRUE;
 				}
 			}
-			return fFound;
+			return FALSE;
 		}
 
 		BOOL threadFirst(PTHREADENTRY32 pte) const

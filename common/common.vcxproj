@@ -180,6 +180,7 @@
     <ClCompile Include="dynamic_win_api\DynamicWin32Api.ixx" />
     <ClCompile Include="utility\Utility.InjectLib.ixx" />
     <ClCompile Include="utility\Utility.LiteralName.ixx" />
+    <ClCompile Include="utility\Utility.PEParser.ixx" />
     <ClCompile Include="utility\Utility.Toolhelp.ixx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

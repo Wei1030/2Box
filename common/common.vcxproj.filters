@@ -36,5 +36,8 @@
     <ClCompile Include="utility\Utility.Toolhelp.ixx">
       <Filter>utility</Filter>
     </ClCompile>
+    <ClCompile Include="utility\Utility.PEParser.ixx">
+      <Filter>utility</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
