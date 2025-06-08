@@ -3,10 +3,39 @@ export module Utility.PEParser;
 import std;
 import "sys_defs.h";
 
+#define DO_ERROR(msg, keyword) \
+if constexpr (ParserFlag & PEParserFlag::noThrow) \
+{ \
+keyword; \
+} \
+else \
+{ \
+throw std::runtime_error(msg); \
+}
+
+#define DO_ERROR_BREAK(msg) DO_ERROR(msg, break)
+#define DO_ERROR_RETURN(msg) DO_ERROR(msg, return)
+#define DO_ERROR_RETURN_AS(msg, func, arg) \
+if constexpr (ParserFlag & PEParserFlag::noThrow) \
+{ \
+return std::invoke_result_t<decltype(func), const arg&>{}; \
+} \
+else \
+{ \
+throw std::runtime_error(msg); \
+}
+
 namespace utils
 {
+	export struct PEParserFlag
+	{
+		static constexpr std::uint8_t hasMapped = 0x01;
+		static constexpr std::uint8_t noThrow = 0x02;
+		static constexpr bool forceReturnRVA = true;
+	};
+
 	export
-	template<bool IsMappedToMemory = false>
+	template <std::uint8_t ParserFlag = 0>
 	class PEParser
 	{
 	public:
@@ -16,51 +45,67 @@ namespace utils
 			IMAGE_FILE_HEADER fileHeader;
 		};
 
-		PEParser() = default;
+		PEParser() noexcept = default;
 
-		PEParser(const char* sRawDll, std::uint32_t dwSize)
+		PEParser(const char* sRawDll, std::uint32_t dwSize) noexcept(ParserFlag & PEParserFlag::noThrow)
 		{
-			//检查长度;
-			if (dwSize < sizeof(IMAGE_DOS_HEADER))
+			do
 			{
-				throw std::runtime_error("PEParser::file size is too small");
-			}
-
-			m_pDosHeader = reinterpret_cast<const IMAGE_DOS_HEADER*>(sRawDll);
-
-			//检查dos头的标记;
-			if (m_pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
-			{
-				throw std::runtime_error("PEParser::file header signature is not correct. it should be MZ");
-			}
-			const std::uint32_t opHeaderPos = m_pDosHeader->e_lfanew + sizeof(CommonImageNtHeaders);
-			if (dwSize < opHeaderPos)
-			{
-				throw std::runtime_error("PEParser::file size is too small");
-			}
-
-			m_pNtHeader = sRawDll + m_pDosHeader->e_lfanew;
-			m_optionalHeaderMagic = *reinterpret_cast<const WORD*>(m_pNtHeader + sizeof(CommonImageNtHeaders));
-
-			processOnNtHeader([this, dwSize, opHeaderPos](const auto& ntHeader)-> void
-			{
-				if (dwSize < m_pDosHeader->e_lfanew + sizeof(ntHeader)
-					|| dwSize < opHeaderPos + ntHeader.FileHeader.SizeOfOptionalHeader)
+				//检查长度;
+				if (dwSize < sizeof(IMAGE_DOS_HEADER))
 				{
-					throw std::runtime_error("PEParser::file size is too small");
+					DO_ERROR_BREAK("PEParser::file size is too small");
 				}
 
-				m_pOpHeaderAddr = reinterpret_cast<const char*>(&ntHeader.OptionalHeader);
-				m_pSectionHeader = reinterpret_cast<const IMAGE_SECTION_HEADER*>(m_pOpHeaderAddr + ntHeader.FileHeader.SizeOfOptionalHeader);
-				m_numberOfSections = ntHeader.FileHeader.NumberOfSections;
-			});
+				m_pDosHeader = reinterpret_cast<const IMAGE_DOS_HEADER*>(sRawDll);
+
+				//检查dos头的标记;
+				if (m_pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+				{
+					DO_ERROR_BREAK("PEParser::file header signature is not correct. it should be MZ");
+				}
+				const std::uint32_t opHeaderPos = m_pDosHeader->e_lfanew + sizeof(CommonImageNtHeaders);
+				if (dwSize < opHeaderPos)
+				{
+					DO_ERROR_BREAK("PEParser::file size is too small");
+				}
+
+				m_pNtHeader = sRawDll + m_pDosHeader->e_lfanew;
+				m_optionalHeaderMagic = *reinterpret_cast<const WORD*>(m_pNtHeader + sizeof(CommonImageNtHeaders));
+
+				processOnNtHeader([this, dwSize, opHeaderPos](const auto& ntHeader)-> void
+				{
+					if (dwSize < m_pDosHeader->e_lfanew + sizeof(ntHeader)
+						|| dwSize < opHeaderPos + ntHeader.FileHeader.SizeOfOptionalHeader)
+					{
+						DO_ERROR_RETURN("PEParser::file size is too small");
+					}
+
+					m_pOpHeaderAddr = reinterpret_cast<const char*>(&ntHeader.OptionalHeader);
+					m_pSectionHeader = reinterpret_cast<const IMAGE_SECTION_HEADER*>(m_pOpHeaderAddr + ntHeader.FileHeader.SizeOfOptionalHeader);
+					m_numberOfSections = ntHeader.FileHeader.NumberOfSections;
+				});
+			}
+			while (false);
 		}
+
+		const char* getBaseAddr() const noexcept { return reinterpret_cast<const char*>(m_pDosHeader); }
+		const IMAGE_DOS_HEADER* getDosHeader() const noexcept { return m_pDosHeader; }
+		const IMAGE_SECTION_HEADER* getSectionHeader() const noexcept { return m_pSectionHeader; }
+		int getNumberOfSections() const noexcept { return m_numberOfSections; }
 
 		template <typename Func>
 			requires std::predicate<Func, const char*>
-		DWORD getProcOffset(const Func& compareFunc) const
+		DWORD getProcOffset(const Func& compareFunc, bool bForceReturnRVA = false) const noexcept(ParserFlag & PEParserFlag::noThrow)
 		{
 			const auto& [pExportDir, pdwNames, pdwNameOrdinals, pdwFunctionAddresses] = getExportDirInfo();
+			if constexpr (ParserFlag & PEParserFlag::noThrow)
+			{
+				if (!pExportDir)
+				{
+					return 0;
+				}
+			}
 			const char* pBase = reinterpret_cast<const char*>(m_pDosHeader);
 
 			// Walk the array of this module's function names 
@@ -77,17 +122,21 @@ namespace utils
 				// --> Get this function's ordinal value
 				const WORD ordinal = pdwNameOrdinals[n];
 				// Get the address of this function's address
+				if (bForceReturnRVA)
+				{
+					return pdwFunctionAddresses[ordinal];
+				}
 				return rvaToOffset(pdwFunctionAddresses[ordinal]);
 			}
 
-			throw std::runtime_error("PEParser::getProcAddressOffset: failed to find exported function");
+			return 0;
 		}
 
-		decltype(auto) processOnNtHeader(const auto& func) const
+		decltype(auto) processOnNtHeader(const auto& func) const noexcept(ParserFlag & PEParserFlag::noThrow)
 		{
 			if (!m_pNtHeader)
 			{
-				throw std::runtime_error("PEParser::processOnNtHeader: failed to find NtHeader");
+				DO_ERROR_RETURN_AS("PEParser::processOnNtHeader: failed to find NtHeader", func, IMAGE_NT_HEADERS64);
 			}
 			if (m_optionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
 			{
@@ -97,14 +146,14 @@ namespace utils
 			{
 				return func(*reinterpret_cast<const IMAGE_NT_HEADERS64*>(m_pNtHeader));
 			}
-			throw std::runtime_error("PEParser: unsupported image file header");
+			DO_ERROR_RETURN_AS("PEParser: unsupported image file header", func, IMAGE_NT_HEADERS64);
 		}
 
-		decltype(auto) processOnOpHeader(const auto& func) const
+		decltype(auto) processOnOpHeader(const auto& func) const noexcept(ParserFlag & PEParserFlag::noThrow)
 		{
 			if (!m_pOpHeaderAddr)
 			{
-				throw std::runtime_error("PEParser::processOnOpHeader: failed to find optional header");
+				DO_ERROR_RETURN_AS("PEParser::processOnOpHeader: failed to find optional header", func, IMAGE_OPTIONAL_HEADER64);
 			}
 			if (m_optionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
 			{
@@ -114,7 +163,7 @@ namespace utils
 			{
 				return func(*reinterpret_cast<const IMAGE_OPTIONAL_HEADER64*>(m_pOpHeaderAddr));
 			}
-			throw std::runtime_error("PEParser: unsupported image file header");
+			DO_ERROR_RETURN_AS("PEParser: unsupported image file header", func, IMAGE_OPTIONAL_HEADER64);
 		}
 
 		struct ExportDirInfo
@@ -135,7 +184,8 @@ namespace utils
 			const WORD* pdwNameOrdinals{nullptr};
 			const DWORD* pdwFunctionAddresses{nullptr};
 		};
-		const ExportDirInfo& getExportDirInfo() const
+
+		const ExportDirInfo& getExportDirInfo() const noexcept(ParserFlag & PEParserFlag::noThrow)
 		{
 			if (!m_exportDirInfo.pExportDir)
 			{
@@ -145,18 +195,18 @@ namespace utils
 		}
 
 	private:
-		DWORD rvaToOffset(DWORD dwRva) const
+		DWORD rvaToOffset(DWORD dwRva) const noexcept(ParserFlag & PEParserFlag::noThrow)
 		{
-			if constexpr (IsMappedToMemory)
+			if constexpr (ParserFlag & PEParserFlag::hasMapped)
 			{
 				return dwRva;
 			}
-			
+
 			if (dwRva < m_pSectionHeader[0].VirtualAddress)
 			{
 				return dwRva;
 			}
-			
+
 			for (WORD wIndex = 0; wIndex < m_numberOfSections; wIndex++)
 			{
 				const IMAGE_SECTION_HEADER& currentSection = m_pSectionHeader[wIndex];
@@ -167,22 +217,22 @@ namespace utils
 					return dwRva - currentSection.VirtualAddress + currentSection.PointerToRawData;
 				}
 			}
-			throw std::runtime_error("PEParser: rvaToOffset failed to find section header");
+			DO_ERROR("PEParser: rvaToOffset failed to find section header", return 0);
 		}
 
-		void initExportDirInfo()
+		void initExportDirInfo() noexcept(ParserFlag & PEParserFlag::noThrow)
 		{
-			const IMAGE_DATA_DIRECTORY& directoryEntry = processOnOpHeader([](const auto& opHeader)-> const IMAGE_DATA_DIRECTORY&
+			const IMAGE_DATA_DIRECTORY* directoryEntry = processOnOpHeader([](const auto& opHeader)
 			{
-				return opHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+				return &opHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
 			});
-			if (directoryEntry.VirtualAddress == 0)
+			if (!directoryEntry || directoryEntry->VirtualAddress == 0)
 			{
-				throw std::runtime_error("getExportDirInfo fail");
+				DO_ERROR_RETURN("getExportDirInfo fail");
 			}
-			
+
 			const char* pBase = reinterpret_cast<const char*>(m_pDosHeader);
-			m_exportDirInfo.pExportDir = reinterpret_cast<const IMAGE_EXPORT_DIRECTORY*>(pBase + rvaToOffset(directoryEntry.VirtualAddress));
+			m_exportDirInfo.pExportDir = reinterpret_cast<const IMAGE_EXPORT_DIRECTORY*>(pBase + rvaToOffset(directoryEntry->VirtualAddress));
 			m_exportDirInfo.pdwNames = reinterpret_cast<const DWORD*>(pBase + rvaToOffset(m_exportDirInfo.pExportDir->AddressOfNames));
 			m_exportDirInfo.pdwNameOrdinals = reinterpret_cast<const WORD*>(pBase + rvaToOffset(m_exportDirInfo.pExportDir->AddressOfNameOrdinals));
 			m_exportDirInfo.pdwFunctionAddresses = reinterpret_cast<const DWORD*>(pBase + rvaToOffset(m_exportDirInfo.pExportDir->AddressOfFunctions));
@@ -190,7 +240,7 @@ namespace utils
 
 	private:
 		const IMAGE_DOS_HEADER* m_pDosHeader{nullptr};
-		
+
 		// typedef struct _IMAGE_NT_HEADERS64
 		// {
 		// 	DWORD Signature;
@@ -206,7 +256,7 @@ namespace utils
 		// 	WORD    Characteristics;	// 文件属性
 		// } IMAGE_FILE_HEADER;
 		const char* m_pNtHeader{nullptr};
-		
+
 		WORD m_optionalHeaderMagic{0};
 		// 可选头
 		// typedef struct _IMAGE_OPTIONAL_HEADER64 {
@@ -225,7 +275,7 @@ namespace utils
 		// 	IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES]; // 数据目录表
 		// } IMAGE_OPTIONAL_HEADER64;
 		const char* m_pOpHeaderAddr{nullptr};
-		
+
 		// 区段头
 		// typedef struct _IMAGE_SECTION_HEADER {
 		// 	BYTE    Name[IMAGE_SIZEOF_SHORT_NAME];	// 区段名称，注意不会以0结尾
