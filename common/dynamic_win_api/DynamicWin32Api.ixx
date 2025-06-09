@@ -83,8 +83,8 @@ namespace win32_api
 		}
 	};
 
-	inline constexpr auto KERNEL32_LIB_NAME = utils::make_literal_name<L"Kernel32">();
-	inline constexpr auto USER32_LIB_NAME = utils::make_literal_name<L"User32">();
+	inline constexpr auto KERNEL32_LIB_NAME = utils::make_literal_name<L"kernel32">();
+	inline constexpr auto USER32_LIB_NAME = utils::make_literal_name<L"user32">();
 	
 	// 微软文档化的,头文件中直接有函数定义的, 用这个宏
 #define DECL_WIN32_API(libName, apiName) \

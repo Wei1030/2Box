@@ -3,90 +3,52 @@ export module Utility.PEParser;
 import std;
 import "sys_defs.h";
 
-#define DO_ERROR(msg, keyword) \
-if constexpr (ParserFlag & PEParserFlag::noThrow) \
-{ \
-keyword; \
-} \
-else \
-{ \
-throw std::runtime_error(msg); \
-}
-
-#define DO_ERROR_BREAK(msg) DO_ERROR(msg, break)
-#define DO_ERROR_RETURN(msg) DO_ERROR(msg, return)
-#define DO_ERROR_RETURN_AS(msg, func, arg) \
-if constexpr (ParserFlag & PEParserFlag::noThrow) \
-{ \
-return std::invoke_result_t<decltype(func), const arg&>{}; \
-} \
-else \
-{ \
-throw std::runtime_error(msg); \
-}
-
 namespace utils
 {
-	export struct PEParserFlag
+	static constexpr std::uint32_t SIGNATURE_AND_FILE_HEADER_SIZE = sizeof(DWORD) + sizeof(IMAGE_FILE_HEADER);
+
+	namespace pe_parser_flag
 	{
-		static constexpr std::uint8_t hasMapped = 0x01;
-		static constexpr std::uint8_t noThrow = 0x02;
-		static constexpr bool forceReturnRVA = true;
-	};
+		export struct HasFileAligned
+		{
+		};
+
+		export struct HasSectionAligned
+		{
+		};
+	}
 
 	export
-	template <std::uint8_t ParserFlag = 0>
+	template <typename FlagType = pe_parser_flag::HasFileAligned>
 	class PEParser
 	{
 	public:
-		struct CommonImageNtHeaders
-		{
-			DWORD signature;
-			IMAGE_FILE_HEADER fileHeader;
-		};
+		PEParser() = default;
 
-		PEParser() noexcept = default;
-
-		PEParser(const char* sRawDll, std::uint32_t dwSize) noexcept(ParserFlag & PEParserFlag::noThrow)
+		explicit PEParser(const char* baseAddr)
 		{
-			do
+			if (baseAddr == nullptr)
 			{
-				//检查长度;
-				if (dwSize < sizeof(IMAGE_DOS_HEADER))
-				{
-					DO_ERROR_BREAK("PEParser::file size is too small");
-				}
-
-				m_pDosHeader = reinterpret_cast<const IMAGE_DOS_HEADER*>(sRawDll);
-
-				//检查dos头的标记;
-				if (m_pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
-				{
-					DO_ERROR_BREAK("PEParser::file header signature is not correct. it should be MZ");
-				}
-				const std::uint32_t opHeaderPos = m_pDosHeader->e_lfanew + sizeof(CommonImageNtHeaders);
-				if (dwSize < opHeaderPos)
-				{
-					DO_ERROR_BREAK("PEParser::file size is too small");
-				}
-
-				m_pNtHeader = sRawDll + m_pDosHeader->e_lfanew;
-				m_optionalHeaderMagic = *reinterpret_cast<const WORD*>(m_pNtHeader + sizeof(CommonImageNtHeaders));
-
-				processOnNtHeader([this, dwSize, opHeaderPos](const auto& ntHeader)-> void
-				{
-					if (dwSize < m_pDosHeader->e_lfanew + sizeof(ntHeader)
-						|| dwSize < opHeaderPos + ntHeader.FileHeader.SizeOfOptionalHeader)
-					{
-						DO_ERROR_RETURN("PEParser::file size is too small");
-					}
-
-					m_pOpHeaderAddr = reinterpret_cast<const char*>(&ntHeader.OptionalHeader);
-					m_pSectionHeader = reinterpret_cast<const IMAGE_SECTION_HEADER*>(m_pOpHeaderAddr + ntHeader.FileHeader.SizeOfOptionalHeader);
-					m_numberOfSections = ntHeader.FileHeader.NumberOfSections;
-				});
+				throw std::invalid_argument("baseAddr cannot be null");
 			}
-			while (false);
+
+			m_pDosHeader = reinterpret_cast<const IMAGE_DOS_HEADER*>(baseAddr);
+
+			//检查dos头的标记;
+			if (m_pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+			{
+				throw std::runtime_error("PEParser::file header signature is not correct. it should be MZ");
+			}
+
+			m_pNtHeader = baseAddr + m_pDosHeader->e_lfanew;
+			m_optionalHeaderMagic = *reinterpret_cast<const WORD*>(m_pNtHeader + SIGNATURE_AND_FILE_HEADER_SIZE);
+
+			processOnNtHeader([this](const auto& ntHeader)-> void
+			{
+				m_pOpHeaderAddr = reinterpret_cast<const char*>(&ntHeader.OptionalHeader);
+				m_pSectionHeader = reinterpret_cast<const IMAGE_SECTION_HEADER*>(m_pOpHeaderAddr + ntHeader.FileHeader.SizeOfOptionalHeader);
+				m_numberOfSections = ntHeader.FileHeader.NumberOfSections;
+			});
 		}
 
 		const char* getBaseAddr() const noexcept { return reinterpret_cast<const char*>(m_pDosHeader); }
@@ -94,26 +56,16 @@ namespace utils
 		const IMAGE_SECTION_HEADER* getSectionHeader() const noexcept { return m_pSectionHeader; }
 		int getNumberOfSections() const noexcept { return m_numberOfSections; }
 
-		template <typename Func>
-			requires std::predicate<Func, const char*>
-		DWORD getProcOffset(const Func& compareFunc, bool bForceReturnRVA = false) const noexcept(ParserFlag & PEParserFlag::noThrow)
+		DWORD getProcRVA(std::string_view procName) const
 		{
 			const auto& [pExportDir, pdwNames, pdwNameOrdinals, pdwFunctionAddresses] = getExportDirInfo();
-			if constexpr (ParserFlag & PEParserFlag::noThrow)
-			{
-				if (!pExportDir)
-				{
-					return 0;
-				}
-			}
-			const char* pBase = reinterpret_cast<const char*>(m_pDosHeader);
 
 			// Walk the array of this module's function names 
 			for (DWORD n = 0; n < pExportDir->NumberOfNames; n++)
 			{
 				// Get the function name
-				const char* szFuncName = pBase + rvaToOffset(pdwNames[n]);
-				if (!compareFunc(szFuncName))
+				const char* szFuncName = getDataByRva<const char*>(pdwNames[n]);
+				if (procName != szFuncName)
 				{
 					continue;
 				}
@@ -121,22 +73,35 @@ namespace utils
 				// We found the specified function
 				// --> Get this function's ordinal value
 				const WORD ordinal = pdwNameOrdinals[n];
-				// Get the address of this function's address
-				if (bForceReturnRVA)
-				{
-					return pdwFunctionAddresses[ordinal];
-				}
-				return rvaToOffset(pdwFunctionAddresses[ordinal]);
+				// Get this function's RVA
+				return pdwFunctionAddresses[ordinal];
 			}
 
 			return 0;
 		}
 
-		decltype(auto) processOnNtHeader(const auto& func) const noexcept(ParserFlag & PEParserFlag::noThrow)
+		DWORD getProcFOA(std::string_view procName) const
+		{
+			return rvaToFoa(getProcRVA(procName));
+		}
+
+		template <typename ReturnType>
+		ReturnType getDataByRva(DWORD dwRva) const
+		{
+			DWORD realOffset = dwRva;
+			if constexpr (std::is_same_v<FlagType, pe_parser_flag::HasFileAligned>)
+			{
+				realOffset = rvaToFoa(dwRva);
+			}
+			const char* pBase = reinterpret_cast<const char*>(m_pDosHeader);
+			return reinterpret_cast<ReturnType>(pBase + realOffset);
+		}
+
+		decltype(auto) processOnNtHeader(const auto& func) const
 		{
 			if (!m_pNtHeader)
 			{
-				DO_ERROR_RETURN_AS("PEParser::processOnNtHeader: failed to find NtHeader", func, IMAGE_NT_HEADERS64);
+				throw std::runtime_error("PEParser::processOnNtHeader: failed to find NtHeader");
 			}
 			if (m_optionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
 			{
@@ -146,14 +111,14 @@ namespace utils
 			{
 				return func(*reinterpret_cast<const IMAGE_NT_HEADERS64*>(m_pNtHeader));
 			}
-			DO_ERROR_RETURN_AS("PEParser: unsupported image file header", func, IMAGE_NT_HEADERS64);
+			throw std::runtime_error("PEParser: unsupported image file header");
 		}
 
-		decltype(auto) processOnOpHeader(const auto& func) const noexcept(ParserFlag & PEParserFlag::noThrow)
+		decltype(auto) processOnOpHeader(const auto& func) const
 		{
 			if (!m_pOpHeaderAddr)
 			{
-				DO_ERROR_RETURN_AS("PEParser::processOnOpHeader: failed to find optional header", func, IMAGE_OPTIONAL_HEADER64);
+				throw std::runtime_error("PEParser::processOnOpHeader: failed to find optional header");
 			}
 			if (m_optionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
 			{
@@ -163,7 +128,7 @@ namespace utils
 			{
 				return func(*reinterpret_cast<const IMAGE_OPTIONAL_HEADER64*>(m_pOpHeaderAddr));
 			}
-			DO_ERROR_RETURN_AS("PEParser: unsupported image file header", func, IMAGE_OPTIONAL_HEADER64);
+			throw std::runtime_error("PEParser: unsupported image file header");
 		}
 
 		struct ExportDirInfo
@@ -185,7 +150,7 @@ namespace utils
 			const DWORD* pdwFunctionAddresses{nullptr};
 		};
 
-		const ExportDirInfo& getExportDirInfo() const noexcept(ParserFlag & PEParserFlag::noThrow)
+		const ExportDirInfo& getExportDirInfo() const
 		{
 			if (!m_exportDirInfo.pExportDir)
 			{
@@ -195,13 +160,8 @@ namespace utils
 		}
 
 	private:
-		DWORD rvaToOffset(DWORD dwRva) const noexcept(ParserFlag & PEParserFlag::noThrow)
+		DWORD rvaToFoa(DWORD dwRva) const
 		{
-			if constexpr (ParserFlag & PEParserFlag::hasMapped)
-			{
-				return dwRva;
-			}
-
 			if (dwRva < m_pSectionHeader[0].VirtualAddress)
 			{
 				return dwRva;
@@ -217,10 +177,10 @@ namespace utils
 					return dwRva - currentSection.VirtualAddress + currentSection.PointerToRawData;
 				}
 			}
-			DO_ERROR("PEParser: rvaToOffset failed to find section header", return 0);
+			throw std::runtime_error("PEParser: rvaToFoa failed to find section header");
 		}
 
-		void initExportDirInfo() noexcept(ParserFlag & PEParserFlag::noThrow)
+		void initExportDirInfo()
 		{
 			const IMAGE_DATA_DIRECTORY* directoryEntry = processOnOpHeader([](const auto& opHeader)
 			{
@@ -228,14 +188,12 @@ namespace utils
 			});
 			if (!directoryEntry || directoryEntry->VirtualAddress == 0)
 			{
-				DO_ERROR_RETURN("getExportDirInfo fail");
+				throw std::runtime_error("getExportDirInfo fail");
 			}
-
-			const char* pBase = reinterpret_cast<const char*>(m_pDosHeader);
-			m_exportDirInfo.pExportDir = reinterpret_cast<const IMAGE_EXPORT_DIRECTORY*>(pBase + rvaToOffset(directoryEntry->VirtualAddress));
-			m_exportDirInfo.pdwNames = reinterpret_cast<const DWORD*>(pBase + rvaToOffset(m_exportDirInfo.pExportDir->AddressOfNames));
-			m_exportDirInfo.pdwNameOrdinals = reinterpret_cast<const WORD*>(pBase + rvaToOffset(m_exportDirInfo.pExportDir->AddressOfNameOrdinals));
-			m_exportDirInfo.pdwFunctionAddresses = reinterpret_cast<const DWORD*>(pBase + rvaToOffset(m_exportDirInfo.pExportDir->AddressOfFunctions));
+			m_exportDirInfo.pExportDir = getDataByRva<const IMAGE_EXPORT_DIRECTORY*>(directoryEntry->VirtualAddress);
+			m_exportDirInfo.pdwNames = getDataByRva<const DWORD*>(m_exportDirInfo.pExportDir->AddressOfNames);
+			m_exportDirInfo.pdwNameOrdinals = getDataByRva<const WORD*>(m_exportDirInfo.pExportDir->AddressOfNameOrdinals);
+			m_exportDirInfo.pdwFunctionAddresses = getDataByRva<const DWORD*>(m_exportDirInfo.pExportDir->AddressOfFunctions);
 		}
 
 	private:
@@ -303,5 +261,80 @@ namespace utils
 
 		// 导出表
 		ExportDirInfo m_exportDirInfo;
+	};
+
+	export class PEAlignedImage
+	{
+	public:
+		explicit PEAlignedImage(const PEParser<pe_parser_flag::HasFileAligned>& parser)
+		{
+			struct ReturnType
+			{
+				DWORD sizeOfImage;
+				DWORD sizeOfHeaders;
+			};
+			const auto [sizeOfImage, sizeOfHeaders] = parser.processOnOpHeader([](const auto& opHeader)
+			{
+				return ReturnType{opHeader.SizeOfImage, opHeader.SizeOfHeaders};
+			});
+			m_dataGuard.allocateData(sizeOfImage);
+
+			// 拷贝所有头
+			m_dataGuard.writeData(0, parser.getBaseAddr(), sizeOfHeaders);
+
+			// 拷贝所有节
+			for (int i = 0; i < parser.getNumberOfSections(); ++i)
+			{
+				const IMAGE_SECTION_HEADER& currentSection = parser.getSectionHeader()[i];
+				if (currentSection.VirtualAddress == 0 || currentSection.SizeOfRawData == 0)
+				{
+					continue;
+				}
+				const void* pSrc = parser.getBaseAddr() + currentSection.PointerToRawData;
+				m_dataGuard.writeData(currentSection.VirtualAddress, pSrc, currentSection.SizeOfRawData);
+			}
+
+			m_dataParser = PEParser<pe_parser_flag::HasSectionAligned>(m_dataGuard.pData);
+		}
+
+		PEAlignedImage(const PEAlignedImage&) = delete;
+		PEAlignedImage(PEAlignedImage&&) = delete;
+		PEAlignedImage& operator=(const PEAlignedImage&) = delete;
+		PEAlignedImage& operator=(PEAlignedImage&&) = delete;
+
+		const char* data() const { return m_dataGuard.pData; }
+		std::uint32_t size() const { return m_dataGuard.nSize; }
+
+		const PEParser<pe_parser_flag::HasSectionAligned>& getParser() const { return m_dataParser; }
+
+	private:
+		class DataGuard
+		{
+		public:
+			char* pData{nullptr};
+			std::uint32_t nSize{0};
+
+			void allocateData(std::uint32_t size)
+			{
+				pData = static_cast<char*>(VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+				nSize = size;
+			}
+
+			~DataGuard()
+			{
+				if (pData)
+				{
+					VirtualFree(pData, 0, MEM_RELEASE);
+				}
+			}
+
+			void writeData(std::uint32_t dstOffset, void const* src, std::uint32_t size)
+			{
+				std::memcpy(pData + dstOffset, src, size);
+			}
+		};
+
+		DataGuard m_dataGuard;
+		PEParser<pe_parser_flag::HasSectionAligned> m_dataParser;
 	};
 }

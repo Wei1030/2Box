@@ -20,7 +20,20 @@ inline void safe_release(Interface** ppInterfaceToRelease)
 	}
 }
 
-
+struct ReflectiveInjectParams
+{
+	ULONGLONG kernel32Address;
+	DWORD loadLibraryARVA;
+	DWORD getProcAddressRVA;
+	DWORD flushInstructionCacheRVA;
+	
+	ULONGLONG dllFileAddress;
+	DWORD dllFileSize;
+	DWORD dllRelocationRVA;
+	DWORD dllImportDirRVA;
+	ULONGLONG dllImageBase;
+	DWORD entryPointRVA;
+};
 
 
 
