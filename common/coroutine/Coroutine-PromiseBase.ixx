@@ -14,6 +14,8 @@ namespace coro
 		PromiseBase& operator=(PromiseBase&&) = delete;
 
 	protected:
+		std::coroutine_handle<> m_cont;
+
 		enum class Discriminator : unsigned char
 		{
 			Empty,
@@ -22,7 +24,6 @@ namespace coro
 		};
 
 		Discriminator m_disc = Discriminator::Empty;
-		std::coroutine_handle<> m_cont;
 	};
 
 	template <typename T>

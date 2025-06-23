@@ -196,6 +196,16 @@ namespace coro
 			return Awaiter{m_p};
 		}
 
+		constexpr explicit operator bool() const noexcept
+		{
+			return static_cast<bool>(m_p);
+		}
+
+		[[nodiscard]] constexpr bool operator==(const SharedTask& other) noexcept
+		{
+			return m_p.get() == other.m_p.get();
+		}
+
 	private:
 		friend class SharedTaskPromise<T>;
 

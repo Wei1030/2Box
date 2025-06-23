@@ -50,8 +50,8 @@ namespace sched
 		static constexpr bool bHasNext = true;
 		TimingWheel<T, Level + 1>* nextWheel;
 
-		std::chrono::steady_clock::time_point currentTime;
-		Slot immediateTaskSlot;
+		std::chrono::steady_clock::time_point currentTime{};
+		Slot immediateTaskSlot{};
 	};
 
 	template <typename T, std::uint8_t Level>
@@ -68,8 +68,8 @@ namespace sched
 		static constexpr bool bHasPrev = false;
 		static constexpr bool bHasNext = false;
 
-		std::chrono::steady_clock::time_point currentTime;
-		Slot immediateTaskSlot;
+		std::chrono::steady_clock::time_point currentTime{};
+		Slot immediateTaskSlot{};
 	};
 
 	template <typename T, std::uint8_t Level = 0>
@@ -97,39 +97,44 @@ namespace sched
 		}
 
 		explicit TimingWheel(std::chrono::steady_clock::time_point initialTime)
-			requires !bHasPrevWheel && !bHasNextWheel
+			requires (!bHasPrevWheel && !bHasNextWheel)
 			: m_currentSlotIndex(timePoint2Index(initialTime))
 			  , m_cascadeInfo{.currentTime = initialTime}
 		{
 		}
 
 		TimingWheel(auto& nextWheel, std::chrono::steady_clock::time_point initialTime)
-			requires !bHasPrevWheel && bHasNextWheel
+			requires (!bHasPrevWheel && bHasNextWheel)
 			: m_currentSlotIndex(timePoint2Index(initialTime))
 			  , m_cascadeInfo{.nextWheel = &nextWheel, .currentTime = initialTime}
 		{
 		}
 
 		TimingWheel(auto& prevWheel, auto& nextWheel, std::chrono::steady_clock::time_point initialTime)
-			requires bHasPrevWheel && bHasNextWheel
+			requires (bHasPrevWheel && bHasNextWheel)
 			: m_currentSlotIndex(timePoint2Index(initialTime))
 			  , m_cascadeInfo{.prevWheel = &prevWheel, .nextWheel = &nextWheel}
 		{
 		}
 
 		TimingWheel(auto& prevWheel, std::chrono::steady_clock::time_point initialTime)
-			requires bHasPrevWheel && !bHasNextWheel
+			requires (bHasPrevWheel && !bHasNextWheel)
 			: m_currentSlotIndex(timePoint2Index(initialTime))
 			  , m_cascadeInfo{.prevWheel = &prevWheel}
 		{
 		}
+
+		TimingWheel(const TimingWheel&) = delete;
+		TimingWheel(TimingWheel&&) = delete;
+		TimingWheel& operator=(const TimingWheel&) = delete;
+		TimingWheel& operator=(TimingWheel&&) = delete;
 
 	public:
 		void addTimer(std::chrono::steady_clock::time_point expireTime, Task task)
 		{
 			const size_t slotIndex = timePoint2Index(expireTime);
 			Slot& slot = m_slots[slotIndex];
-			if constexpr (m_cascadeInfo.bHasPrev)
+			if constexpr (bHasPrevWheel)
 			{
 				auto addTimerToPrevWheel = [prevWheel = m_cascadeInfo.prevWheel, expireTime, task = std::move(task)]() mutable
 				{
@@ -149,14 +154,14 @@ namespace sched
 		}
 
 		void addTask(Task task)
-			requires !bHasPrevWheel
+			requires (!bHasPrevWheel)
 		{
 			Slot& slot = m_cascadeInfo.immediateTaskSlot;
 			slot.push_back(std::move(task));
 		}
 
 		NextTaskTimePoint nextTaskTimePoint()
-			requires !bHasPrevWheel
+			requires (!bHasPrevWheel)
 		{
 			if (m_cascadeInfo.immediateTaskSlot.size() > 0)
 			{
@@ -171,7 +176,7 @@ namespace sched
 		}
 
 		void advanceUntil(std::chrono::steady_clock::time_point tp)
-			requires !bHasPrevWheel
+			requires (!bHasPrevWheel)
 		{
 			const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tp - m_cascadeInfo.currentTime).count();
 			if (ms > 0)
@@ -182,7 +187,7 @@ namespace sched
 		}
 
 		void advanceFor(std::chrono::steady_clock::duration duration)
-			requires !bHasPrevWheel
+			requires (!bHasPrevWheel)
 		{
 			const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 			if (ms > 0)
@@ -193,7 +198,7 @@ namespace sched
 		}
 
 		Slot pull()
-			requires bHasPrevWheel
+			requires (bHasPrevWheel)
 		{
 			Slot temp;
 			m_slots[m_currentSlotIndex].swap(temp);
@@ -206,7 +211,7 @@ namespace sched
 		}
 
 		Slot pull()
-			requires !bHasPrevWheel
+			requires (!bHasPrevWheel)
 		{
 			Slot temp;
 			m_slots[m_currentSlotIndex].swap(temp);
@@ -223,7 +228,7 @@ namespace sched
 		}
 
 		std::chrono::steady_clock::time_point getCurrentTime()
-			requires !bHasPrevWheel
+			requires (!bHasPrevWheel)
 		{
 			return m_cascadeInfo.currentTime;
 		}
@@ -255,7 +260,7 @@ namespace sched
 
 			m_currentSlotIndex = currentIndex & slotMask;
 
-			if constexpr (m_cascadeInfo.bHasNext)
+			if constexpr (bHasNextWheel)
 			{
 				if (cycles > 0)
 				{
@@ -313,7 +318,7 @@ namespace sched
 			if (deltaIndex == 0)
 			{
 				// 如果当前层没有任务，继续从后一层获取
-				if constexpr (m_cascadeInfo.bHasNext)
+				if constexpr (bHasNextWheel)
 				{
 					deltaIndex = m_cascadeInfo.nextWheel->deltaToNextTimer();
 					// 从后一层得到的deltaIndex由于精度不一样,需要换算
@@ -474,7 +479,7 @@ namespace sched
 				addTask(std::move(task));
 				return;
 			}
-			const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(expireTime - now).count();
+			const std::uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(expireTime - now).count();
 			if (ms < m_rootWheel.boundary)
 			{
 				m_rootWheel.addTimer(expireTime, std::move(task));
