@@ -153,6 +153,39 @@ namespace sched
 			}
 		}
 
+		void addTimerWithCancellation(std::chrono::steady_clock::time_point expireTime, Task task, std::stop_token cancellationToken)
+		{
+			const size_t slotIndex = timePoint2Index(expireTime);
+			Slot& slot = m_slots[slotIndex];
+			if constexpr (bHasPrevWheel)
+			{
+				auto addTimerToPrevWheel = [prevWheel = m_cascadeInfo.prevWheel, expireTime, task = std::move(task), token = std::move(cancellationToken)]() mutable
+				{
+					if (!token.stop_requested())
+					{
+						prevWheel->addTimerWithCancellation(expireTime, std::move(task), std::move(token));
+					}
+				};
+				slot.push_back(std::move(addTimerToPrevWheel));
+			}
+			else
+			{
+				auto taskWrapper = [this, task = std::move(task), token = std::move(cancellationToken)]() mutable
+				{
+					if (!token.stop_requested())
+					{
+						task();
+					}
+				};
+				slot.push_back(std::move(taskWrapper));
+			}
+
+			if (slot.size() == 1)
+			{
+				setFlag(slotIndex);
+			}
+		}
+
 		void addTask(Task task)
 			requires (!bHasPrevWheel)
 		{
@@ -183,17 +216,6 @@ namespace sched
 			{
 				advance(ms);
 				m_cascadeInfo.currentTime = tp;
-			}
-		}
-
-		void advanceFor(std::chrono::steady_clock::duration duration)
-			requires (!bHasPrevWheel)
-		{
-			const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-			if (ms > 0)
-			{
-				advance(ms);
-				m_cascadeInfo.currentTime += duration;
 			}
 		}
 
@@ -303,6 +325,10 @@ namespace sched
 				const size_t nextIndex = (index + 1) & flagArrayIndexMask;
 				const std::uint64_t currentFlag = m_flags[index];
 				const std::uint64_t nextFlag = m_flags[nextIndex];
+				if (currentFlag == 0 && nextFlag == 0)
+				{
+					continue;
+				}
 				const std::uint64_t combined = combineFlag(indexOffset, currentFlag, nextFlag);
 				// 组合出的combined,即是从indexOffset+1作为最低位开始到下一个flag的indexOffset位，以它作为最高位结束
 				// 不为0 就说明有数据
@@ -506,6 +532,63 @@ namespace sched
 			}
 		}
 
+		void addTimerWithCancellation(std::chrono::steady_clock::time_point expireTime, Task task, std::stop_token cancellationToken)
+		{
+			std::chrono::steady_clock::time_point now = m_rootWheel.getCurrentTime();
+			if (expireTime <= now)
+			{
+				addTask(std::move(task));
+				return;
+			}
+			const std::uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(expireTime - now).count();
+			if (ms < m_rootWheel.boundary)
+			{
+				m_rootWheel.addTimerWithCancellation(expireTime, std::move(task), std::move(cancellationToken));
+			}
+			else if (ms < m_wheelLevel1.boundary)
+			{
+				m_wheelLevel1.addTimerWithCancellation(expireTime, std::move(task), std::move(cancellationToken));
+			}
+			else if (ms < m_wheelLevel2.boundary)
+			{
+				m_wheelLevel2.addTimerWithCancellation(expireTime, std::move(task), std::move(cancellationToken));
+			}
+			else if (ms < m_wheelLevel3.boundary)
+			{
+				m_wheelLevel3.addTimerWithCancellation(expireTime, std::move(task), std::move(cancellationToken));
+			}
+			else if (ms < m_wheelLevel4.boundary)
+			{
+				m_wheelLevel4.addTimerWithCancellation(expireTime, std::move(task), std::move(cancellationToken));
+			}
+			else
+			{
+				throw std::runtime_error("expireTime is out of supported range");
+			}
+		}
+
+		template <typename Rep, typename Period>
+		void addTimer(std::chrono::duration<Rep, Period> duration, Task task)
+		{
+			addTimer(std::chrono::steady_clock::now() + duration, std::move(task));
+		}
+
+		void addTimer(unsigned int milliseconds, Task task)
+		{
+			addTimer(std::chrono::steady_clock::now() + std::chrono::milliseconds{milliseconds}, std::move(task));
+		}
+
+		template <typename Rep, typename Period>
+		void addTimerWithCancellation(std::chrono::duration<Rep, Period> duration, Task task, std::stop_token cancellationToken)
+		{
+			addTimerWithCancellation(std::chrono::steady_clock::now() + duration, std::move(task), std::move(cancellationToken));
+		}
+
+		void addTimerWithCancellation(unsigned int milliseconds, Task task, std::stop_token cancellationToken)
+		{
+			addTimerWithCancellation(std::chrono::steady_clock::now() + std::chrono::milliseconds{milliseconds}, std::move(task), std::move(cancellationToken));
+		}
+
 		void addTask(Task task)
 		{
 			m_rootWheel.addTask(std::move(task));
@@ -521,19 +604,9 @@ namespace sched
 			m_rootWheel.advanceUntil(tp);
 		}
 
-		void advanceFor(std::chrono::steady_clock::duration duration)
-		{
-			m_rootWheel.advanceFor(duration);
-		}
-
 		Slot pull()
 		{
 			return m_rootWheel.pull();
-		}
-
-		std::chrono::steady_clock::time_point getCurrentTime()
-		{
-			return m_rootWheel.getCurrentTime();
 		}
 
 	private:
