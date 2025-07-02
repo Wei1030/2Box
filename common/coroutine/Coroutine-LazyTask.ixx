@@ -1,5 +1,6 @@
 // ReSharper disable CppMemberFunctionMayBeStatic
 export module Coroutine:LazyTask;
+
 import :PromiseBase;
 import std;
 
@@ -44,6 +45,19 @@ namespace coro
 		{
 			return {};
 		}
+
+		const std::stop_token& getCancellationToken() const noexcept
+		{
+			return m_token;
+		}
+
+		void setCancellationToken(std::stop_token token) noexcept
+		{
+			m_token = std::move(token);
+		}
+
+	private:
+		std::stop_token m_token;
 	};
 
 	template <typename T>
@@ -91,7 +105,7 @@ namespace coro
 		template <typename E>
 			requires requires(const E& func)
 			{
-				func(std::shared_ptr<typename promise_type::Callback>{});
+				func(std::shared_ptr<typename promise_type::Resolver>{});
 			}
 		static LazyTask create(const E& executor)
 		{
@@ -108,14 +122,14 @@ namespace coro
 				void await_suspend(std::coroutine_handle<promise_type> cont)
 				{
 					coro = cont;
-					auto cb = cont.promise().makeCallback();
+					auto resolver = cont.promise().makeResolver();
 					try
 					{
-						exec(cb);
+						exec(resolver);
 					}
 					catch (...)
 					{
-						cb->reject(std::current_exception());
+						resolver->reject(std::current_exception());
 					}
 				}
 
@@ -137,7 +151,23 @@ namespace coro
 				return !coro || coro.done();
 			}
 
-			std::coroutine_handle<promise_type> await_suspend(std::coroutine_handle<> cont)
+			template <typename U>
+				requires requires
+				{
+					std::declval<U&&>().getCancellationToken();
+				}
+			std::coroutine_handle<> await_suspend(std::coroutine_handle<U> cont)
+			{
+				coro.promise().setCancellationToken(cont.promise().getCancellationToken());
+				return awaitSuspendImpl(cont);
+			}
+
+			std::coroutine_handle<> await_suspend(std::coroutine_handle<> cont)
+			{
+				return awaitSuspendImpl(cont);
+			}
+
+			std::coroutine_handle<> awaitSuspendImpl(std::coroutine_handle<> cont)
 			{
 				auto& promise = coro.promise();
 				if (promise.m_cont)
@@ -173,7 +203,23 @@ namespace coro
 				return !task.m_coro || task.m_coro.done();
 			}
 
-			std::coroutine_handle<promise_type> await_suspend(std::coroutine_handle<> cont)
+			template <typename U>
+				requires requires
+				{
+					std::declval<U&&>().getCancellationToken();
+				}
+			std::coroutine_handle<> await_suspend(std::coroutine_handle<U> cont)
+			{
+				task.m_coro.promise().setCancellationToken(cont.promise().getCancellationToken());
+				return awaitSuspendImpl(cont);
+			}
+
+			std::coroutine_handle<> await_suspend(std::coroutine_handle<> cont)
+			{
+				return awaitSuspendImpl(cont);
+			}
+
+			std::coroutine_handle<> awaitSuspendImpl(std::coroutine_handle<> cont)
 			{
 				auto& promise = task.m_coro.promise();
 				if (promise.m_cont)
@@ -197,6 +243,33 @@ namespace coro
 		AwaiterOwned operator co_await() &&
 		{
 			return AwaiterOwned{std::move(*this)};
+		}
+
+		decltype(auto) syncAwait()
+		{
+			std::atomic<int> flag{1};
+			auto task = [&flag, this]() noexcept -> LazyTask<void>
+			{
+				try
+				{
+					co_await Awaiter{m_coro};
+				}
+				catch (...)
+				{
+				}
+				flag.store(0, std::memory_order::release);
+				flag.notify_one();
+			}();
+			auto awaiter = task.operator co_await();
+			awaiter.await_suspend(std::noop_coroutine()).resume();
+
+			while (flag.exchange(1, std::memory_order::acquire))
+			{
+				// wait until flag is not 1
+				flag.wait(1, std::memory_order::relaxed);
+			}
+
+			return m_coro.promise().getValue();
 		}
 
 		constexpr explicit operator bool() const noexcept

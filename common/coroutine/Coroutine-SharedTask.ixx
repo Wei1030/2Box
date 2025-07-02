@@ -150,9 +150,9 @@ namespace coro
 	{
 	public:
 		static_assert(std::is_void_v<T> || std::is_reference_v<T>
-		              || (std::is_object_v<T> && std::is_move_constructible_v<T>),
+		              || (std::is_object_v<T> && std::is_copy_constructible_v<T>),
 		              "SharedTask's first template argument must be void, a reference type, or a "
-		              "move-constructible object type");
+		              "copy-constructible object type");
 
 		using value_type = T;
 
@@ -166,7 +166,7 @@ namespace coro
 
 		SharedTask() = delete;
 
-		struct Awaiter
+		struct AwaiterBase
 		{
 			PromisePtr<promise_type> promisePtr;
 			SharedTaskWaiter waiter{};
@@ -181,19 +181,76 @@ namespace coro
 				waiter.continuation = awaiter;
 				return promisePtr->tryAwait(&waiter);
 			}
+		};
 
+		struct CopyValueAwaiter : public AwaiterBase
+		{
 			decltype(auto) await_resume()
 			{
-				// 是否考虑当promise引用只剩下我这一个的时候，把值移动出去?
-				// 这种情况因为引用在这内部，计数必不可能再增加了，应该没有什么竞争了?
-				// static_cast<promise_type&&>(*promisePtr).getValue();
-				return promisePtr->getValue();
+				return AwaiterBase::promisePtr->copyValue();
 			}
 		};
 
-		Awaiter operator co_await()
+		// 默认都用copy, 不管左右值,都不能假设SharedTask的引用情况, 用copy最安全
+		CopyValueAwaiter operator co_await()
 		{
-			return Awaiter{m_p};
+			return CopyValueAwaiter{m_p};
+		}
+
+		struct RefValueAwaiter : public AwaiterBase
+		{
+			decltype(auto) await_resume()
+			{
+				return AwaiterBase::promisePtr->getValue();
+			}
+		};
+
+		// 左值上允许获取value的引用，用户自行保证SharedTask没有全部被销毁
+		RefValueAwaiter getValueRef() &
+		{
+			return RefValueAwaiter{m_p};
+		}
+
+		struct MoveValueAwaiter : public AwaiterBase
+		{
+			decltype(auto) await_resume()
+			{
+				return static_cast<promise_type&&>(*AwaiterBase::promisePtr).getValue();
+			}
+		};
+
+		// 右值上允许移动value, 用户自行保证其他SharedTask已经全部被销毁
+		MoveValueAwaiter moveValue() &&
+			requires (std::move_constructible<T>)
+		{
+			return MoveValueAwaiter{m_p};
+		}
+
+		decltype(auto) syncAwait()
+		{
+			std::atomic<int> flag{1};
+			auto task = [&flag, this]() noexcept -> LazyTask<void>
+			{
+				try
+				{
+					co_await RefValueAwaiter{m_p};
+				}
+				catch (...)
+				{
+				}
+				flag.store(0, std::memory_order::release);
+				flag.notify_one();
+			}();
+			auto awaiter = task.operator co_await();
+			awaiter.await_suspend(std::noop_coroutine()).resume();
+
+			while (flag.exchange(1, std::memory_order::acquire))
+			{
+				// wait until flag is not 1
+				flag.wait(1, std::memory_order::relaxed);
+			}
+
+			return m_p->getValue();
 		}
 
 		constexpr explicit operator bool() const noexcept
@@ -216,13 +273,6 @@ namespace coro
 
 		PromisePtr<promise_type> m_p;
 	};
-
-	export
-	template <typename Func, typename... Args>
-	auto spawn(Func&& func, Args&&... args) -> SharedTask<typename std::invoke_result_t<Func, Args...>::value_type>
-	{
-		co_return co_await std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
-	}
 
 	export
 	template <typename T>

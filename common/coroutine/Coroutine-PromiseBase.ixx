@@ -89,7 +89,10 @@ namespace coro
 					// T is a reference, data is a pointer
 					return static_cast<T>(*data);
 				}
-				return static_cast<T&>(data);
+				else
+				{
+					return static_cast<T&>(data);
+				}
 			case Discriminator::Exception:
 				std::rethrow_exception(except);
 			default:
@@ -106,9 +109,34 @@ namespace coro
 				if constexpr (std::is_reference_v<T>)
 				{
 					// T is a reference, data is a pointer
-					return std::remove_reference_t<T>{std::move(*data)};
+					return static_cast<T>(*data);
 				}
-				return T{std::move(data)};
+				else
+				{
+					return T{std::move(data)};
+				}
+			case Discriminator::Exception:
+				std::rethrow_exception(except);
+			default:
+				// "This can't happen?"
+				std::terminate();
+			}
+		}
+
+		decltype(auto) copyValue()
+		{
+			switch (m_disc)
+			{
+			case Discriminator::Data:
+				if constexpr (std::is_reference_v<T>)
+				{
+					// T is a reference, data is a pointer
+					return static_cast<T>(*data);
+				}
+				else
+				{
+					return data;
+				}
 			case Discriminator::Exception:
 				std::rethrow_exception(except);
 			default:
@@ -119,7 +147,7 @@ namespace coro
 
 		//////////////////////////////////////////
 		/// 用于为回调式接口转为协程式的帮助类
-		struct Callback
+		struct Resolver
 		{
 			std::coroutine_handle<PromiseTmplBase> coro = nullptr;
 			mutable std::atomic<bool> settled = false;
@@ -157,7 +185,7 @@ namespace coro
 				coro.resume();
 			}
 
-			~Callback()
+			~Resolver()
 			{
 				if (settled.exchange(true, std::memory_order_relaxed))
 				{
@@ -168,9 +196,9 @@ namespace coro
 			}
 		};
 
-		std::shared_ptr<Callback> makeCallback()
+		std::shared_ptr<Resolver> makeResolver()
 		{
-			return std::make_shared<Callback>(std::coroutine_handle<PromiseTmplBase>::from_promise(*this));
+			return std::make_shared<Resolver>(std::coroutine_handle<PromiseTmplBase>::from_promise(*this));
 		}
 
 	private:
@@ -219,9 +247,17 @@ namespace coro
 			}
 		}
 
+		void copyValue() const
+		{
+			if (m_disc == Discriminator::Exception)
+			{
+				std::rethrow_exception(except);
+			}
+		}
+
 		//////////////////////////////////////////
 		/// 用于为回调式接口转为协程式的帮助类
-		struct Callback
+		struct Resolver
 		{
 			std::coroutine_handle<PromiseTmplBase> coro = nullptr;
 			mutable std::atomic<bool> settled = false;
@@ -245,7 +281,7 @@ namespace coro
 				coro.resume();
 			}
 
-			~Callback()
+			~Resolver()
 			{
 				if (settled.exchange(true, std::memory_order_relaxed))
 				{
@@ -256,9 +292,9 @@ namespace coro
 			}
 		};
 
-		std::shared_ptr<Callback> makeCallback()
+		std::shared_ptr<Resolver> makeResolver()
 		{
-			return std::make_shared<Callback>(std::coroutine_handle<PromiseTmplBase>::from_promise(*this));
+			return std::make_shared<Resolver>(std::coroutine_handle<PromiseTmplBase>::from_promise(*this));
 		}
 
 	private:
