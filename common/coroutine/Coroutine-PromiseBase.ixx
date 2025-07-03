@@ -239,6 +239,12 @@ namespace coro
 			m_disc = Discriminator::Exception;
 		}
 
+		void set_exception(std::exception_ptr ep) noexcept
+		{
+			except = ep;
+			m_disc = Discriminator::Exception;
+		}
+
 		void getValue() const
 		{
 			if (m_disc == Discriminator::Exception)

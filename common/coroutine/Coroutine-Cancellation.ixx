@@ -66,7 +66,7 @@ namespace coro
 	export
 	template <typename Awaitable, typename Promise = void>
 		requires awaitable<Awaitable, Promise>
-	auto co_with_cancellation(Awaitable&& a, std::stop_token token)
+	auto co_with_cancellation(Awaitable a, std::stop_token token)
 		-> LazyTask<typename AwaitableTraits<std::remove_reference_t<Awaitable>, Promise>::AwaitResultT>
 	{
 		co_await CancellationSetter{.token = std::move(token)};

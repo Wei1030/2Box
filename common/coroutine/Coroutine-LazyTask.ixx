@@ -102,12 +102,14 @@ namespace coro
 		LazyTask& operator=(const LazyTask&) = delete;
 		LazyTask& operator=(LazyTask&& that) = delete;
 
+		using Resolver = std::shared_ptr<typename promise_type::Resolver>;
+
 		template <typename E>
 			requires requires(const E& func)
 			{
-				func(std::shared_ptr<typename promise_type::Resolver>{});
+				func(Resolver{});
 			}
-		static LazyTask create(const E& executor)
+		static LazyTask create(E executor)
 		{
 			struct ExecAwaiter
 			{
