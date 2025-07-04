@@ -57,6 +57,7 @@ namespace coro
 		}
 
 	private:
+		std::coroutine_handle<> m_cont;
 		std::stop_token m_token;
 	};
 
@@ -191,7 +192,7 @@ namespace coro
 			}
 		};
 
-		Awaiter operator co_await() &
+		Awaiter operator co_await() & noexcept
 		{
 			return Awaiter{m_coro};
 		}
@@ -242,7 +243,7 @@ namespace coro
 			}
 		};
 
-		AwaiterOwned operator co_await() &&
+		AwaiterOwned operator co_await() && noexcept
 		{
 			return AwaiterOwned{std::move(*this)};
 		}

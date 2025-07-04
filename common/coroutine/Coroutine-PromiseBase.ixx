@@ -14,8 +14,6 @@ namespace coro
 		PromiseBase& operator=(PromiseBase&&) = delete;
 
 	protected:
-		std::coroutine_handle<> m_cont;
-
 		enum class Discriminator : unsigned char
 		{
 			Empty,
@@ -201,7 +199,7 @@ namespace coro
 			return std::make_shared<Resolver>(std::coroutine_handle<PromiseTmplBase>::from_promise(*this));
 		}
 
-	private:
+	protected:
 		union
 		{
 			std::exception_ptr except;
@@ -303,7 +301,7 @@ namespace coro
 			return std::make_shared<Resolver>(std::coroutine_handle<PromiseTmplBase>::from_promise(*this));
 		}
 
-	private:
+	protected:
 		union
 		{
 			std::exception_ptr except;
