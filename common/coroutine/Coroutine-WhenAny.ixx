@@ -12,73 +12,47 @@ namespace coro
 	struct WhenAnyCounter
 	{
 		explicit WhenAnyCounter(std::size_t count)
-			: counter(count + 1)
+			: counter(count)
 			  , index(0)
 
 		{
 		}
 
-		void startFirstWait(std::coroutine_handle<> next)
+		void startWait(std::coroutine_handle<> next)
 		{
 			cont = next;
-			bHasStartFirstWait.store(true, std::memory_order_relaxed);
 		}
 
-		std::coroutine_handle<> tryWaitAndReturnNextIfNeed()
+		bool finishAndResumeNextIfNeed(std::size_t n) noexcept
 		{
-			if (counter.fetch_sub(1, std::memory_order_acq_rel) == 1)
+			// 不是首个完成的任务
+			if (settled.exchange(true, std::memory_order_relaxed))
 			{
-				return cont;
-			}
-			return std::noop_coroutine();
-		}
-
-		std::coroutine_handle<> finishAndReturnNextIfNeed(std::size_t n) noexcept
-		{
-			bool expectedHasStartFirstWait = true;
-			if (bHasStartFirstWait.compare_exchange_strong(expectedHasStartFirstWait, false, std::memory_order_relaxed))
-			{
-				// 首个完成的任务
-				index = n;
-				counter.fetch_sub(1, std::memory_order_acq_rel);
-				return cont;
+				return false;
 			}
 
-			// 不是首个完成的任务, 判断任务是否已经全部完成且外部已经在二次等待
-			if (counter.fetch_sub(1, std::memory_order_acq_rel) == 1)
-			{
-				return cont;
-			}
-			return std::noop_coroutine();
+			// 首个完成的任务
+			index = n;
+			cont.resume();
+			return true;
 		}
 
 		// 因异常而结束
-		std::coroutine_handle<> finishAndReturnNextIfNeed(std::size_t n, const std::exception_ptr& e) noexcept
+		bool finishAndResumeNextIfNeed(std::size_t n, const std::exception_ptr&) noexcept
 		{
-			std::size_t oldCount = counter.fetch_sub(1, std::memory_order_acq_rel);
-			if (oldCount == 2)
+			if (counter.fetch_sub(1, std::memory_order_relaxed) == 1)
 			{
-				// 任务全部结束,且外部还在首次等待(全部任务都异常了)
-				bool expectedHasStartFirstWait = true;
-				if (bHasStartFirstWait.compare_exchange_strong(expectedHasStartFirstWait, false, std::memory_order_relaxed))
-				{
-					index = n;
-					exception = e;
-					return cont;
-				}
+				// 全部任务都异常了
+				index = n;
+				cont.resume();
+				return true;
 			}
-			else if (oldCount == 1)
-			{
-				return cont;
-			}
-			return std::noop_coroutine();
+			return false;
 		}
 
 		std::atomic<std::size_t> counter;
 		std::size_t index;
-		std::atomic<bool> bHasStartFirstWait{false};
-
-		std::exception_ptr exception{};
+		std::atomic<bool> settled{false};
 
 		std::coroutine_handle<> cont{};
 	};
@@ -92,13 +66,22 @@ namespace coro
 			return {};
 		}
 
-		std::coroutine_handle<> finish() noexcept
+		void finish() noexcept
 		{
 			if (PromiseBase::m_disc == PromiseBase::Discriminator::Exception)
 			{
-				return m_counter->finishAndReturnNextIfNeed(m_index, PromiseTmplBase<T>::except);
+				if (!m_counter->finishAndResumeNextIfNeed(m_index, PromiseTmplBase<T>::except))
+				{
+					std::coroutine_handle<WhenAnyPerTaskPromise>::from_promise(*this).destroy();
+				}
 			}
-			return m_counter->finishAndReturnNextIfNeed(m_index);
+			else
+			{
+				if (!m_counter->finishAndResumeNextIfNeed(m_index))
+				{
+					std::coroutine_handle<WhenAnyPerTaskPromise>::from_promise(*this).destroy();
+				}
+			}
 		}
 
 		auto final_suspend() noexcept
@@ -109,9 +92,9 @@ namespace coro
 
 				bool await_ready() const noexcept { return false; }
 
-				std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept
+				void await_suspend(std::coroutine_handle<>) const noexcept
 				{
-					return self.finish();
+					self.finish();
 				}
 
 				void await_resume() const noexcept
@@ -164,7 +147,7 @@ namespace coro
 
 		~WhenAnyPerTask()
 		{
-			if (m_coro)
+			if (m_bNeedDestroy && m_coro)
 			{
 				if (!m_coro.done())
 				{
@@ -181,6 +164,11 @@ namespace coro
 		{
 			m_coro.promise().setCounterAndIndex(counter, index);
 			m_coro.resume();
+		}
+
+		void setNeedDestroy()
+		{
+			m_bNeedDestroy = true;
 		}
 
 		std::add_pointer_t<T> transferResult()
@@ -201,6 +189,7 @@ namespace coro
 		}
 
 		std::coroutine_handle<promise_type> m_coro = nullptr;
+		bool m_bNeedDestroy = false;
 	};
 
 	template <awaitable T>
@@ -274,27 +263,8 @@ namespace coro
 
 				void await_suspend(std::coroutine_handle<> cont) noexcept
 				{
-					self.getCounter().startFirstWait(cont);
+					self.getCounter().startWait(cont);
 					self.startTasks(std::make_integer_sequence<std::size_t, sizeof...(Tasks)>{});
-				}
-
-				void await_resume() noexcept
-				{
-				}
-			};
-			return Awaiter{*this};
-		}
-
-		auto waitAllDone() noexcept
-		{
-			struct Awaiter
-			{
-				WhenAnyHelper& self;
-				bool await_ready() const noexcept { return false; }
-
-				std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept
-				{
-					return self.getCounter().tryWaitAndReturnNextIfNeed();
 				}
 
 				void await_resume() noexcept
@@ -320,6 +290,7 @@ namespace coro
 	auto make_when_any_result_helper(std::tuple<WhenAnyPerTask<typename AwaitableTraits<std::remove_reference_t<Ts>>::NonVoidAwaitResultT>...>& tasks)
 		-> std::variant<typename AwaitableTraits<std::remove_reference_t<Ts>>::NonVoidRefResultT...>
 	{
+		std::get<I>(tasks).setNeedDestroy();
 		return std::variant<typename AwaitableTraits<std::remove_reference_t<Ts>>::NonVoidRefResultT...>{std::in_place_index<I>, std::get<I>(tasks).transferResult()};
 	}
 
@@ -342,21 +313,11 @@ namespace coro
 
 		cancelSrc.request_stop();
 
-		co_await whenAnyHelper.waitAllDone();
-
-		const WhenAnyCounter& counter = whenAnyHelper.getCounter();
-		if (counter.exception)
-		{
-			std::rethrow_exception(counter.exception);
-		}
-
-		auto& tasks = whenAnyHelper.getTasks();
-		
 		constexpr std::array factories{
 			&make_when_any_result_helper<Is, Ts...>
 			...
 		};
-		co_return factories[counter.index](tasks);
+		co_return factories[whenAnyHelper.getCounter().index](whenAnyHelper.getTasks());
 	}
 
 	export
