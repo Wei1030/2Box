@@ -1,9 +1,11 @@
+// ReSharper disable CppMemberFunctionMayBeStatic
 export module Coroutine:WhenAllSettled;
 
 import std;
 import :Concept;
 import :PromiseBase;
 import :Cancellation;
+import :LazyTask;
 
 namespace coro
 {

@@ -100,5 +100,10 @@ namespace coro
 			std::add_pointer_t<AwaitResultT>,
 			AwaitResultT
 		>;
+		using NonVoidRefResultT = std::conditional_t<
+			std::is_reference_v<AwaitResultT>,
+			std::add_pointer_t<AwaitResultT>,
+			NonVoidAwaitResultT
+		>;
 	};
 }
