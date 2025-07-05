@@ -95,11 +95,10 @@ namespace coro
 		using AwaiterT = decltype(get_awaiter<T>(std::declval<T>()));
 		using AwaitResultT = decltype(get_awaiter<T>(std::declval<T>()).await_resume());
 		using NonVoidAwaitResultT = typename NonVoidAwaitResultType<AwaitResultT>::Type;
-
-		using ResultTransferT = std::conditional_t<
+		using NonRefAwaitResultT = std::conditional_t<
 			std::is_reference_v<AwaitResultT>,
-			AwaitResultT, // 保持引用类型不变
-			std::add_rvalue_reference_t<AwaitResultT> // 值类型转右值引用
+			std::add_pointer_t<AwaitResultT>,
+			AwaitResultT
 		>;
 	};
 }
