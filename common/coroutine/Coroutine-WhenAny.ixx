@@ -17,9 +17,19 @@ namespace coro
 		{
 		}
 
-		void startWait(std::coroutine_handle<> next)
+		enum class Status : std::uint32_t
+		{
+			NoWaiter = 0,
+			HasWaiter,
+			Done
+		};
+
+		bool startWait(std::coroutine_handle<> next) noexcept
 		{
 			cont = next;
+
+			Status expected = Status::NoWaiter;
+			return status.compare_exchange_strong(expected, Status::HasWaiter, std::memory_order_acq_rel);
 		}
 
 		void finishAndResumeNextIfNeed(std::size_t n) noexcept
@@ -32,7 +42,11 @@ namespace coro
 
 			// 首个完成的任务
 			index = n;
-			cont.resume();
+			const Status lastStatus = status.exchange(Status::Done, std::memory_order_acq_rel);
+			if (lastStatus == Status::HasWaiter)
+			{
+				cont.resume();
+			}
 		}
 
 		// 因异常而结束
@@ -42,7 +56,11 @@ namespace coro
 			{
 				// 全部任务都异常了
 				index = n;
-				cont.resume();
+				const Status lastStatus = status.exchange(Status::Done, std::memory_order_acq_rel);
+				if (lastStatus == Status::HasWaiter)
+				{
+					cont.resume();
+				}
 			}
 		}
 
@@ -51,7 +69,7 @@ namespace coro
 			refCounter.fetch_add(1, std::memory_order_relaxed);
 		}
 
-		void release()
+		void release() noexcept
 		{
 			if (refCounter.fetch_sub(1, std::memory_order_acq_rel) == 1)
 			{
@@ -61,9 +79,10 @@ namespace coro
 
 		std::atomic<std::size_t> refCounter{0};
 		std::atomic<std::size_t> counter;
-		std::coroutine_handle<> cont{};
 
 		std::atomic<bool> settled{false};
+		std::atomic<Status> status{Status::NoWaiter};
+		std::coroutine_handle<> cont{};
 		std::size_t index{0};
 	};
 
@@ -263,10 +282,10 @@ namespace coro
 				WhenAnyHelper& self;
 				bool await_ready() const noexcept { return false; }
 
-				void await_suspend(std::coroutine_handle<> cont) noexcept
+				bool await_suspend(std::coroutine_handle<> cont) noexcept
 				{
-					self.getCtrlBlock()->startWait(cont);
 					self.startTasks(std::make_integer_sequence<std::size_t, sizeof...(Tasks)>{});
+					return self.getCtrlBlock()->startWait(cont);
 				}
 
 				void await_resume() noexcept

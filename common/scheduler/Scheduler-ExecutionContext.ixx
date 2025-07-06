@@ -165,7 +165,7 @@ namespace sched
 			{
 				struct StopNotify
 				{
-					coro::LazyTask<void>::Resolver resolver;
+					coro::GuaranteedResolver<void> resolver;
 
 					void operator()() const noexcept
 					{
@@ -175,7 +175,7 @@ namespace sched
 
 				std::stop_callback<StopNotify> callback;
 
-				void setupCancellationHandler(const std::stop_token& token, const coro::LazyTask<void>::Resolver& resolver)
+				void setupCancellationHandler(const std::stop_token& token, const coro::GuaranteedResolver<void>& resolver)
 				{
 					std::construct_at(&callback, token, resolver);
 				}
@@ -197,8 +197,8 @@ namespace sched
 			// std::stop_callback有可能已经stop而在构造中直接调用callback,
 			// 即reject直接在setupCancellationHandler中被调用导致这个coro::LazyTask<void>::create出来的task直接结束,如果直接co_await它,相当于本协程直接被恢复执行而结束,从而析构掉std::stop_callback
 			// 这就相当于std::stop_callback构造都还未结束而析构了...
-			// 要解决这个问题需要将LazyTask转成SharedTask,让其直接启动,这样一来,如果真的立马同步式的结束了,这意味着还没有人正在co_await,就不会恢复本协程,从而有机会让std::stop_callback从构造中先返回出来
-			co_await coro::start_and_shared(coro::LazyTask<void>::create([&](const coro::LazyTask<void>::Resolver& resolver)
+			// 要解决这个问题必须用SharedTask::create,让其直接启动,这样一来,如果真的立马同步式的结束了,这意味着还没有人正在co_await,就不会恢复本协程,从而有机会让std::stop_callback从构造中先返回出来
+			co_await coro::SharedTask<void>::create([&](const coro::GuaranteedResolver<void>& resolver)
 			{
 				guard.setupCancellationHandler(token, resolver);
 				if (!token.stop_requested())
@@ -208,7 +208,7 @@ namespace sched
 						resolver->resolve();
 					}, token);
 				}
-			}));
+			});
 		}
 		else
 		{

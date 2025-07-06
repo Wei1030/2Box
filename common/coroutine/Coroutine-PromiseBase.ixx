@@ -143,62 +143,6 @@ namespace coro
 			}
 		}
 
-		//////////////////////////////////////////
-		/// 用于为回调式接口转为协程式的帮助类
-		struct Resolver
-		{
-			std::coroutine_handle<PromiseTmplBase> coro = nullptr;
-			mutable std::atomic<bool> settled = false;
-
-			void resolve(T val) const
-				requires std::is_reference_v<T>
-			{
-				if (settled.exchange(true, std::memory_order_relaxed))
-				{
-					return;
-				}
-				coro.promise().return_value(val);
-				coro.resume();
-			}
-
-			template <typename U>
-				requires (!std::is_reference_v<T> && std::convertible_to<U, T> && std::constructible_from<T, U>)
-			void resolve(U&& val) const
-			{
-				if (settled.exchange(true, std::memory_order_relaxed))
-				{
-					return;
-				}
-				coro.promise().return_value(std::forward<U>(val));
-				coro.resume();
-			}
-
-			void reject(std::exception_ptr ep) const
-			{
-				if (settled.exchange(true, std::memory_order_relaxed))
-				{
-					return;
-				}
-				coro.promise().set_exception(ep);
-				coro.resume();
-			}
-
-			~Resolver()
-			{
-				if (settled.exchange(true, std::memory_order_relaxed))
-				{
-					return;
-				}
-				coro.promise().set_exception(std::make_exception_ptr(std::runtime_error("no one resolve")));
-				coro.resume();
-			}
-		};
-
-		std::shared_ptr<Resolver> makeResolver()
-		{
-			return std::make_shared<Resolver>(std::coroutine_handle<PromiseTmplBase>::from_promise(*this));
-		}
-
 	protected:
 		union
 		{
@@ -259,48 +203,6 @@ namespace coro
 			}
 		}
 
-		//////////////////////////////////////////
-		/// 用于为回调式接口转为协程式的帮助类
-		struct Resolver
-		{
-			std::coroutine_handle<PromiseTmplBase> coro = nullptr;
-			mutable std::atomic<bool> settled = false;
-
-			void resolve() const
-			{
-				if (settled.exchange(true, std::memory_order_relaxed))
-				{
-					return;
-				}
-				coro.resume();
-			}
-
-			void reject(std::exception_ptr ep) const
-			{
-				if (settled.exchange(true, std::memory_order_relaxed))
-				{
-					return;
-				}
-				coro.promise().set_exception(ep);
-				coro.resume();
-			}
-
-			~Resolver()
-			{
-				if (settled.exchange(true, std::memory_order_relaxed))
-				{
-					return;
-				}
-				coro.promise().set_exception(std::make_exception_ptr(std::runtime_error("no one reject")));
-				coro.resume();
-			}
-		};
-
-		std::shared_ptr<Resolver> makeResolver()
-		{
-			return std::make_shared<Resolver>(std::coroutine_handle<PromiseTmplBase>::from_promise(*this));
-		}
-
 	protected:
 		union
 		{
@@ -308,15 +210,106 @@ namespace coro
 		};
 	};
 
-	// promise指针代理类
-	template <class T>
-		requires requires(T* p)
+	//////////////////////////////////////////
+	/// 用于为回调式接口转为协程式的帮助类
+	template <typename T>
+	class ResolverBase : public PromiseTmplBase<T>
+	{
+	public:
+		void setNextCoroutineHandle(std::coroutine_handle<> cont) noexcept
 		{
-			p->addRef();
-			p->release();
+			m_cont = cont;
 		}
+
+		void reject(std::exception_ptr ep)
+		{
+			if (m_settled.exchange(true, std::memory_order_relaxed))
+			{
+				return;
+			}
+			this->set_exception(ep);
+			m_cont.resume();
+		}
+
+		void abandon()
+		{
+			if (m_settled.exchange(true, std::memory_order_relaxed))
+			{
+				return;
+			}
+			this->set_exception(std::make_exception_ptr(std::runtime_error("no one resolve")));
+			m_cont.resume();
+		}
+
+		void addRef() noexcept
+		{
+			m_refCount.fetch_add(1, std::memory_order_relaxed);
+		}
+
+		void release() noexcept
+		{
+			if (m_refCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
+			{
+				abandon();
+			}
+		}
+
+	protected:
+		mutable std::atomic<bool> m_settled = false;
+		std::atomic<std::uint32_t> m_refCount{0};
+		std::coroutine_handle<> m_cont = nullptr;
+	};
+
+	template <typename T>
+	class Resolver : public ResolverBase<T>
+	{
+	public:
+		void resolve(T val)
+			requires (std::is_reference_v<T>)
+		{
+			if (this->m_settled.exchange(true, std::memory_order_relaxed))
+			{
+				return;
+			}
+			this->return_value(val);
+			this->m_cont.resume();
+		}
+
+		template <typename U>
+			requires (!std::is_reference_v<T> && std::convertible_to<U, T> && std::constructible_from<T, U>)
+		void resolve(U&& val)
+		{
+			if (this->m_settled.exchange(true, std::memory_order_relaxed))
+			{
+				return;
+			}
+			this->return_value(std::forward<U>(val));
+			this->m_cont.resume();
+		}
+	};
+
+	template <>
+	class Resolver<void> : public ResolverBase<void>
+	{
+	public:
+		void resolve() const
+		{
+			if (m_settled.exchange(true, std::memory_order_relaxed))
+			{
+				return;
+			}
+			m_cont.resume();
+		}
+	};
+
+	// promise指针代理类
+	export
+	template <class T>
 	class PromisePtr
 	{
+		static_assert(noexcept(std::declval<T>().addRef()));
+		static_assert(noexcept(std::declval<T>().release()));
+
 	private:
 		typedef PromisePtr ThisType;
 		T* m_px;
@@ -328,7 +321,7 @@ namespace coro
 		{
 		}
 
-		PromisePtr(T* p) : m_px(p)
+		PromisePtr(T* p) noexcept : m_px(p)
 		{
 			if (m_px != nullptr)
 			{
@@ -336,7 +329,7 @@ namespace coro
 			}
 		}
 
-		PromisePtr(PromisePtr const& rhs) : m_px(rhs.m_px)
+		PromisePtr(PromisePtr const& rhs) noexcept : m_px(rhs.m_px)
 		{
 			if (m_px != nullptr)
 			{
@@ -349,7 +342,7 @@ namespace coro
 			rhs.m_px = nullptr;
 		}
 
-		~PromisePtr()
+		~PromisePtr() noexcept
 		{
 			if (m_px != nullptr)
 			{
@@ -364,13 +357,18 @@ namespace coro
 			rhs.m_px = tmp;
 		}
 
-		PromisePtr& operator=(T* rhs)
+		friend void swap(PromisePtr& p1, PromisePtr& p2) noexcept
+		{
+			p1.swap(p2);
+		}
+
+		PromisePtr& operator=(T* rhs) noexcept
 		{
 			ThisType(rhs).swap(*this);
 			return *this;
 		}
 
-		PromisePtr& operator=(PromisePtr const& rhs)
+		PromisePtr& operator=(PromisePtr const& rhs) noexcept
 		{
 			ThisType(rhs).swap(*this);
 			return *this;
@@ -407,4 +405,8 @@ namespace coro
 			return m_px == nullptr;
 		}
 	};
+
+	export
+	template <typename T>
+	using GuaranteedResolver = PromisePtr<Resolver<T>>;
 }

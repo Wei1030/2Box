@@ -103,19 +103,17 @@ namespace coro
 		LazyTask& operator=(const LazyTask&) = delete;
 		LazyTask& operator=(LazyTask&& that) = delete;
 
-		using Resolver = std::shared_ptr<typename promise_type::Resolver>;
-
 		template <typename E>
 			requires requires(const E& func)
 			{
-				func(Resolver{});
+				func(GuaranteedResolver<T>{});
 			}
 		static LazyTask create(E executor)
 		{
 			struct ExecAwaiter
 			{
 				const E& exec;
-				std::coroutine_handle<promise_type> coro{nullptr};
+				Resolver<T> resolver;
 
 				bool await_ready() noexcept
 				{
@@ -124,21 +122,21 @@ namespace coro
 
 				void await_suspend(std::coroutine_handle<promise_type> cont)
 				{
-					coro = cont;
-					auto resolver = cont.promise().makeResolver();
+					resolver.setNextCoroutineHandle(cont);
+					auto resolveGuard = GuaranteedResolver{&resolver};
 					try
 					{
-						exec(resolver);
+						exec(resolveGuard);
 					}
 					catch (...)
 					{
-						resolver->reject(std::current_exception());
+						resolveGuard->reject(std::current_exception());
 					}
 				}
 
 				decltype(auto) await_resume()
 				{
-					return static_cast<promise_type&&>(coro.promise()).getValue();
+					return resolver.getValue();
 				}
 			};
 
@@ -250,8 +248,22 @@ namespace coro
 
 		decltype(auto) syncAwait()
 		{
+			struct OnewayTask
+			{
+				struct promise_type
+				{
+					std::suspend_never initial_suspend() noexcept { return {}; }
+					std::suspend_never final_suspend() noexcept { return {}; }
+					void unhandled_exception() noexcept { std::terminate(); }
+					OnewayTask get_return_object() noexcept { return {}; }
+
+					void return_void() noexcept
+					{
+					}
+				};
+			};
 			std::atomic<int> flag{1};
-			auto task = [&flag, this]() noexcept -> LazyTask<void>
+			auto task = [&flag, this]() noexcept -> OnewayTask
 			{
 				try
 				{
@@ -263,8 +275,6 @@ namespace coro
 				flag.store(0, std::memory_order::release);
 				flag.notify_one();
 			}();
-			auto awaiter = task.operator co_await();
-			awaiter.await_suspend(std::noop_coroutine()).resume();
 
 			while (flag.exchange(1, std::memory_order::acquire))
 			{

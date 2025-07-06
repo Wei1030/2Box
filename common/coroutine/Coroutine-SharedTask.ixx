@@ -166,6 +166,46 @@ namespace coro
 
 		SharedTask() = delete;
 
+		template <typename E>
+			requires requires(const E& func)
+			{
+				func(GuaranteedResolver<T>{});
+			}
+		static SharedTask create(const E& executor)
+		{
+			struct ExecAwaiter
+			{
+				const E& exec;
+				Resolver<T> resolver;
+
+				bool await_ready() noexcept
+				{
+					return false;
+				}
+
+				void await_suspend(std::coroutine_handle<promise_type> cont)
+				{
+					resolver.setNextCoroutineHandle(cont);
+					auto resolveGuard = GuaranteedResolver{&resolver};
+					try
+					{
+						exec(resolveGuard);
+					}
+					catch (...)
+					{
+						resolveGuard->reject(std::current_exception());
+					}
+				}
+
+				decltype(auto) await_resume()
+				{
+					return resolver.getValue();
+				}
+			};
+
+			co_return co_await ExecAwaiter{executor};
+		}
+
 		struct AwaiterBase
 		{
 			PromisePtr<promise_type> promisePtr;
@@ -228,8 +268,25 @@ namespace coro
 
 		decltype(auto) syncAwait()
 		{
+			struct OnewayTask
+			{
+				struct promise_type
+				{
+					// ReSharper disable CppMemberFunctionMayBeStatic
+					std::suspend_never initial_suspend() noexcept { return {}; }
+					std::suspend_never final_suspend() noexcept { return {}; }
+					void unhandled_exception() noexcept { std::terminate(); }
+					OnewayTask get_return_object() noexcept { return {}; }
+
+					void return_void() noexcept
+					{
+					}
+
+					// ReSharper restore CppMemberFunctionMayBeStatic
+				};
+			};
 			std::atomic<int> flag{1};
-			auto task = [&flag, this]() noexcept -> LazyTask<void>
+			auto task = [&flag, this]() noexcept -> OnewayTask
 			{
 				try
 				{
@@ -241,8 +298,6 @@ namespace coro
 				flag.store(0, std::memory_order::release);
 				flag.notify_one();
 			}();
-			auto awaiter = task.operator co_await();
-			awaiter.await_suspend(std::noop_coroutine()).resume();
 
 			while (flag.exchange(1, std::memory_order::acquire))
 			{
