@@ -12,70 +12,60 @@ namespace coro
 	struct WhenAllCounter
 	{
 		explicit WhenAllCounter(std::size_t count)
-			: counter(count + 1) // 由于任务需要先执行, tryWaitAndReturnNextIfNeed后执行,所以tryWaitAndReturnNextIfNeed也要减计数参与同步
+			: counter(count)
 		{
 		}
 
-		void startFirstWait(std::coroutine_handle<> next)
+		void startWait(std::coroutine_handle<> next)
 		{
 			cont = next;
-			bHasStartFirstWait.store(true, std::memory_order_relaxed);
 		}
 
-		std::coroutine_handle<> tryWaitAndReturnNextIfNeed()
+		void finishAndResumeNextIfNeed() noexcept
 		{
-			if (counter.fetch_sub(1, std::memory_order_acq_rel) == 1)
+			if (counter.fetch_sub(1, std::memory_order_relaxed) == 1)
 			{
-				return cont;
+				// 全部任务都完成了
+				cont.resume();
 			}
-			return std::noop_coroutine();
-		}
-
-		std::coroutine_handle<> finishAndReturnNextIfNeed() noexcept
-		{
-			std::size_t oldCount = counter.fetch_sub(1, std::memory_order_acq_rel);
-			if (oldCount == 2)
-			{
-				// 任务全部结束,且外部还在首次等待(全部任务无异常)
-				bool expectedHasStartFirstWait = true;
-				if (bHasStartFirstWait.compare_exchange_strong(expectedHasStartFirstWait, false, std::memory_order_relaxed))
-				{
-					return cont;
-				}
-			}
-			else if (oldCount == 1)
-			{
-				return cont;
-			}
-			return std::noop_coroutine();
 		}
 
 		// 因异常而结束
-		std::coroutine_handle<> finishAndReturnNextIfNeed(const std::exception_ptr& e) noexcept
+		void finishAndResumeNextIfNeed(const std::exception_ptr& e) noexcept
 		{
-			bool expectedHasStartFirstWait = true;
-			if (bHasStartFirstWait.compare_exchange_strong(expectedHasStartFirstWait, false, std::memory_order_relaxed))
+			// 不是首个异常的任务
+			if (bError.exchange(true, std::memory_order_relaxed))
 			{
-				// 首个异常任务
-				exception = e;
-				counter.fetch_sub(1, std::memory_order_acq_rel);
-				return cont;
+				return;
 			}
 
-			// 不是首个异常的任务, 判断任务是否已经全部完成且外部已经在二次等待
-			if (counter.fetch_sub(1, std::memory_order_acq_rel) == 1)
-			{
-				return cont;
-			}
-			return std::noop_coroutine();
+			// 首个异常的任务
+			exception = e;
+			cont.resume();
 		}
 
-		std::atomic<std::size_t> counter;
-		std::atomic<bool> bHasStartFirstWait{false};
-		std::exception_ptr exception{};
+		void addRef() noexcept
+		{
+			refCounter.fetch_add(1, std::memory_order_relaxed);
+		}
 
+		void release()
+		{
+			if (refCounter.fetch_sub(1, std::memory_order_acq_rel) == 1)
+			{
+				delete this;
+			}
+		}
+
+		std::atomic<std::size_t> refCounter{0};
+		std::atomic<std::size_t> counter;
 		std::coroutine_handle<> cont{};
+
+		std::atomic<bool> bError{false};
+		std::exception_ptr exception{};
 	};
+
+	using WhenAllCtrlBlock = PromisePtr<WhenAllCounter>;
 
 	template <typename T>
 	class WhenAllPerTaskPromise : public PromiseTmplBase<T>
@@ -86,13 +76,17 @@ namespace coro
 			return {};
 		}
 
-		std::coroutine_handle<> finish() noexcept
+		void finish() noexcept
 		{
 			if (PromiseBase::m_disc == PromiseBase::Discriminator::Exception)
 			{
-				return m_counter->finishAndReturnNextIfNeed(PromiseTmplBase<T>::except);
+				m_ctrlBlock->finishAndResumeNextIfNeed(PromiseTmplBase<T>::except);
 			}
-			return m_counter->finishAndReturnNextIfNeed();
+			else
+			{
+				m_ctrlBlock->finishAndResumeNextIfNeed();
+			}
+			release();
 		}
 
 		auto final_suspend() noexcept
@@ -103,9 +97,9 @@ namespace coro
 
 				bool await_ready() const noexcept { return false; }
 
-				std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept
+				void await_suspend(std::coroutine_handle<>) const noexcept
 				{
-					return self.finish();
+					self.finish();
 				}
 
 				void await_resume() const noexcept
@@ -125,14 +119,23 @@ namespace coro
 			m_token = std::move(token);
 		}
 
-		void setCounter(WhenAllCounter& counter)
+		void setCtrlBlock(const WhenAllCtrlBlock& ctrlBlock) noexcept
 		{
-			m_counter = &counter;
+			m_ctrlBlock = ctrlBlock;
+		}
+
+		void release() noexcept
+		{
+			if (m_abandoned.exchange(true, std::memory_order_acq_rel))
+			{
+				std::coroutine_handle<WhenAllPerTaskPromise>::from_promise(*this).destroy();
+			}
 		}
 
 	private:
+		std::atomic<bool> m_abandoned{false};
 		std::stop_token m_token;
-		WhenAllCounter* m_counter{nullptr};
+		WhenAllCtrlBlock m_ctrlBlock{nullptr};
 	};
 
 	template <typename T>
@@ -158,20 +161,20 @@ namespace coro
 		{
 			if (m_coro)
 			{
-				if (!m_coro.done())
-				{
-					std::terminate();
-				}
-				m_coro.destroy();
+				m_coro.promise().release();
 			}
 		}
 
 		WhenAllPerTask& operator=(const WhenAllPerTask&) = delete;
 		WhenAllPerTask& operator=(WhenAllPerTask&& that) = delete;
 
-		void start(WhenAllCounter& counter)
+		void setCtrlBlock(const WhenAllCtrlBlock& ctrlBlock) noexcept
 		{
-			m_coro.promise().setCounter(counter);
+			m_coro.promise().setCtrlBlock(ctrlBlock);
+		}
+
+		void start()
+		{
 			m_coro.resume();
 		}
 
@@ -228,28 +231,20 @@ namespace coro
 	{
 	public:
 		explicit WhenAllHelper(Tasks&&... tasks)
-			noexcept(std::conjunction_v<std::is_nothrow_move_constructible<Tasks>...>)
-			: m_counter(sizeof...(Tasks))
+			: m_ctrlBlock(new WhenAllCounter{sizeof...(Tasks)})
 			  , m_tasks(std::move(tasks)...)
 		{
 		}
 
 		explicit WhenAllHelper(std::tuple<Tasks...>&& tasks)
-			noexcept(std::is_nothrow_move_constructible_v<std::tuple<Tasks...>>)
-			: m_counter(sizeof...(Tasks))
+			: m_ctrlBlock(new WhenAllCounter{sizeof...(Tasks)})
 			  , m_tasks(std::move(tasks))
 		{
 		}
 
-		WhenAllHelper(WhenAllHelper&& other) noexcept
-			: m_counter(sizeof...(Tasks))
-			  , m_tasks(std::move(other.m_tasks))
+		WhenAllCtrlBlock& getCtrlBlock() noexcept
 		{
-		}
-
-		WhenAllCounter& getCounter() noexcept
-		{
-			return m_counter;
+			return m_ctrlBlock;
 		}
 
 		std::tuple<Tasks...>& getTasks() noexcept
@@ -257,7 +252,7 @@ namespace coro
 			return m_tasks;
 		}
 
-		auto firstWaitReadyOrError() noexcept
+		auto waitAllDoneOrAnyError() noexcept
 		{
 			struct Awaiter
 			{
@@ -266,27 +261,8 @@ namespace coro
 
 				void await_suspend(std::coroutine_handle<> cont) noexcept
 				{
-					self.getCounter().startFirstWait(cont);
+					self.getCtrlBlock()->startWait(cont);
 					self.startTasks(std::make_integer_sequence<std::size_t, sizeof...(Tasks)>{});
-				}
-
-				void await_resume() noexcept
-				{
-				}
-			};
-			return Awaiter{*this};
-		}
-
-		auto thenWaitAllDone() noexcept
-		{
-			struct Awaiter
-			{
-				WhenAllHelper& self;
-				bool await_ready() const noexcept { return false; }
-
-				std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept
-				{
-					return self.getCounter().tryWaitAndReturnNextIfNeed();
 				}
 
 				void await_resume() noexcept
@@ -300,11 +276,14 @@ namespace coro
 		template <std::size_t... Is>
 		void startTasks(std::integer_sequence<std::size_t, Is...>) noexcept
 		{
-			(std::get<Is>(m_tasks).start(m_counter), ...);
+			// 先传递block到所有task中,加完引用计数
+			(std::get<Is>(m_tasks).setCtrlBlock(m_ctrlBlock), ...);
+			// 再全部启动
+			(std::get<Is>(m_tasks).start(), ...);
 		}
 
 	private:
-		WhenAllCounter m_counter;
+		WhenAllCtrlBlock m_ctrlBlock;
 		std::tuple<Tasks...> m_tasks;
 	};
 
@@ -324,19 +303,12 @@ namespace coro
 			...
 		};
 
-		co_await whenAllHelper.firstWaitReadyOrError();
+		co_await whenAllHelper.waitAllDoneOrAnyError();
 
-		const WhenAllCounter& counter = whenAllHelper.getCounter();
-		if (counter.exception)
+		if (whenAllHelper.getCtrlBlock()->exception)
 		{
 			cancelSrc.request_stop();
-		}
-
-		co_await whenAllHelper.thenWaitAllDone();
-
-		if (counter.exception)
-		{
-			std::rethrow_exception(counter.exception);
+			std::rethrow_exception(whenAllHelper.getCtrlBlock()->exception);
 		}
 
 		auto& tasks = whenAllHelper.getTasks();

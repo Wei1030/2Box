@@ -13,7 +13,6 @@ namespace coro
 	{
 		explicit WhenAnyCounter(std::size_t count)
 			: counter(count)
-			  , index(0)
 
 		{
 		}
@@ -23,39 +22,52 @@ namespace coro
 			cont = next;
 		}
 
-		bool finishAndResumeNextIfNeed(std::size_t n) noexcept
+		void finishAndResumeNextIfNeed(std::size_t n) noexcept
 		{
 			// 不是首个完成的任务
 			if (settled.exchange(true, std::memory_order_relaxed))
 			{
-				return false;
+				return;
 			}
 
 			// 首个完成的任务
 			index = n;
 			cont.resume();
-			return true;
 		}
 
 		// 因异常而结束
-		bool finishAndResumeNextIfNeed(std::size_t n, const std::exception_ptr&) noexcept
+		void finishAndResumeNextIfNeed(std::size_t n, const std::exception_ptr&) noexcept
 		{
 			if (counter.fetch_sub(1, std::memory_order_relaxed) == 1)
 			{
 				// 全部任务都异常了
 				index = n;
 				cont.resume();
-				return true;
 			}
-			return false;
 		}
 
-		std::atomic<std::size_t> counter;
-		std::size_t index;
-		std::atomic<bool> settled{false};
+		void addRef() noexcept
+		{
+			refCounter.fetch_add(1, std::memory_order_relaxed);
+		}
 
+		void release()
+		{
+			if (refCounter.fetch_sub(1, std::memory_order_acq_rel) == 1)
+			{
+				delete this;
+			}
+		}
+
+		std::atomic<std::size_t> refCounter{0};
+		std::atomic<std::size_t> counter;
 		std::coroutine_handle<> cont{};
+
+		std::atomic<bool> settled{false};
+		std::size_t index{0};
 	};
+
+	using WhenAnyCtrlBlock = PromisePtr<WhenAnyCounter>;
 
 	template <typename T>
 	class WhenAnyPerTaskPromise : public PromiseTmplBase<T>
@@ -70,18 +82,13 @@ namespace coro
 		{
 			if (PromiseBase::m_disc == PromiseBase::Discriminator::Exception)
 			{
-				if (!m_counter->finishAndResumeNextIfNeed(m_index, PromiseTmplBase<T>::except))
-				{
-					std::coroutine_handle<WhenAnyPerTaskPromise>::from_promise(*this).destroy();
-				}
+				m_ctrlBlock->finishAndResumeNextIfNeed(m_index, PromiseTmplBase<T>::except);
 			}
 			else
 			{
-				if (!m_counter->finishAndResumeNextIfNeed(m_index))
-				{
-					std::coroutine_handle<WhenAnyPerTaskPromise>::from_promise(*this).destroy();
-				}
+				m_ctrlBlock->finishAndResumeNextIfNeed(m_index);
 			}
+			release();
 		}
 
 		auto final_suspend() noexcept
@@ -114,15 +121,24 @@ namespace coro
 			m_token = std::move(token);
 		}
 
-		void setCounterAndIndex(WhenAnyCounter& counter, std::size_t index) noexcept
+		void setCtrlBlockAndIndex(const WhenAnyCtrlBlock& ctrlBlock, std::size_t index) noexcept
 		{
-			m_counter = &counter;
+			m_ctrlBlock = ctrlBlock;
 			m_index = index;
 		}
 
+		void release() noexcept
+		{
+			if (m_abandoned.exchange(true, std::memory_order_acq_rel))
+			{
+				std::coroutine_handle<WhenAnyPerTaskPromise>::from_promise(*this).destroy();
+			}
+		}
+
 	private:
+		std::atomic<bool> m_abandoned{false};
 		std::stop_token m_token;
-		WhenAnyCounter* m_counter{nullptr};
+		WhenAnyCtrlBlock m_ctrlBlock{nullptr};
 		std::size_t m_index{0};
 	};
 
@@ -147,28 +163,23 @@ namespace coro
 
 		~WhenAnyPerTask()
 		{
-			if (m_bNeedDestroy && m_coro)
+			if (m_coro)
 			{
-				if (!m_coro.done())
-				{
-					std::terminate();
-				}
-				m_coro.destroy();
+				m_coro.promise().release();
 			}
 		}
 
 		WhenAnyPerTask& operator=(const WhenAnyPerTask&) = delete;
 		WhenAnyPerTask& operator=(WhenAnyPerTask&& that) = delete;
 
-		void start(WhenAnyCounter& counter, std::size_t index)
+		void setCtrlBlockAndIndex(const WhenAnyCtrlBlock& ctrlBlock, std::size_t index) noexcept
 		{
-			m_coro.promise().setCounterAndIndex(counter, index);
-			m_coro.resume();
+			m_coro.promise().setCtrlBlockAndIndex(ctrlBlock, index);
 		}
 
-		void setNeedDestroy()
+		void start()
 		{
-			m_bNeedDestroy = true;
+			m_coro.resume();
 		}
 
 		std::add_pointer_t<T> transferResult()
@@ -189,7 +200,6 @@ namespace coro
 		}
 
 		std::coroutine_handle<promise_type> m_coro = nullptr;
-		bool m_bNeedDestroy = false;
 	};
 
 	template <awaitable T>
@@ -225,28 +235,20 @@ namespace coro
 	{
 	public:
 		explicit WhenAnyHelper(Tasks&&... tasks)
-			noexcept(std::conjunction_v<std::is_nothrow_move_constructible<Tasks>...>)
-			: m_counter(sizeof...(Tasks))
+			: m_ctrlBlock(new WhenAnyCounter{sizeof...(Tasks)})
 			  , m_tasks(std::move(tasks)...)
 		{
 		}
 
 		explicit WhenAnyHelper(std::tuple<Tasks...>&& tasks)
-			noexcept(std::is_nothrow_move_constructible_v<std::tuple<Tasks...>>)
-			: m_counter(sizeof...(Tasks))
+			: m_ctrlBlock(new WhenAnyCounter{sizeof...(Tasks)})
 			  , m_tasks(std::move(tasks))
 		{
 		}
 
-		WhenAnyHelper(WhenAnyHelper&& other) noexcept
-			: m_counter(sizeof...(Tasks))
-			  , m_tasks(std::move(other.m_tasks))
+		WhenAnyCtrlBlock& getCtrlBlock() noexcept
 		{
-		}
-
-		WhenAnyCounter& getCounter() noexcept
-		{
-			return m_counter;
+			return m_ctrlBlock;
 		}
 
 		std::tuple<Tasks...>& getTasks() noexcept
@@ -263,7 +265,7 @@ namespace coro
 
 				void await_suspend(std::coroutine_handle<> cont) noexcept
 				{
-					self.getCounter().startWait(cont);
+					self.getCtrlBlock()->startWait(cont);
 					self.startTasks(std::make_integer_sequence<std::size_t, sizeof...(Tasks)>{});
 				}
 
@@ -278,11 +280,14 @@ namespace coro
 		template <std::size_t... Is>
 		void startTasks(std::integer_sequence<std::size_t, Is...>) noexcept
 		{
-			(std::get<Is>(m_tasks).start(m_counter, Is), ...);
+			// 先传递block到所有task中,加完引用计数
+			(std::get<Is>(m_tasks).setCtrlBlockAndIndex(m_ctrlBlock, Is), ...);
+			// 再全部启动
+			(std::get<Is>(m_tasks).start(), ...);
 		}
 
 	private:
-		WhenAnyCounter m_counter;
+		WhenAnyCtrlBlock m_ctrlBlock;
 		std::tuple<Tasks...> m_tasks;
 	};
 
@@ -290,7 +295,6 @@ namespace coro
 	auto make_when_any_result_helper(std::tuple<WhenAnyPerTask<typename AwaitableTraits<std::remove_reference_t<Ts>>::NonVoidAwaitResultT>...>& tasks)
 		-> std::variant<typename AwaitableTraits<std::remove_reference_t<Ts>>::NonVoidRefResultT...>
 	{
-		std::get<I>(tasks).setNeedDestroy();
 		return std::variant<typename AwaitableTraits<std::remove_reference_t<Ts>>::NonVoidRefResultT...>{std::in_place_index<I>, std::get<I>(tasks).transferResult()};
 	}
 
@@ -317,7 +321,7 @@ namespace coro
 			&make_when_any_result_helper<Is, Ts...>
 			...
 		};
-		co_return factories[whenAnyHelper.getCounter().index](whenAnyHelper.getTasks());
+		co_return factories[whenAnyHelper.getCtrlBlock()->index](whenAnyHelper.getTasks());
 	}
 
 	export
