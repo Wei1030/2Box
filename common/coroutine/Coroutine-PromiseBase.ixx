@@ -212,7 +212,7 @@ namespace coro
 
 	//////////////////////////////////////////
 	/// 用于为回调式接口转为协程式的帮助类
-	template <typename T>
+	template <typename T, typename DerivedT>
 	class ResolverBase : public PromiseTmplBase<T>
 	{
 	public:
@@ -248,9 +248,14 @@ namespace coro
 
 		void release() noexcept
 		{
-			if (m_refCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
+			const std::uint32_t lastCount = m_refCount.fetch_sub(1, std::memory_order_acq_rel);
+			if (lastCount == 2)
 			{
 				abandon();
+			}
+			else if (lastCount == 1)
+			{
+				delete static_cast<DerivedT*>(this);
 			}
 		}
 
@@ -261,7 +266,7 @@ namespace coro
 	};
 
 	template <typename T>
-	class Resolver : public ResolverBase<T>
+	class Resolver : public ResolverBase<T, Resolver<T>>
 	{
 	public:
 		void resolve(T val)
@@ -289,7 +294,7 @@ namespace coro
 	};
 
 	template <>
-	class Resolver<void> : public ResolverBase<void>
+	class Resolver<void> : public ResolverBase<void, Resolver<void>>
 	{
 	public:
 		void resolve() const

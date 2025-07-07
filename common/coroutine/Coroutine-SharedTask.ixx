@@ -176,7 +176,7 @@ namespace coro
 			struct ExecAwaiter
 			{
 				const E& exec;
-				Resolver<T> resolver;
+				GuaranteedResolver<T> resolver{new Resolver<T>};
 
 				bool await_ready() noexcept
 				{
@@ -185,8 +185,8 @@ namespace coro
 
 				void await_suspend(std::coroutine_handle<promise_type> cont)
 				{
-					resolver.setNextCoroutineHandle(cont);
-					auto resolveGuard = GuaranteedResolver{&resolver};
+					resolver->setNextCoroutineHandle(cont);
+					auto resolveGuard = resolver;
 					try
 					{
 						exec(resolveGuard);
@@ -199,7 +199,7 @@ namespace coro
 
 				decltype(auto) await_resume()
 				{
-					return resolver.getValue();
+					return resolver->getValue();
 				}
 			};
 
