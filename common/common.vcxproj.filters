@@ -10,6 +10,12 @@
     <Filter Include="utility">
       <UniqueIdentifier>{04d6f205-e026-4445-a0cf-9c98929ba85d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="coroutine">
+      <UniqueIdentifier>{6761fb7b-3ada-4c7a-8384-b58113120075}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="scheduler">
+      <UniqueIdentifier>{9d7fbf77-8e43-4d75-a99f-100fe499fee1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="header_units\sys_defs.h">
@@ -39,8 +45,44 @@
     <ClCompile Include="utility\Utility.PEParser.ixx">
       <Filter>utility</Filter>
     </ClCompile>
-    <ClCompile Include="utility\Utility.MemDll.ixx">
-      <Filter>utility</Filter>
+    <ClCompile Include="coroutine\Coroutine-LazyTask.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-SharedTask.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-PromiseBase.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="scheduler\Scheduler.ixx">
+      <Filter>scheduler</Filter>
+    </ClCompile>
+    <ClCompile Include="scheduler\Scheduler-TimedQueue.ixx">
+      <Filter>scheduler</Filter>
+    </ClCompile>
+    <ClCompile Include="scheduler\Scheduler-EventLoop.ixx">
+      <Filter>scheduler</Filter>
+    </ClCompile>
+    <ClCompile Include="scheduler\Scheduler-ExecutionContext.ixx">
+      <Filter>scheduler</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-Concept.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-Cancellation.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-WhenAll.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-WhenAllSettled.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-WhenAny.ixx">
+      <Filter>coroutine</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

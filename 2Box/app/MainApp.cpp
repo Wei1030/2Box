@@ -40,6 +40,12 @@ MainApp::MainApp()
 	{
 		throw std::runtime_error(std::format("D2D1CreateFactory fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
 	}
+	
+	hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), 	reinterpret_cast<IUnknown**>(&m_pDWriteFactory));
+	if (FAILED(hr))
+	{
+		throw std::runtime_error(std::format("DWriteCreateFactory fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+	}
 }
 
 MainApp::~MainApp()
@@ -53,16 +59,17 @@ void MainApp::initialize(HINSTANCE hInstance, std::wstring_view lpCmdLine, int n
 	m_hInstance = hInstance;
 	m_strCmdLine = lpCmdLine;
 	m_nCmdShow = nCmdShow;
+
+	wchar_t szFullName[MAX_PATH + 1] = { 0 };
+	GetModuleFileNameW(nullptr, szFullName, MAX_PATH);
+	m_exeFullName = szFullName;
+
+	namespace fs = std::filesystem;
+	const fs::path fsPath = fs::absolute(fs::path(m_exeFullName));
+	m_exeDir = fsPath.parent_path().native();
 }
 
-int MainApp::runMessageLoop()
+void MainApp::runMessageLoop()
 {
-	MSG msg;
-
-	while (GetMessageW(&msg, nullptr, 0, 0))
-	{
-		TranslateMessage(&msg);
-		DispatchMessageW(&msg);
-	}
-	return static_cast<int>(msg.wParam);
+	m_eventLoop.run();
 }

@@ -30,6 +30,7 @@ namespace ui
 		void destroyWindow();
 		void setExitAppWhenWindowDestroyed(bool exit){ m_bIsExitAppWhenWindowDestroyed = exit; }
 		HWND getHandle() const { return m_hWnd; }
+		D2D_RECT_F getRect() const;
 
 	protected:
 		HRESULT prepareDeviceResources();
@@ -53,7 +54,9 @@ namespace ui
 
 	protected:
 		ID2D1HwndRenderTarget* m_pRenderTarget{nullptr};
-
+		float m_physicalToDevice{1.f};
+		float m_deviceToPhysical{1.f};
+		
 	private:
 		HWND m_hWnd{nullptr};
 		bool m_bIsExitAppWhenWindowDestroyed{false};

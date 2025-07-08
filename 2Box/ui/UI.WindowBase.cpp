@@ -9,6 +9,7 @@ import "sys_defs.hpp";
 #endif
 
 import MainApp;
+import DynamicWin32Api;
 
 namespace ui
 {
@@ -21,8 +22,16 @@ namespace ui
 		{
 			throw std::runtime_error(std::format("CreateWindowExW fail , error code: {}", GetLastError()));
 		}
+		if (win32_api::GetDpiForWindow)
+		{
+			if (const unsigned int dpi = win32_api::GetDpiForWindow(m_hWnd))
+			{
+				m_physicalToDevice = 96.f / dpi;
+				m_deviceToPhysical = dpi / 96.f;
+			}
+		}
 	}
-	
+
 	// WindowBase::WindowBase(WindowBase* parentWnd, const WindowCreateParam& param)
 	// {
 	// 	if (!parentWnd || !parentWnd->getHandle())
@@ -37,7 +46,7 @@ namespace ui
 	// 	}
 	// 	// TODO: 创建子窗口还需要做管理，如果之后有需要时再实现吧
 	// }
-	
+
 	WindowBase::~WindowBase()
 	{
 		releaseDeviceResources();
@@ -60,6 +69,13 @@ namespace ui
 			DestroyWindow(m_hWnd);
 			m_hWnd = nullptr;
 		}
+	}
+
+	D2D_RECT_F WindowBase::getRect() const
+	{
+		RECT rc;
+		GetClientRect(m_hWnd, &rc);
+		return D2D1::RectF(0, 0, rc.right * m_physicalToDevice, rc.bottom * m_physicalToDevice);
 	}
 
 	HRESULT WindowBase::prepareDeviceResources()

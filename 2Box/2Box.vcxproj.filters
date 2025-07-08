@@ -13,6 +13,15 @@
     <Filter Include="src\ui">
       <UniqueIdentifier>{bb1f8071-90c2-4638-91dc-bd54f4ec4d1a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\biz">
+      <UniqueIdentifier>{af2a130e-d7cf-4d1b-a8d6-62f2ba6a665b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\symbols">
+      <UniqueIdentifier>{33dae407-75cd-43d2-a3a4-b81e7f265166}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\http">
+      <UniqueIdentifier>{edba45d9-9768-4807-baa8-27e78d82b1c7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -47,6 +56,12 @@
     </ClCompile>
     <ClCompile Include="ui\UI.MainWindow.cpp">
       <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\symbols\SymbolLoader.ixx">
+      <Filter>src\biz\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\http\WinHttp.ixx">
+      <Filter>src\biz\http</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

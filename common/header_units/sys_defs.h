@@ -8,7 +8,9 @@
 // Windows 头文件
 #include <windows.h>
 #include <tlhelp32.h>
+#include <winhttp.h>
 #include <d2d1.h>
+#include <dwrite.h>
 
 template <class Interface>
 inline void safe_release(Interface** ppInterfaceToRelease)
