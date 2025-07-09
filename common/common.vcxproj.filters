@@ -84,5 +84,8 @@
     <ClCompile Include="coroutine\Coroutine-WhenAny.ixx">
       <Filter>coroutine</Filter>
     </ClCompile>
+    <ClCompile Include="utility\Utility.SystemInfo.ixx">
+      <Filter>utility</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

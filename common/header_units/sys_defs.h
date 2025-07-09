@@ -9,6 +9,7 @@
 #include <windows.h>
 #include <tlhelp32.h>
 #include <winhttp.h>
+#include <dbghelp.h>
 #include <d2d1.h>
 #include <dwrite.h>
 

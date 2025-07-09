@@ -7,9 +7,9 @@ import Coroutine;
 
 namespace ms
 {
-	class WinHttpSession;
-	class WinHttpConnection;
-	class WinHttpRequest;
+	export class WinHttpSession;
+	export class WinHttpConnection;
+	export class WinHttpRequest;
 
 	class InternetHandle
 	{
@@ -50,7 +50,7 @@ namespace ms
 		HINTERNET m_handle{nullptr};
 	};
 
-	class WinHttpSession : std::enable_shared_from_this<WinHttpSession>
+	class WinHttpSession : public std::enable_shared_from_this<WinHttpSession>
 	{
 	public:
 		WinHttpSession()
@@ -79,7 +79,7 @@ namespace ms
 		InternetHandle m_hSession{nullptr};
 	};
 
-	class WinHttpConnection : std::enable_shared_from_this<WinHttpConnection>
+	class WinHttpConnection : public std::enable_shared_from_this<WinHttpConnection>
 	{
 	public:
 		WinHttpConnection(std::shared_ptr<WinHttpSession> hSession, std::wstring_view serverName, unsigned short serverPort = INTERNET_DEFAULT_PORT)
@@ -115,6 +115,12 @@ namespace ms
 	export std::shared_ptr<WinHttpSession> create_win_http_session()
 	{
 		return std::make_shared<WinHttpSession>();
+	}
+
+	export std::shared_ptr<WinHttpSession> get_default_win_http_session()
+	{
+		static std::shared_ptr<WinHttpSession> defaultSession = std::make_shared<WinHttpSession>();
+		return defaultSession;
 	}
 
 	class WinHttpRequest
@@ -185,6 +191,10 @@ namespace ms
 					reqContext.hRequest = nullptr;
 				}
 			};
+			if (token.stop_requested())
+			{
+				throw std::runtime_error("operation canceled");
+			}
 
 			DWORD dwFlags = SECURITY_FLAG_IGNORE_ALL_CERT_ERRORS;
 			WinHttpSetOption(reqContext.hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
@@ -252,10 +262,10 @@ namespace ms
 			}
 		}
 
-		static void perRequestStatusCallback(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetStatus, LPVOID lpvStatusInformation, DWORD dwStatusInformationLength)
+		static void CALLBACK perRequestStatusCallback(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetStatus, LPVOID lpvStatusInformation, DWORD dwStatusInformationLength)
 		{
 			PerRequest* reqCtx = reinterpret_cast<PerRequest*>(dwContext);
-			if (reqCtx->hRequest != hInternet)
+			if (reqCtx->hRequest && reqCtx->hRequest != hInternet)
 			{
 				return;
 			}
