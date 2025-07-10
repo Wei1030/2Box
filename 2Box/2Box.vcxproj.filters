@@ -22,6 +22,12 @@
     <Filter Include="src\biz\http">
       <UniqueIdentifier>{edba45d9-9768-4807-baa8-27e78d82b1c7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\ui\control">
+      <UniqueIdentifier>{b19ca715-430d-4a47-adf9-eb5732c917eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\page">
+      <UniqueIdentifier>{095e2e98-aeb8-4520-8f09-3c4847487ba4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -62,6 +68,24 @@
     </ClCompile>
     <ClCompile Include="biz\http\WinHttp.ixx">
       <Filter>src\biz\http</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.ControlBase.ixx">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\page\UI.MainPage-Home.ixx">
+      <Filter>src\ui\page</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\page\UI.MainPage-Download.ixx">
+      <Filter>src\ui\page</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\page\UI.MainPage.ixx">
+      <Filter>src\ui\page</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\page\UI.MainPage-Define.ixx">
+      <Filter>src\ui\page</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\page\UI.PageBase.ixx">
+      <Filter>src\ui\page</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

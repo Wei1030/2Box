@@ -32,6 +32,12 @@
     <ClCompile Include="app\MainApp.ixx" />
     <ClCompile Include="biz\http\WinHttp.ixx" />
     <ClCompile Include="biz\symbols\SymbolLoader.ixx" />
+    <ClCompile Include="ui\control\UI.ControlBase.ixx" />
+    <ClCompile Include="ui\page\UI.MainPage-Define.ixx" />
+    <ClCompile Include="ui\page\UI.MainPage-Download.ixx" />
+    <ClCompile Include="ui\page\UI.MainPage-Home.ixx" />
+    <ClCompile Include="ui\page\UI.MainPage.ixx" />
+    <ClCompile Include="ui\page\UI.PageBase.ixx" />
     <ClCompile Include="ui\UI.MainWindow.cpp" />
     <ClCompile Include="ui\UI.MainWindow.ixx" />
     <ClCompile Include="ui\UI.WindowBase.cpp" />

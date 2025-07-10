@@ -101,12 +101,17 @@ namespace ui
 			D2D1::HwndRenderTargetProperties(m_hWnd, size),
 			&m_pRenderTarget
 		);
-		return hr;
+		if (FAILED(hr))
+		{
+			return hr;
+		}
+		return onCreateDeviceResources();
 	}
 
 	void WindowBase::releaseDeviceResources()
 	{
 		safe_release(&m_pRenderTarget);
+		onDiscardDeviceResources();
 	}
 
 	HWND WindowBase::createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,

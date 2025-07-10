@@ -16,6 +16,9 @@
     <Filter Include="scheduler">
       <UniqueIdentifier>{9d7fbf77-8e43-4d75-a99f-100fe499fee1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="state_machine">
+      <UniqueIdentifier>{d7d8dc34-a218-45de-ad04-ec016ab45be3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="header_units\sys_defs.h">
@@ -86,6 +89,9 @@
     </ClCompile>
     <ClCompile Include="utility\Utility.SystemInfo.ixx">
       <Filter>utility</Filter>
+    </ClCompile>
+    <ClCompile Include="state_machine\StateMachine.ixx">
+      <Filter>state_machine</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

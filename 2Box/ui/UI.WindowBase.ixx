@@ -31,6 +31,8 @@ namespace ui
 		void destroyWindow();
 		void setExitAppWhenWindowDestroyed(bool exit) { m_bIsExitAppWhenWindowDestroyed = exit; }
 		HWND getHandle() const { return m_hWnd; }
+		float physicalToDevice() const { return m_physicalToDevice; }
+		float deviceToPhysical() const { return m_deviceToPhysical; }
 		D2D_RECT_F getRect() const;
 
 	protected:
@@ -43,6 +45,15 @@ namespace ui
 
 	protected:
 		using HResult = HRESULT;
+
+		virtual HResult onCreateDeviceResources()
+		{
+			return S_OK;
+		}
+
+		virtual void onDiscardDeviceResources()
+		{
+		}
 
 		virtual void onResize(std::uint32_t width, std::uint32_t height)
 		{
