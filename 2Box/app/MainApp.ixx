@@ -9,62 +9,101 @@ export int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevI
 export class MainApp
 {
 public:
-	static MainApp& getInstance()
-	{
-		static MainApp sApp;
-		return sApp;
-	}
-
 	static constexpr std::wstring_view appName{L"2Box"};
 	static constexpr std::string_view appNameA{"2Box"};
 
-	static HINSTANCE getModuleInstance()
+public:
+	HINSTANCE moduleInstance() const
 	{
-		return getInstance().m_hInstance;
+		return m_hInstance;
 	}
 
-	static const std::wstring& getCmdLine()
+	std::wstring_view cmdLine() const
 	{
-		return getInstance().m_strCmdLine;
+		return m_strCmdLine;
 	}
 
-	static int getCmdShow()
+	int cmdShow() const
 	{
-		return getInstance().m_nCmdShow;
+		return m_nCmdShow;
 	}
 
-	static ID2D1Factory* getD2D1Factory()
+	ID2D1Factory* d2d1Factory() const
 	{
-		return getInstance().m_pDirect2dFactory;
-	}
-	
-	static IDWriteFactory* getDWriteFactory()
-	{
-		return getInstance().m_pDWriteFactory;
+		return m_pDirect2dFactory;
 	}
 
-	static std::wstring getFullName()
+	IDWriteFactory* dWriteFactory() const
 	{
-		return getInstance().m_exeFullName;
+		return m_pDWriteFactory;
 	}
 
-	static std::wstring getDir()
+	std::wstring_view exeFullName() const
 	{
-		return getInstance().m_exeDir;
+		return m_exeFullName;
 	}
 
-	static auto get_scheduler()
+	std::wstring_view exeDir() const
 	{
-		return sched::Scheduler{&getInstance().m_eventLoop};
+		return m_exeDir;
 	}
+
+	// ReSharper disable CppInconsistentNaming
+	auto get_scheduler()
+	{
+		return sched::Scheduler{&m_eventLoop};
+	}
+
+	// ReSharper restore CppInconsistentNaming
 
 private:
-	MainApp();
-	~MainApp();
-
 	friend int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow);
-	void initialize(HINSTANCE hInstance, std::wstring_view lpCmdLine, int nCmdShow);
-	void runMessageLoop();
+
+	MainApp(HINSTANCE hInstance, std::wstring_view lpCmdLine, int nCmdShow)
+	{
+		HRESULT hr = CoInitialize(nullptr);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("CoInitialize fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+
+		hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pDirect2dFactory);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("D2D1CreateFactory fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+
+		hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&m_pDWriteFactory));
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("DWriteCreateFactory fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+
+		m_hInstance = hInstance;
+		m_strCmdLine = lpCmdLine;
+		m_nCmdShow = nCmdShow;
+
+		wchar_t szFullName[MAX_PATH + 1] = {0};
+		GetModuleFileNameW(nullptr, szFullName, MAX_PATH);
+		m_exeFullName = szFullName;
+
+		namespace fs = std::filesystem;
+		const fs::path fsPath = fs::absolute(fs::path(m_exeFullName));
+		m_exeDir = fsPath.parent_path().native();
+	}
+
+	~MainApp()
+	{
+		safe_release(&m_pDWriteFactory);
+		safe_release(&m_pDirect2dFactory);
+		CoUninitialize();
+	}
+
+	void runMessageLoop()
+	{
+		m_eventLoop.run();
+	}
+
 private:
 	HINSTANCE m_hInstance{nullptr};
 	std::wstring m_strCmdLine;
@@ -75,3 +114,10 @@ private:
 	IDWriteFactory* m_pDWriteFactory{nullptr};
 	sched::EventLoopForWinUi m_eventLoop;
 };
+
+MainApp* g_app{nullptr};
+
+export MainApp& app()
+{
+	return *g_app;
+}

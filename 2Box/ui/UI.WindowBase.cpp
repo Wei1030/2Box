@@ -96,7 +96,7 @@ namespace ui
 			rc.bottom - rc.top
 		);
 		// Create a Direct2D render target.
-		const HRESULT hr = MainApp::getD2D1Factory()->CreateHwndRenderTarget(
+		const HRESULT hr = app().d2d1Factory()->CreateHwndRenderTarget(
 			D2D1::RenderTargetProperties(),
 			D2D1::HwndRenderTargetProperties(m_hWnd, size),
 			&m_pRenderTarget
@@ -114,18 +114,7 @@ namespace ui
 	{
 		return CreateWindowExW(dwExStyle, MainApp::appName.data(), lpWindowName, dwStyle,
 		                       X, Y, nWidth, nHeight, hWndParent, hMenu,
-		                       MainApp::getModuleInstance(), this);
-	}
-
-	void WindowBase::onResize(std::uint32_t width, std::uint32_t height)
-	{
-		if (m_pRenderTarget)
-		{
-			// Note: This method can fail, but it's okay to ignore the
-			// error here, because the error will be returned again
-			// the next time EndDraw is called.
-			m_pRenderTarget->Resize(D2D1::SizeU(width, height));
-		}
+		                       app().moduleInstance(), this);
 	}
 
 	HRESULT WindowBase::onRender()
@@ -135,6 +124,17 @@ namespace ui
 		m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
 
 		return m_pRenderTarget->EndDraw();
+	}
+
+	void WindowBase::resize(std::uint32_t width, std::uint32_t height) const
+	{
+		if (m_pRenderTarget)
+		{
+			// Note: This method can fail, but it's okay to ignore the
+			// error here, because the error will be returned again
+			// the next time EndDraw is called.
+			m_pRenderTarget->Resize(D2D1::SizeU(width, height));
+		}
 	}
 
 	void WindowBase::onDestroy()
@@ -154,11 +154,11 @@ namespace ui
 			{
 				WNDCLASSEXW wndClsEx = {sizeof(WNDCLASSEXW)};
 				wndClsEx.style = CS_HREDRAW | CS_VREDRAW;
-				wndClsEx.lpfnWndProc = &WindowBase::WndProc;
+				wndClsEx.lpfnWndProc = &WindowBase::wndProc;
 				wndClsEx.cbClsExtra = 0;
 				wndClsEx.cbWndExtra = sizeof(std::uintptr_t);
-				wndClsEx.hInstance = MainApp::getModuleInstance();
-				wndClsEx.hIcon = LoadIcon(MainApp::getModuleInstance(), MAKEINTRESOURCE(IDI_APP_ICON));
+				wndClsEx.hInstance = app().moduleInstance();
+				wndClsEx.hIcon = LoadIcon(app().moduleInstance(), MAKEINTRESOURCE(IDI_APP_ICON));
 				wndClsEx.hbrBackground = nullptr;
 				wndClsEx.lpszMenuName = nullptr;
 				wndClsEx.hCursor = LoadCursor(nullptr, IDI_APPLICATION);
@@ -173,7 +173,7 @@ namespace ui
 		[[maybe_unused]] static RegisterWndClsHelper initOnce{};
 	}
 
-	LRESULT WindowBase::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+	LRESULT WindowBase::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		if (message == WM_CREATE)
 		{
@@ -190,6 +190,7 @@ namespace ui
 					{
 						const std::uint32_t width = LOWORD(lParam);
 						const std::uint32_t height = HIWORD(lParam);
+						pWnd->resize(width, height);
 						pWnd->onResize(width, height);
 					}
 					return 0;

@@ -1,3 +1,4 @@
+// ReSharper disable CppUnusedIncludeDirective
 #pragma once
 #ifndef _SYS_DEFS_H_
 #define _SYS_DEFS_H_
@@ -10,6 +11,12 @@
 #include <tlhelp32.h>
 #include <winhttp.h>
 #include <dbghelp.h>
+#if defined(_MSC_VER) && defined(__INTELLISENSE__)
+#pragma message("Just for IntelliSense. You should not see this message!")
+// msvc的INTELLISENSE在模块中无法解析__declspec(nothrow)
+// 定义这个宏专门伺候__INTELLISENSE__
+#define COM_STDMETHOD_CAN_THROW
+#endif
 #include <d2d1.h>
 #include <dwrite.h>
 
