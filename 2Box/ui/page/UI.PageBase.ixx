@@ -1,6 +1,7 @@
 export module UI.PageBase;
 
 import "sys_defs.h";
+export import UI.WindowBase;
 
 namespace ui
 {
@@ -9,12 +10,14 @@ namespace ui
 	public:
 		virtual ~PageBase() = default;
 
-		virtual HRESULT onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) { return S_OK; }
+		virtual HRESULT onCreateDeviceResources(const RenderContext& renderCtx) { return S_OK; }
 
 		virtual void onDiscardDeviceResources()
 		{
 		}
 
-		virtual HRESULT render(ID2D1HwndRenderTarget* renderTarget) { return S_OK; }
+		virtual void render(const RenderContext& renderCtx)
+		{
+		}
 	};
 }

@@ -45,6 +45,9 @@ namespace ui
 
 	WindowBase::HResult MainWindow::onRender()
 	{
-		return currentPage().render(m_pRenderTarget);
+		const RenderContext& ctx = renderContext();
+		ctx.renderTarget->BeginDraw();
+		currentPage().render(ctx);
+		return ctx.renderTarget->EndDraw();
 	}
 }

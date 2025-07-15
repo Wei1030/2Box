@@ -5,6 +5,24 @@ import "sys_defs.h";
 
 namespace ui
 {
+	export struct RenderContext
+	{
+		RenderContext() = default;
+		RenderContext(const RenderContext& rhs) = delete;
+		RenderContext& operator=(const RenderContext& rhs) = delete;
+		RenderContext(RenderContext&& rhs) = delete;
+		RenderContext& operator=(RenderContext&& rhs) = delete;
+
+		~RenderContext()
+		{
+			safe_release(&renderTarget);
+			safe_release(&brush);
+		}
+
+		ID2D1HwndRenderTarget* renderTarget{nullptr};
+		ID2D1SolidColorBrush* brush{nullptr};
+	};
+
 	export class WindowBase
 	{
 	public:
@@ -30,14 +48,15 @@ namespace ui
 		void show(int nCmdShow = SW_SHOW) const;
 		void destroyWindow();
 		void setExitAppWhenWindowDestroyed(bool exit) { m_bIsExitAppWhenWindowDestroyed = exit; }
-		HWND getHandle() const { return m_hWnd; }
+		HWND nativeHandle() const { return m_hWnd; }
 		float physicalToDevice() const { return m_physicalToDevice; }
 		float deviceToPhysical() const { return m_deviceToPhysical; }
-		D2D_RECT_F getRect() const;
+		D2D_RECT_F rect() const;
 
 	protected:
 		HRESULT prepareDeviceResources();
 		void releaseDeviceResources();
+		const RenderContext& renderContext() const { return m_renderCtx; }
 
 	private:
 		HWND createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
@@ -71,7 +90,7 @@ namespace ui
 		static LRESULT CALLBACK wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 	protected:
-		ID2D1HwndRenderTarget* m_pRenderTarget{nullptr};
+		RenderContext m_renderCtx{};
 		float m_physicalToDevice{1.f};
 		float m_deviceToPhysical{1.f};
 

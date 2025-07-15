@@ -48,7 +48,7 @@ namespace ui
 		HResult createDeviceResourcesForAllPages(std::integer_sequence<std::uint8_t, Is...>)
 		{
 			HResult hr;
-			((hr = m_pages.stateCtx<static_cast<MainPageType>(Is)>().onCreateDeviceResources(m_pRenderTarget), FAILED(hr)) || ...);
+			((hr = m_pages.stateCtx<static_cast<MainPageType>(Is)>().onCreateDeviceResources(renderContext()), FAILED(hr)) || ...);
 			return hr;
 		}
 

@@ -3,7 +3,6 @@ export module UI.MainPage:Download;
 import "sys_defs.h";
 import MainApp;
 import StateMachine;
-import UI.WindowBase;
 import UI.PageBase;
 
 import :Define;
@@ -39,17 +38,12 @@ namespace ui
 			safe_release(&m_pTextFormat);
 		}
 
-		virtual HRESULT onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
+		virtual HRESULT onCreateDeviceResources(const RenderContext& renderCtx) override
 		{
+			const auto& [renderTarget, _] = renderCtx;
 			HRESULT hr;
 			do
 			{
-				hr = renderTarget->CreateSolidColorBrush(D2D1::ColorF(0xE0E5EC), &m_pTrackBrush);
-				if (FAILED(hr))
-				{
-					break;
-				}
-
 				D2D1_GRADIENT_STOP gradientStops[2] = {
 					{0.0f, D2D1::ColorF(0x4A9DF8)},
 					{1.0f, D2D1::ColorF(0x6AC0FF)}
@@ -73,12 +67,6 @@ namespace ui
 				{
 					break;
 				}
-
-				hr = renderTarget->CreateSolidColorBrush(D2D1::ColorF(0x333333), &m_pTextBrush);
-				if (FAILED(hr))
-				{
-					break;
-				}
 			}
 			while (false);
 
@@ -91,15 +79,13 @@ namespace ui
 
 		virtual void onDiscardDeviceResources() override
 		{
-			safe_release(&m_pTextBrush);
 			safe_release(&m_pProgressBrush);
 			safe_release(&m_pGradientStops);
-			safe_release(&m_pTrackBrush);
 		}
 
-		virtual HRESULT render(ID2D1HwndRenderTarget* renderTarget) override
+		virtual void render(const RenderContext& renderCtx) override
 		{
-			renderTarget->BeginDraw();
+			const auto& [renderTarget, solidBrush] = renderCtx;
 			renderTarget->Clear(D2D1::ColorF(0xF5F7FA));
 			auto size = renderTarget->GetSize();
 
@@ -117,7 +103,8 @@ namespace ui
 			D2D1_ROUNDED_RECT trackRect = D2D1::RoundedRect(
 				D2D1::RectF(barX, barY, barX + progressBarWidth, barY + progressBarHeight),
 				4.0f, 4.0f);
-			renderTarget->FillRoundedRectangle(&trackRect, m_pTrackBrush);
+			solidBrush->SetColor(D2D1::ColorF(0xE0E5EC));
+			renderTarget->FillRoundedRectangle(&trackRect, solidBrush);
 
 			m_pProgressBrush->SetEndPoint(D2D1::Point2F(progressBarWidth, 0));
 
@@ -131,20 +118,18 @@ namespace ui
 			// 绘制文本标签
 			std::wstring progressText = std::format(L"任务进度: {}%", 45);
 
-			D2D1_RECT_F textRect = D2D1::RectF(barX, barY - 30, barX + progressBarWidth, barY);
+			D2D1_RECT_F textRect = D2D1::RectF(barX, barY - 30 * physicalToDevice, barX + progressBarWidth, barY);
+			solidBrush->SetColor(D2D1::ColorF(0x333333));
 			renderTarget->DrawTextW(progressText.c_str(),
 			                        static_cast<UINT32>(progressText.length()),
 			                        m_pTextFormat,
 			                        &textRect,
-			                        m_pTextBrush);
-			return renderTarget->EndDraw();
+			                        solidBrush);
 		}
 
 	private:
-		ID2D1SolidColorBrush* m_pTrackBrush{nullptr};
 		ID2D1GradientStopCollection* m_pGradientStops{nullptr};
 		ID2D1LinearGradientBrush* m_pProgressBrush{nullptr};
-		ID2D1SolidColorBrush* m_pTextBrush{nullptr};
 		IDWriteTextFormat* m_pTextFormat{nullptr};
 	};
 }

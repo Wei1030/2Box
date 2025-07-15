@@ -3,7 +3,6 @@ export module UI.MainPage:Home;
 import "sys_defs.h";
 import :Define;
 import StateMachine;
-import UI.WindowBase;
 import UI.PageBase;
 
 namespace ui
@@ -26,11 +25,9 @@ namespace ui
 		{
 		}
 
-		virtual HRESULT render(ID2D1HwndRenderTarget* renderTarget) override
+		virtual void render(const RenderContext& renderCtx) override
 		{
-			renderTarget->BeginDraw();
-			renderTarget->Clear(D2D1::ColorF(0xFFFFFF));
-			return renderTarget->EndDraw();
+			renderCtx.renderTarget->Clear(D2D1::ColorF(0xFFFFFF));
 		}
 	};
 }

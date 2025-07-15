@@ -49,8 +49,11 @@ namespace ui
 
 	WindowBase::~WindowBase()
 	{
-		releaseDeviceResources();
-		destroyWindow();
+		if (m_hWnd)
+		{
+			DestroyWindow(m_hWnd);
+			m_hWnd = nullptr;
+		}
 	}
 
 	void WindowBase::show(int nCmdShow /*= SW_SHOW*/) const
@@ -64,6 +67,9 @@ namespace ui
 
 	void WindowBase::destroyWindow()
 	{
+		safe_release(&m_renderCtx.renderTarget);
+		safe_release(&m_renderCtx.brush);
+
 		if (m_hWnd)
 		{
 			DestroyWindow(m_hWnd);
@@ -71,7 +77,7 @@ namespace ui
 		}
 	}
 
-	D2D_RECT_F WindowBase::getRect() const
+	D2D_RECT_F WindowBase::rect() const
 	{
 		RECT rc;
 		GetClientRect(m_hWnd, &rc);
@@ -80,7 +86,7 @@ namespace ui
 
 	HRESULT WindowBase::prepareDeviceResources()
 	{
-		if (m_pRenderTarget)
+		if (m_renderCtx.renderTarget)
 		{
 			return S_OK;
 		}
@@ -96,11 +102,16 @@ namespace ui
 			rc.bottom - rc.top
 		);
 		// Create a Direct2D render target.
-		const HRESULT hr = app().d2d1Factory()->CreateHwndRenderTarget(
+		HRESULT hr = app().d2d1Factory()->CreateHwndRenderTarget(
 			D2D1::RenderTargetProperties(),
 			D2D1::HwndRenderTargetProperties(m_hWnd, size),
-			&m_pRenderTarget
+			&m_renderCtx.renderTarget
 		);
+		if (FAILED(hr))
+		{
+			return hr;
+		}
+		hr = m_renderCtx.renderTarget->CreateSolidColorBrush(D2D1::ColorF{D2D1::ColorF::White}, &m_renderCtx.brush);
 		if (FAILED(hr))
 		{
 			return hr;
@@ -110,7 +121,8 @@ namespace ui
 
 	void WindowBase::releaseDeviceResources()
 	{
-		safe_release(&m_pRenderTarget);
+		safe_release(&m_renderCtx.renderTarget);
+		safe_release(&m_renderCtx.brush);
 		onDiscardDeviceResources();
 	}
 
@@ -124,21 +136,21 @@ namespace ui
 
 	HRESULT WindowBase::onRender()
 	{
-		m_pRenderTarget->BeginDraw();
-		m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-		m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+		m_renderCtx.renderTarget->BeginDraw();
+		m_renderCtx.renderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+		m_renderCtx.renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
 
-		return m_pRenderTarget->EndDraw();
+		return m_renderCtx.renderTarget->EndDraw();
 	}
 
 	void WindowBase::resize(std::uint32_t width, std::uint32_t height) const
 	{
-		if (m_pRenderTarget)
+		if (m_renderCtx.renderTarget)
 		{
 			// Note: This method can fail, but it's okay to ignore the
 			// error here, because the error will be returned again
 			// the next time EndDraw is called.
-			m_pRenderTarget->Resize(D2D1::SizeU(width, height));
+			m_renderCtx.renderTarget->Resize(D2D1::SizeU(width, height));
 		}
 	}
 
