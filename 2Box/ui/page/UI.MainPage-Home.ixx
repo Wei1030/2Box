@@ -25,7 +25,7 @@ namespace ui
 		{
 		}
 
-		virtual void render(const RenderContext& renderCtx) override
+		virtual void draw(const RenderContext& renderCtx) override
 		{
 			renderCtx.renderTarget->Clear(D2D1::ColorF(0xFFFFFF));
 		}

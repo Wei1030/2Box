@@ -87,6 +87,9 @@
     <ClCompile Include="ui\page\UI.PageBase.ixx">
       <Filter>src\ui\page</Filter>
     </ClCompile>
+    <ClCompile Include="ui\control\UI.LoadingIndicator.ixx">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\embed_dll.rc">

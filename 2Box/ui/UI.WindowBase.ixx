@@ -5,6 +5,13 @@ import "sys_defs.h";
 
 namespace ui
 {
+	export struct DpiInfo
+	{
+		float dpi{96.f};
+		float physicalToDevice{1.f};
+		float deviceToPhysical{1.f};
+	};
+
 	export struct RenderContext
 	{
 		RenderContext() = default;
@@ -21,6 +28,14 @@ namespace ui
 
 		ID2D1HwndRenderTarget* renderTarget{nullptr};
 		ID2D1SolidColorBrush* brush{nullptr};
+		DpiInfo* dpiInfo{nullptr};
+	};
+
+	export struct RectChangeContext
+	{
+		D2D_RECT_U physicalRc;
+		D2D_RECT_F deviceRc;
+		DpiInfo* dpiInfo;
 	};
 
 	export class WindowBase
@@ -44,14 +59,21 @@ namespace ui
 	public:
 		virtual ~WindowBase();
 
+		WindowBase(const WindowBase&) = delete;
+		WindowBase& operator=(const WindowBase&) = delete;
+		WindowBase(WindowBase&&) = delete;
+		WindowBase& operator=(WindowBase&&) = delete;
+
+		using HResult = HRESULT;
+
 	public:
 		void show(int nCmdShow = SW_SHOW) const;
 		void destroyWindow();
 		void setExitAppWhenWindowDestroyed(bool exit) { m_bIsExitAppWhenWindowDestroyed = exit; }
 		HWND nativeHandle() const { return m_hWnd; }
-		float physicalToDevice() const { return m_physicalToDevice; }
-		float deviceToPhysical() const { return m_deviceToPhysical; }
-		D2D_RECT_F rect() const;
+		const DpiInfo& dpiInfo() const { return m_dpiInfo; }
+		D2D_RECT_F physicalRect() const;
+		void setPhysicalRect(const D2D_RECT_F& rect);
 
 	protected:
 		HRESULT prepareDeviceResources();
@@ -63,7 +85,9 @@ namespace ui
 		                          int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu);
 
 	protected:
-		using HResult = HRESULT;
+		virtual void onResize(const RectChangeContext& ctx)
+		{
+		}
 
 		virtual HResult onCreateDeviceResources()
 		{
@@ -74,14 +98,11 @@ namespace ui
 		{
 		}
 
-		virtual void onResize(std::uint32_t width, std::uint32_t height)
-		{
-		}
-
 		virtual HResult onRender();
 
 	private:
-		void resize(std::uint32_t width, std::uint32_t height) const;
+		void updateDpi();
+		void resize(std::uint32_t width, std::uint32_t height);
 		// 这个不做成虚函数，因为窗口有可能在基类析构中销毁，此时无法调用到子类的虚函数。索性不要这个时机了，反正有子类析构可以用
 		void onDestroy();
 
@@ -90,9 +111,8 @@ namespace ui
 		static LRESULT CALLBACK wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 	protected:
+		DpiInfo m_dpiInfo{};
 		RenderContext m_renderCtx{};
-		float m_physicalToDevice{1.f};
-		float m_deviceToPhysical{1.f};
 
 	private:
 		HWND m_hWnd{nullptr};

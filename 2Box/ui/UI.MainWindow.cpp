@@ -33,6 +33,11 @@ namespace ui
 		changePageTo<MainPageType::Download>();
 	}
 
+	void MainWindow::onResize(const RectChangeContext& ctx)
+	{
+		resizeAllPages(std::make_integer_sequence<std::uint8_t, static_cast<std::uint8_t>(MainPageType::TotalCount)>(), ctx);
+	}
+
 	WindowBase::HResult MainWindow::onCreateDeviceResources()
 	{
 		return createDeviceResourcesForAllPages(std::make_integer_sequence<std::uint8_t, static_cast<std::uint8_t>(MainPageType::TotalCount)>());
@@ -47,7 +52,7 @@ namespace ui
 	{
 		const RenderContext& ctx = renderContext();
 		ctx.renderTarget->BeginDraw();
-		currentPage().render(ctx);
+		currentPage().draw(ctx);
 		return ctx.renderTarget->EndDraw();
 	}
 }

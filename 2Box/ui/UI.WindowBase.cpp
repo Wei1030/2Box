@@ -22,14 +22,8 @@ namespace ui
 		{
 			throw std::runtime_error(std::format("CreateWindowExW fail , error code: {}", GetLastError()));
 		}
-		if (win32_api::GetDpiForWindow)
-		{
-			if (const unsigned int dpi = win32_api::GetDpiForWindow(m_hWnd))
-			{
-				m_physicalToDevice = 96.f / dpi;
-				m_deviceToPhysical = dpi / 96.f;
-			}
-		}
+		updateDpi();
+		m_renderCtx.dpiInfo = &m_dpiInfo;
 	}
 
 	// WindowBase::WindowBase(WindowBase* parentWnd, const WindowCreateParam& param)
@@ -77,11 +71,22 @@ namespace ui
 		}
 	}
 
-	D2D_RECT_F WindowBase::rect() const
+	D2D_RECT_F WindowBase::physicalRect() const
 	{
 		RECT rc;
 		GetClientRect(m_hWnd, &rc);
-		return D2D1::RectF(0, 0, rc.right * m_physicalToDevice, rc.bottom * m_physicalToDevice);
+		return D2D1::RectF(0, 0, static_cast<float>(rc.right), static_cast<float>(rc.bottom));
+	}
+
+	void WindowBase::setPhysicalRect(const D2D_RECT_F& rect)
+	{
+		SetWindowPos(m_hWnd,
+		             nullptr,
+		             static_cast<int>(rect.left),
+		             static_cast<int>(rect.top),
+		             static_cast<int>(rect.right - rect.left),
+		             static_cast<int>(rect.bottom - rect.top),
+		             SWP_NOZORDER | SWP_NOACTIVATE);
 	}
 
 	HRESULT WindowBase::prepareDeviceResources()
@@ -143,7 +148,32 @@ namespace ui
 		return m_renderCtx.renderTarget->EndDraw();
 	}
 
-	void WindowBase::resize(std::uint32_t width, std::uint32_t height) const
+	void WindowBase::updateDpi()
+	{
+		if (win32_api::GetDpiForWindow)
+		{
+			if (const unsigned int dpi = win32_api::GetDpiForWindow(m_hWnd))
+			{
+				m_dpiInfo.dpi = static_cast<float>(dpi);
+				m_dpiInfo.physicalToDevice = 96.f / dpi;
+				m_dpiInfo.deviceToPhysical = dpi / 96.f;
+			}
+			else
+			{
+				m_dpiInfo.dpi = 96.f;
+				m_dpiInfo.physicalToDevice = 1.f;
+				m_dpiInfo.deviceToPhysical = 1.f;
+			}
+		}
+		else
+		{
+			m_dpiInfo.dpi = 96.f;
+			m_dpiInfo.physicalToDevice = 1.f;
+			m_dpiInfo.deviceToPhysical = 1.f;
+		}
+	}
+
+	void WindowBase::resize(std::uint32_t width, std::uint32_t height)
 	{
 		if (m_renderCtx.renderTarget)
 		{
@@ -152,6 +182,11 @@ namespace ui
 			// the next time EndDraw is called.
 			m_renderCtx.renderTarget->Resize(D2D1::SizeU(width, height));
 		}
+		onResize({
+			D2D1::RectU(0, 0, width, height),
+			D2D1::RectF(0.f, 0.f, width * m_dpiInfo.physicalToDevice, height * m_dpiInfo.physicalToDevice),
+			&m_dpiInfo
+		});
 	}
 
 	void WindowBase::onDestroy()
@@ -208,7 +243,6 @@ namespace ui
 						const std::uint32_t width = LOWORD(lParam);
 						const std::uint32_t height = HIWORD(lParam);
 						pWnd->resize(width, height);
-						pWnd->onResize(width, height);
 					}
 					return 0;
 				case WM_DISPLAYCHANGE:
@@ -216,6 +250,13 @@ namespace ui
 						InvalidateRect(hWnd, nullptr, FALSE);
 					}
 					return 0;
+				case WM_DPICHANGED:
+					{
+						pWnd->updateDpi();
+						RECT* pNewRc = reinterpret_cast<RECT*>(lParam);
+						pWnd->setPhysicalRect(D2D1::RectF(static_cast<float>(pNewRc->left), static_cast<float>(pNewRc->top), static_cast<float>(pNewRc->right), static_cast<float>(pNewRc->bottom)));
+					}
+					break;
 				case WM_PAINT:
 					{
 						if (SUCCEEDED(pWnd->prepareDeviceResources()))

@@ -15,6 +15,8 @@ namespace ui
 		MainWindow();
 
 	protected:
+		virtual void onResize(const RectChangeContext& ctx) override;
+		
 		virtual HResult onCreateDeviceResources() override;
 
 		virtual void onDiscardDeviceResources() override;
@@ -42,6 +44,12 @@ namespace ui
 			}
 
 			throw std::runtime_error("Unknown state");
+		}
+
+		template <std::uint8_t... Is>
+		void resizeAllPages(std::integer_sequence<std::uint8_t, Is...>, const RectChangeContext& ctx)
+		{
+			(m_pages.stateCtx<static_cast<MainPageType>(Is)>().onResize(ctx), ...);
 		}
 
 		template <std::uint8_t... Is>
