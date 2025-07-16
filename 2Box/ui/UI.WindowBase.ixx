@@ -28,14 +28,12 @@ namespace ui
 
 		ID2D1HwndRenderTarget* renderTarget{nullptr};
 		ID2D1SolidColorBrush* brush{nullptr};
-		DpiInfo* dpiInfo{nullptr};
 	};
 
 	export struct RectChangeContext
 	{
 		D2D_RECT_U physicalRc;
 		D2D_RECT_F deviceRc;
-		DpiInfo* dpiInfo;
 	};
 
 	export class WindowBase

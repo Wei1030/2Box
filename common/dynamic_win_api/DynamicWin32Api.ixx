@@ -98,5 +98,6 @@ namespace win32_api
 	export
 	{
 		DECL_WIN32_API(USER32_LIB_NAME, GetDpiForWindow);
+		DECL_WIN32_API(USER32_LIB_NAME, EnableNonClientDpiScaling);
 	}
 }

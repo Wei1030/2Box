@@ -45,7 +45,7 @@ namespace ui
 	public:
 		virtual WindowBase::HResult onCreateDeviceResources(const RenderContext& renderCtx) override
 		{
-			const auto& [renderTarget, solidBrush, dpiInfo] = renderCtx;
+			const auto& [renderTarget, solidBrush] = renderCtx;
 			WindowBase::HResult hr;
 			do
 			{
@@ -77,7 +77,7 @@ namespace ui
 
 		virtual void draw(const RenderContext& renderCtx) override
 		{
-			const auto& [renderTarget, solidBrush, dpiInfo] = renderCtx;
+			const auto& [renderTarget, solidBrush] = renderCtx;
 			renderTarget->PushLayer(D2D1::LayerParameters(m_bounds), m_layer);
 
 			renderTarget->SetTransform(D2D1::Matrix3x2F::Translation(m_bounds.left, m_bounds.top));

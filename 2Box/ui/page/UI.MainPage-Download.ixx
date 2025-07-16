@@ -50,13 +50,12 @@ namespace ui
 
 		virtual void draw(const RenderContext& renderCtx) override
 		{
-			const auto& [renderTarget, solidBrush, dpiInfo] = renderCtx;
-			const auto& [dpi, physicalToDevice, deviceToPhysical] = *dpiInfo;
+			const auto& [renderTarget, solidBrush] = renderCtx;
 			renderTarget->Clear(D2D1::ColorF(0xF5F7FA));
 			auto size = renderTarget->GetSize();
 
 			const float progressBarWidth = size.width / 2;
-			const float progressBarHeight = 25 * physicalToDevice;
+			constexpr float progressBarHeight = 8.f;
 			// 进度条位置(居中)
 			float barX = (size.width - progressBarWidth) / 2;
 			float barY = (size.height - progressBarHeight) / 2;
@@ -64,7 +63,7 @@ namespace ui
 			// 绘制背景轨道
 			D2D1_ROUNDED_RECT trackRect = D2D1::RoundedRect(
 				D2D1::RectF(barX, barY, barX + progressBarWidth, barY + progressBarHeight),
-				6.0f * physicalToDevice, 6.0f * physicalToDevice);
+				4.f, 4.f);
 			solidBrush->SetColor(D2D1::ColorF(0xE0E5EC));
 			renderTarget->FillRoundedRectangle(&trackRect, solidBrush);
 
@@ -76,7 +75,7 @@ namespace ui
 			// 绘制文本标签
 			std::wstring progressText = std::format(L"任务进度: {}%", 45);
 
-			D2D1_RECT_F textRect = D2D1::RectF(barX, barY - 30 * physicalToDevice, barX + progressBarWidth, barY);
+			D2D1_RECT_F textRect = D2D1::RectF(barX, barY - 30, barX + progressBarWidth, barY);
 			solidBrush->SetColor(D2D1::ColorF(0x333333));
 			renderTarget->DrawTextW(progressText.c_str(),
 			                        static_cast<UINT32>(progressText.length()),

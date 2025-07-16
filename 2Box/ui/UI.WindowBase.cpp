@@ -23,7 +23,6 @@ namespace ui
 			throw std::runtime_error(std::format("CreateWindowExW fail , error code: {}", GetLastError()));
 		}
 		updateDpi();
-		m_renderCtx.dpiInfo = &m_dpiInfo;
 	}
 
 	// WindowBase::WindowBase(WindowBase* parentWnd, const WindowCreateParam& param)
@@ -171,6 +170,11 @@ namespace ui
 			m_dpiInfo.physicalToDevice = 1.f;
 			m_dpiInfo.deviceToPhysical = 1.f;
 		}
+
+		if (m_renderCtx.renderTarget)
+		{
+			m_renderCtx.renderTarget->SetDpi(m_dpiInfo.dpi, m_dpiInfo.dpi);
+		}
 	}
 
 	void WindowBase::resize(std::uint32_t width, std::uint32_t height)
@@ -184,8 +188,7 @@ namespace ui
 		}
 		onResize({
 			D2D1::RectU(0, 0, width, height),
-			D2D1::RectF(0.f, 0.f, width * m_dpiInfo.physicalToDevice, height * m_dpiInfo.physicalToDevice),
-			&m_dpiInfo
+			D2D1::RectF(0.f, 0.f, width * m_dpiInfo.physicalToDevice, height * m_dpiInfo.physicalToDevice)
 		});
 	}
 
@@ -232,17 +235,41 @@ namespace ui
 			const LPCREATESTRUCTW pcs = reinterpret_cast<LPCREATESTRUCTW>(lParam);
 			SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pcs->lpCreateParams));
 		}
+		else if (message == WM_NCCREATE)
+		{
+			if (win32_api::EnableNonClientDpiScaling)
+			{
+				win32_api::EnableNonClientDpiScaling(hWnd);
+			}
+		}
 		else
 		{
 			if (WindowBase* pWnd = reinterpret_cast<WindowBase*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA)))
 			{
 				switch (message)
 				{
+				case WM_DESTROY:
+					{
+						pWnd->onDestroy();
+					}
+					return 0;
 				case WM_SIZE:
 					{
 						const std::uint32_t width = LOWORD(lParam);
 						const std::uint32_t height = HIWORD(lParam);
 						pWnd->resize(width, height);
+					}
+					return 0;
+				case WM_PAINT:
+					{
+						if (SUCCEEDED(pWnd->prepareDeviceResources()))
+						{
+							if (FAILED(pWnd->onRender()))
+							{
+								pWnd->releaseDeviceResources();
+							}
+						}
+						ValidateRect(hWnd, nullptr);
 					}
 					return 0;
 				case WM_DISPLAYCHANGE:
@@ -257,24 +284,6 @@ namespace ui
 						pWnd->setPhysicalRect(D2D1::RectF(static_cast<float>(pNewRc->left), static_cast<float>(pNewRc->top), static_cast<float>(pNewRc->right), static_cast<float>(pNewRc->bottom)));
 					}
 					break;
-				case WM_PAINT:
-					{
-						if (SUCCEEDED(pWnd->prepareDeviceResources()))
-						{
-							if (FAILED(pWnd->onRender()))
-							{
-								pWnd->releaseDeviceResources();
-							}
-						}
-						ValidateRect(hWnd, nullptr);
-					}
-					return 0;
-
-				case WM_DESTROY:
-					{
-						pWnd->onDestroy();
-					}
-					return 0;
 				default:
 					break;
 				}

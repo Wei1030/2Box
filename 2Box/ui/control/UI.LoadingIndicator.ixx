@@ -47,21 +47,20 @@ namespace ui
 
 		void drawImpl(const RenderContext& renderCtx) const
 		{
-			const auto& [renderTarget, solidBrush, dpiInfo] = renderCtx;
-			const auto& [dpi, physicalToDevice, deviceToPhysical] = *dpiInfo;
+			const auto& [renderTarget, solidBrush] = renderCtx;
 			const auto drawSize = size();
 
 			// 绘制背景
 			m_pLinearGradientBrush->SetEndPoint(D2D1::Point2F(drawSize.width, 0));
 			D2D1_ROUNDED_RECT fillRect = D2D1::RoundedRect(
 				D2D1::RectF(0, 0, drawSize.width, drawSize.height),
-				6.0f * physicalToDevice, 6.0f * physicalToDevice);
+				4.f, 4.f);
 			renderTarget->FillRoundedRectangle(&fillRect, m_pLinearGradientBrush);
 
 			// 绘制动画轨道
 			D2D1_ROUNDED_RECT shimmerRect = D2D1::RoundedRect(
-				D2D1::RectF(m_shimmerPosition, 0, m_shimmerPosition + 100 * physicalToDevice, drawSize.height),
-				6.0f * physicalToDevice, 6.0f * physicalToDevice);
+				D2D1::RectF(m_shimmerPosition, 0, m_shimmerPosition + drawSize.width, drawSize.height),
+				4.f, 4.f);
 			solidBrush->SetColor(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.4f));
 			renderTarget->FillRoundedRectangle(&shimmerRect, solidBrush);
 		}
