@@ -1,6 +1,7 @@
 export module UI.MainPage:Download;
 
 import "sys_defs.h";
+import std;
 import MainApp;
 import StateMachine;
 import UI.PageBase;
@@ -15,7 +16,7 @@ namespace ui
 	class TMainPageType<MainPageType, MainPageType::Download> final : public PageBase
 	{
 	public:
-		void OnEnter(WindowBase&)
+		void OnEnter(WindowBase& owner)
 		{
 			app().dWriteFactory()->CreateTextFormat(
 				L"Segoe UI",
@@ -26,6 +27,11 @@ namespace ui
 				14.0f,
 				L"",
 				&m_pTextFormat);
+
+			m_loadingIndicator.setAnimRequester([&owner](const D2D1_RECT_F&)
+			{
+				owner.invalidateRect();
+			});
 		}
 
 		sm::TNextState<MainPageType> OnUpdate(WindowBase&)
@@ -35,6 +41,7 @@ namespace ui
 
 		void OnExit(WindowBase&)
 		{
+			m_loadingIndicator.setAnimRequester(nullptr);
 			safe_release(&m_pTextFormat);
 		}
 

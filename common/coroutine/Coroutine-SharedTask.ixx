@@ -206,6 +206,16 @@ namespace coro
 			co_return co_await ExecAwaiter{executor};
 		}
 
+		static SharedTask reject(std::exception_ptr e)
+		{
+			std::rethrow_exception(e);
+			// ReSharper disable CppUnreachableCode
+			std::unreachable();
+			// 为了让这个函数成为协程,必须有协程相关关键字
+			co_return Resolver<T>{}.getValue();
+			// ReSharper restore CppUnreachableCode
+		}
+
 		struct AwaiterBase
 		{
 			PromisePtr<promise_type> promisePtr;
@@ -266,7 +276,7 @@ namespace coro
 			return MoveValueAwaiter{m_p};
 		}
 
-		decltype(auto) syncAwait()
+		void waitUntilDone() noexcept
 		{
 			struct OnewayTask
 			{
@@ -304,7 +314,11 @@ namespace coro
 				// wait until flag is not 1
 				flag.wait(1, std::memory_order::relaxed);
 			}
+		}
 
+		decltype(auto) syncAwait()
+		{
+			waitUntilDone();
 			return m_p->getValue();
 		}
 

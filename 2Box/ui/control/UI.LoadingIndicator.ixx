@@ -1,13 +1,41 @@
 export module UI.LoadingIndicator;
 
 import "sys_defs.h";
+import std;
 import MainApp;
 import UI.ControlBase;
+import Coroutine;
+import Scheduler;
 
 namespace ui
 {
 	export class LoadingIndicator final : public ControlTmplBase<LoadingIndicator>
 	{
+	public:
+		LoadingIndicator() : m_animTask(coro::SharedTask<void>::reject(std::make_exception_ptr(std::runtime_error("anim not start"))))
+		{
+		}
+
+		virtual ~LoadingIndicator()
+		{
+			stopAnim();
+		}
+
+		using AnimRequester = std::move_only_function<void(const D2D1_RECT_F&)>;
+
+		void setAnimRequester(AnimRequester animRequester)
+		{
+			m_animRequester = std::move(animRequester);
+			if (m_animRequester)
+			{
+				startAnim();
+			}
+			else
+			{
+				stopAnim();
+			}
+		}
+
 	private:
 		friend ControlTmplBase;
 
@@ -65,9 +93,51 @@ namespace ui
 			renderTarget->FillRoundedRectangle(&shimmerRect, solidBrush);
 		}
 
+		void startAnim()
+		{
+			stopAnim();
+			
+			m_animStopSource = std::stop_source{};
+			m_animTask = coro::start_and_shared(coro::co_with_cancellation(updateShimmerPosition(), m_animStopSource.get_token()));
+		}
+
+		void stopAnim()
+		{
+			m_animStopSource.request_stop();
+			m_animTask.waitUntilDone();
+		}
+
+		coro::LazyTask<void> updateShimmerPosition()
+		{
+			constexpr long long intervalMs = 1000 / 60;
+			constexpr float intervalSec = intervalMs / 1000.f;
+			constexpr float speed = 200.f;
+
+			while (true)
+			{
+				co_await sched::transfer_after(std::chrono::milliseconds{intervalMs}, app().get_scheduler());
+				if (!m_animRequester)
+				{
+					break;
+				}
+
+				const float width = size().width;
+				m_shimmerPosition += speed * intervalSec;
+				if (m_shimmerPosition >= width)
+				{
+					m_shimmerPosition = -width;
+				}
+
+				m_animRequester(m_bounds);
+			}
+		}
+
 	private:
 		ID2D1GradientStopCollection* m_pGradientStops{nullptr};
 		ID2D1LinearGradientBrush* m_pLinearGradientBrush{nullptr};
+		AnimRequester m_animRequester;
+		std::stop_source m_animStopSource{std::nostopstate};
+		coro::SharedTask<void> m_animTask;
 		float m_shimmerPosition{0.f};
 	};
 }

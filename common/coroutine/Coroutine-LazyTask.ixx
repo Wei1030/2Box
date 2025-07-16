@@ -143,6 +143,16 @@ namespace coro
 			co_return co_await ExecAwaiter{executor};
 		}
 
+		static LazyTask reject(std::exception_ptr e)
+		{
+			std::rethrow_exception(e);
+			// ReSharper disable CppUnreachableCode
+			std::unreachable();
+			// 为了让这个函数成为协程,必须有协程相关关键字
+			co_return Resolver<T>{}.getValue();
+			// ReSharper restore CppUnreachableCode
+		}
+
 		struct Awaiter
 		{
 			std::coroutine_handle<promise_type> coro;

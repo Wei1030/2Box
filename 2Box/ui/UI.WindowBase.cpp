@@ -108,6 +108,22 @@ namespace ui
 		             SWP_NOZORDER | SWP_NOACTIVATE);
 	}
 
+	void WindowBase::invalidateRect(const D2D_RECT_F& rect)
+	{
+		const RECT rc{
+			static_cast<int>(std::ceil(rect.left)),
+			static_cast<int>(std::ceil(rect.top)),
+			static_cast<int>(std::ceil(rect.right - rect.left)),
+			static_cast<int>(std::ceil(rect.bottom - rect.top))
+		};
+		InvalidateRect(m_hWnd, &rc, false);
+	}
+
+	void WindowBase::invalidateRect()
+	{
+		InvalidateRect(m_hWnd, nullptr, false);
+	}
+
 	HRESULT WindowBase::prepareDeviceResources()
 	{
 		if (m_renderCtx.renderTarget)
