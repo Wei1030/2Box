@@ -1,0 +1,10 @@
+﻿/obj/
+/bin/
+/.vs/
+/.idea/
+**/embed_dll/
+*.pdb
+*.idb
+*.user
+*.aps
+common.lib

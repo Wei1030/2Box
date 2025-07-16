@@ -70,6 +70,8 @@ namespace ui
 		void setExitAppWhenWindowDestroyed(bool exit) { m_bIsExitAppWhenWindowDestroyed = exit; }
 		HWND nativeHandle() const { return m_hWnd; }
 		const DpiInfo& dpiInfo() const { return m_dpiInfo; }
+		D2D_RECT_F rect() const;
+		void setRect(const D2D_RECT_F& rect);
 		D2D_RECT_F physicalRect() const;
 		void setPhysicalRect(const D2D_RECT_F& rect);
 

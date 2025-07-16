@@ -70,21 +70,41 @@ namespace ui
 		}
 	}
 
+	D2D_RECT_F WindowBase::rect() const
+	{
+		RECT rc;
+		GetWindowRect(m_hWnd, &rc);
+		const float physicalToDevice = m_dpiInfo.physicalToDevice;
+		return D2D1::RectF(rc.left * physicalToDevice, rc.top * physicalToDevice, rc.right * physicalToDevice, rc.bottom * physicalToDevice);
+	}
+
+	void WindowBase::setRect(const D2D_RECT_F& rect)
+	{
+		const float deviceToPhysical = m_dpiInfo.deviceToPhysical;
+		SetWindowPos(m_hWnd,
+		             nullptr,
+		             static_cast<int>(std::ceil(rect.left * deviceToPhysical)),
+		             static_cast<int>(std::ceil(rect.top * deviceToPhysical)),
+		             static_cast<int>(std::ceil((rect.right - rect.left) * deviceToPhysical)),
+		             static_cast<int>(std::ceil((rect.bottom - rect.top) * deviceToPhysical)),
+		             SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+
 	D2D_RECT_F WindowBase::physicalRect() const
 	{
 		RECT rc;
-		GetClientRect(m_hWnd, &rc);
-		return D2D1::RectF(0, 0, static_cast<float>(rc.right), static_cast<float>(rc.bottom));
+		GetWindowRect(m_hWnd, &rc);
+		return D2D1::RectF(static_cast<float>(rc.left), static_cast<float>(rc.top), static_cast<float>(rc.right), static_cast<float>(rc.bottom));
 	}
 
 	void WindowBase::setPhysicalRect(const D2D_RECT_F& rect)
 	{
 		SetWindowPos(m_hWnd,
 		             nullptr,
-		             static_cast<int>(rect.left),
-		             static_cast<int>(rect.top),
-		             static_cast<int>(rect.right - rect.left),
-		             static_cast<int>(rect.bottom - rect.top),
+		             static_cast<int>(std::ceil(rect.left)),
+		             static_cast<int>(std::ceil(rect.top)),
+		             static_cast<int>(std::ceil(rect.right - rect.left)),
+		             static_cast<int>(std::ceil(rect.bottom - rect.top)),
 		             SWP_NOZORDER | SWP_NOACTIVATE);
 	}
 

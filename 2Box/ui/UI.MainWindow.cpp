@@ -25,9 +25,13 @@ namespace ui
 	// 	co_return;
 	// }
 
+	static constexpr int DESIRED_WIDTH = 640;
+	static constexpr int DESIRED_HEIGHT = 480;
+
 	MainWindow::MainWindow() : WindowBase({MainApp::appName})
 	{
 		setExitAppWhenWindowDestroyed(true);
+		initWindowPosition();
 
 		m_pages.setCtx(this);
 		changePageTo<MainPageType::Download>();
@@ -54,5 +58,29 @@ namespace ui
 		ctx.renderTarget->BeginDraw();
 		currentPage().draw(ctx);
 		return ctx.renderTarget->EndDraw();
+	}
+
+	void MainWindow::initWindowPosition()
+	{
+		const auto physicalRc = physicalRect();
+		const float physicalWidth = physicalRc.right - physicalRc.left;
+		const float physicalHeight = physicalRc.bottom - physicalRc.top;
+
+		const float deviceToPhysical = dpiInfo().deviceToPhysical;
+		const float desiredPhysicalWidth = std::min(DESIRED_WIDTH * deviceToPhysical, physicalWidth);
+		const float desiredPhysicalHeight = std::min(DESIRED_HEIGHT * deviceToPhysical, physicalHeight);
+
+		const float diffWidth = physicalWidth - desiredPhysicalWidth;
+		const float diffHeight = physicalHeight - desiredPhysicalHeight;
+
+		const float desiredX = physicalRc.left + diffWidth * 0.5f;
+		const float desiredY = physicalRc.top + diffHeight * 0.5f;
+		
+		setPhysicalRect(D2D1::RectF(
+			desiredX,
+			desiredY,
+			desiredX + desiredPhysicalWidth,
+			desiredY + desiredPhysicalHeight
+		));
 	}
 }

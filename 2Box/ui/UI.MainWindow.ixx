@@ -16,12 +16,15 @@ namespace ui
 
 	protected:
 		virtual void onResize(const RectChangeContext& ctx) override;
-		
+
 		virtual HResult onCreateDeviceResources() override;
 
 		virtual void onDiscardDeviceResources() override;
 
 		virtual HResult onRender() override;
+
+	private:
+		void initWindowPosition();
 
 	private:
 		template <MainPageType PageType>
