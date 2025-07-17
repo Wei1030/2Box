@@ -13,45 +13,45 @@ public:
 	static constexpr std::string_view appNameA{"2Box"};
 
 public:
-	HINSTANCE moduleInstance() const
+	HINSTANCE moduleInstance() const noexcept
 	{
 		return m_hInstance;
 	}
 
-	std::wstring_view cmdLine() const
+	std::wstring_view cmdLine() const noexcept
 	{
 		return m_strCmdLine;
 	}
 
-	int cmdShow() const
+	int cmdShow() const noexcept
 	{
 		return m_nCmdShow;
 	}
 
-	ID2D1Factory* d2d1Factory() const
+	ID2D1Factory* d2d1Factory() const noexcept
 	{
 		return m_pDirect2dFactory;
 	}
 
-	IDWriteFactory* dWriteFactory() const
+	IDWriteFactory* dWriteFactory() const noexcept
 	{
 		return m_pDWriteFactory;
 	}
 
-	std::wstring_view exeFullName() const
+	std::wstring_view exeFullName() const noexcept
 	{
 		return m_exeFullName;
 	}
 
-	std::wstring_view exeDir() const
+	std::wstring_view exeDir() const noexcept
 	{
 		return m_exeDir;
 	}
 
 	// ReSharper disable CppInconsistentNaming
-	auto get_scheduler()
+	auto get_scheduler() const noexcept
 	{
-		return sched::Scheduler{&m_eventLoop};
+		return sched::Scheduler<sched::EventLoopForWinUi>{&m_eventLoop};
 	}
 
 	// ReSharper restore CppInconsistentNaming
@@ -112,12 +112,12 @@ private:
 	std::wstring m_exeDir;
 	ID2D1Factory* m_pDirect2dFactory{nullptr};
 	IDWriteFactory* m_pDWriteFactory{nullptr};
-	sched::EventLoopForWinUi m_eventLoop;
+	mutable sched::EventLoopForWinUi m_eventLoop;
 };
 
 MainApp* g_app{nullptr};
 
-export MainApp& app()
+export MainApp& app() noexcept
 {
 	return *g_app;
 }

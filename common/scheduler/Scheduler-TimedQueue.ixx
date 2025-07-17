@@ -573,20 +573,10 @@ namespace sched
 			addTimer(std::chrono::steady_clock::now() + duration, std::move(task));
 		}
 
-		void addTimer(unsigned int milliseconds, Task task)
-		{
-			addTimer(std::chrono::steady_clock::now() + std::chrono::milliseconds{milliseconds}, std::move(task));
-		}
-
 		template <typename Rep, typename Period>
 		void addTimerWithCancellation(std::chrono::duration<Rep, Period> duration, Task task, std::stop_token cancellationToken)
 		{
 			addTimerWithCancellation(std::chrono::steady_clock::now() + duration, std::move(task), std::move(cancellationToken));
-		}
-
-		void addTimerWithCancellation(unsigned int milliseconds, Task task, std::stop_token cancellationToken)
-		{
-			addTimerWithCancellation(std::chrono::steady_clock::now() + std::chrono::milliseconds{milliseconds}, std::move(task), std::move(cancellationToken));
 		}
 
 		void addTask(Task task)

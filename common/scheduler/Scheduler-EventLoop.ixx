@@ -50,30 +50,12 @@ namespace sched
 			static_cast<DerivedT*>(this)->notify();
 		}
 
-		void addTimer(unsigned int milliseconds, Task task)
-		{
-			{
-				std::lock_guard guard(m_queueLock);
-				m_timeQueue.addTimer(milliseconds, std::move(task));
-			}
-			static_cast<DerivedT*>(this)->notify();
-		}
-
 		template <typename Rep, typename Period>
 		void addTimer(std::chrono::duration<Rep, Period> duration, Task task, std::stop_token cancellationToken)
 		{
 			{
 				std::lock_guard guard(m_queueLock);
 				m_timeQueue.addTimerWithCancellation(duration, std::move(task), std::move(cancellationToken));
-			}
-			static_cast<DerivedT*>(this)->notify();
-		}
-
-		void addTimer(unsigned int milliseconds, Task task, std::stop_token cancellationToken)
-		{
-			{
-				std::lock_guard guard(m_queueLock);
-				m_timeQueue.addTimerWithCancellation(milliseconds, std::move(task), std::move(cancellationToken));
 			}
 			static_cast<DerivedT*>(this)->notify();
 		}
@@ -89,20 +71,6 @@ namespace sched
 				};
 				std::lock_guard guard(m_queueLock);
 				m_timeQueue.addTimer(duration, std::move(periodicTimer));
-			}
-			static_cast<DerivedT*>(this)->notify();
-		}
-
-		void addPeriodicTimer(unsigned int milliseconds, Task task)
-		{
-			{
-				auto periodicTimer = [this, milliseconds, task = std::move(task)]() mutable
-				{
-					task();
-					addPeriodicTimer(milliseconds, std::move(task));
-				};
-				std::lock_guard guard(m_queueLock);
-				m_timeQueue.addTimer(milliseconds, std::move(periodicTimer));
 			}
 			static_cast<DerivedT*>(this)->notify();
 		}
@@ -123,25 +91,6 @@ namespace sched
 				};
 				std::lock_guard guard(m_queueLock);
 				m_timeQueue.addTimerWithCancellation(duration, std::move(periodicTimer), std::move(cancellationToken));
-			}
-			static_cast<DerivedT*>(this)->notify();
-		}
-
-		void addPeriodicTimer(unsigned int milliseconds, Task task, std::stop_token cancellationToken)
-		{
-			{
-				auto periodicTimer = [this, milliseconds, task = std::move(task), token = cancellationToken]() mutable
-				{
-					// 能触发就说明刚刚判断过stop_requested,这里没必要再次判断
-					task();
-					// 执行完任务后需要再次判断
-					if (!token.stop_requested())
-					{
-						addPeriodicTimer(milliseconds, std::move(task), std::move(token));
-					}
-				};
-				std::lock_guard guard(m_queueLock);
-				m_timeQueue.addTimerWithCancellation(milliseconds, std::move(periodicTimer), std::move(cancellationToken));
 			}
 			static_cast<DerivedT*>(this)->notify();
 		}

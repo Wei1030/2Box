@@ -96,7 +96,7 @@ namespace ui
 		void startAnim()
 		{
 			stopAnim();
-			
+
 			m_animStopSource = std::stop_source{};
 			m_animTask = coro::start_and_shared(coro::co_with_cancellation(updateShimmerPosition(), m_animStopSource.get_token()));
 		}
@@ -109,9 +109,10 @@ namespace ui
 
 		coro::LazyTask<void> updateShimmerPosition()
 		{
-			constexpr long long intervalMs = 1000 / 60;
-			constexpr float intervalSec = intervalMs / 1000.f;
-			constexpr float speed = 200.f;
+			static constexpr std::uint64_t intervalMs = 1000 / 60;
+			static constexpr float desiredAnimDurationInMs = 2000.f;
+
+			auto currentTimePoint = std::chrono::steady_clock::now();
 
 			while (true)
 			{
@@ -120,10 +121,18 @@ namespace ui
 				{
 					break;
 				}
+				// calc actual duration
+				const auto lastTimePoint = currentTimePoint;
+				currentTimePoint = std::chrono::steady_clock::now();
+				const std::uint64_t actualIntervalMs = std::chrono::duration_cast<std::chrono::milliseconds>(currentTimePoint - lastTimePoint).count();
 
+				// speed = total width / desired duration
 				const float width = size().width;
-				m_shimmerPosition += speed * intervalSec;
-				if (m_shimmerPosition >= width)
+				const float totalWidth = width * 2.f;
+				const float speed = totalWidth / desiredAnimDurationInMs;
+
+				m_shimmerPosition += speed * actualIntervalMs;
+				if (m_shimmerPosition >= width || m_shimmerPosition < -width)
 				{
 					m_shimmerPosition = -width;
 				}

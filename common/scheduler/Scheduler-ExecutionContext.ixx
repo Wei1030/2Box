@@ -39,20 +39,10 @@ namespace sched
 			loop->addTimer(duration, std::move(task));
 		}
 
-		void addTimer(unsigned int milliseconds, Task task)
-		{
-			loop->addTimer(milliseconds, std::move(task));
-		}
-
 		template <typename Rep, typename Period>
 		void addTimer(std::chrono::duration<Rep, Period> duration, Task task, std::stop_token cancellationToken)
 		{
 			loop->addTimer(duration, std::move(task), std::move(cancellationToken));
-		}
-
-		void addTimer(unsigned int milliseconds, Task task, std::stop_token cancellationToken)
-		{
-			loop->addTimer(milliseconds, std::move(task), std::move(cancellationToken));
 		}
 
 		template <typename Rep, typename Period>
@@ -61,20 +51,10 @@ namespace sched
 			loop->addPeriodicTimer(duration, std::move(task));
 		}
 
-		void addPeriodicTimer(unsigned int milliseconds, Task task)
-		{
-			loop->addPeriodicTimer(milliseconds, std::move(task));
-		}
-
 		template <typename Rep, typename Period>
 		void addPeriodicTimer(std::chrono::duration<Rep, Period> duration, Task task, std::stop_token cancellationToken)
 		{
 			loop->addPeriodicTimer(duration, std::move(task), std::move(cancellationToken));
-		}
-
-		void addPeriodicTimer(unsigned int milliseconds, Task task, std::stop_token cancellationToken)
-		{
-			loop->addPeriodicTimer(milliseconds, std::move(task), std::move(cancellationToken));
 		}
 	};
 
@@ -99,7 +79,7 @@ namespace sched
 
 		auto get_scheduler() const noexcept
 		{
-			return Scheduler{&m_eventLoop};
+			return Scheduler<EventLoop>{&m_eventLoop};
 		}
 
 	private:
@@ -116,11 +96,14 @@ namespace sched
 	};
 
 	export
-	template <typename SchedulerT>
-		requires requires(SchedulerT sch)
-		{
-			{ sch.addTask(std::declval<std::coroutine_handle<>>()) };
-		}
+	template <typename T>
+	concept scheduler_can_transfer_to = requires(T sch)
+	{
+		sch.addTask(std::declval<std::coroutine_handle<>>());
+	};
+
+	export
+	template <scheduler_can_transfer_to SchedulerT>
 	coro::LazyTask<void> transfer_to(SchedulerT scheduler)
 	{
 		struct TransferAwaiter : std::suspend_always
@@ -136,26 +119,29 @@ namespace sched
 	}
 
 	export
-	template <typename ExecutionContext>
-#ifndef __INTELLISENSE__
-		requires requires(ExecutionContext ctx)
-		{
-			{ ctx.get_scheduler() };
-		}
-#endif
+	template <typename T>
+	concept exec_ctx_can_transfer_to = requires(T ctx)
+	{
+		ctx.get_scheduler().addTask(std::declval<std::coroutine_handle<>>());
+	};
+
+	export
+	template <exec_ctx_can_transfer_to ExecutionContext>
 	coro::LazyTask<void> transfer_to(const ExecutionContext& context)
 	{
 		return transfer_to(context.get_scheduler());
 	}
 
+	export
+	template <typename T, typename Rep, typename Period>
+	concept scheduler_can_transfer_after = requires(T sch)
+	{
+		sch.addTimer(std::declval<std::chrono::duration<Rep, Period>>(), std::declval<std::move_only_function<void()>>());
+		sch.addTimer(std::declval<std::chrono::duration<Rep, Period>>(), std::declval<std::move_only_function<void()>>(), std::declval<std::stop_token>());
+	};
 
 	export
-	template <typename Rep, typename Period, typename SchedulerT>
-		requires requires(SchedulerT sch)
-		{
-			{ sch.addTimer(std::declval<std::chrono::duration<Rep, Period>>(), std::declval<std::move_only_function<void()>>()) };
-			{ sch.addTimer(std::declval<std::chrono::duration<Rep, Period>>(), std::declval<std::move_only_function<void()>>(), std::declval<std::stop_token>()) };
-		}
+	template <typename Rep, typename Period, scheduler_can_transfer_after<Rep, Period> SchedulerT>
 	coro::LazyTask<void> transfer_after(std::chrono::duration<Rep, Period> duration, SchedulerT scheduler)
 	{
 		std::stop_token token = co_await coro::get_current_cancellation_token();
@@ -228,37 +214,17 @@ namespace sched
 	}
 
 	export
-	template <typename SchedulerT>
-		requires (!requires(SchedulerT sch) { sch.get_scheduler(); })
-		&& (requires(SchedulerT sch) { transfer_after(std::chrono::milliseconds{}, sch); })
-	coro::LazyTask<void> transfer_after(unsigned int milliseconds, SchedulerT scheduler)
+	template <typename T, typename Rep, typename Period>
+	concept exec_ctx_can_transfer_after = requires(T ctx)
 	{
-		return transfer_after(std::chrono::milliseconds{milliseconds}, std::move(scheduler));
-	}
+		ctx.get_scheduler().addTimer(std::declval<std::chrono::duration<Rep, Period>>(), std::declval<std::move_only_function<void()>>());
+		ctx.get_scheduler().addTimer(std::declval<std::chrono::duration<Rep, Period>>(), std::declval<std::move_only_function<void()>>(), std::declval<std::stop_token>());
+	};
 
 	export
-	template <typename Rep, typename Period, typename ExecutionContext>
-#ifndef __INTELLISENSE__
-		requires requires(ExecutionContext ctx)
-		{
-			{ ctx.get_scheduler() };
-		}
-#endif
+	template <typename Rep, typename Period, exec_ctx_can_transfer_after<Rep, Period> ExecutionContext>
 	coro::LazyTask<void> transfer_after(std::chrono::duration<Rep, Period> duration, const ExecutionContext& context)
 	{
 		return transfer_after(duration, context.get_scheduler());
-	}
-
-	export
-	template <typename ExecutionContext>
-#ifndef __INTELLISENSE__
-		requires requires(ExecutionContext ctx)
-		{
-			{ ctx.get_scheduler() };
-		}
-#endif
-	coro::LazyTask<void> transfer_after(unsigned int milliseconds, const ExecutionContext& context)
-	{
-		return transfer_after(std::chrono::milliseconds{milliseconds}, context.get_scheduler());
 	}
 }
