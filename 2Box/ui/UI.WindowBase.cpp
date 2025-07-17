@@ -110,11 +110,12 @@ namespace ui
 
 	void WindowBase::invalidateRect(const D2D_RECT_F& rect)
 	{
+		const float deviceToPhysical = m_dpiInfo.deviceToPhysical;
 		const RECT rc{
-			static_cast<int>(std::ceil(rect.left)),
-			static_cast<int>(std::ceil(rect.top)),
-			static_cast<int>(std::ceil(rect.right - rect.left)),
-			static_cast<int>(std::ceil(rect.bottom - rect.top))
+			static_cast<int>(std::ceil(rect.left * deviceToPhysical)),
+			static_cast<int>(std::ceil(rect.top * deviceToPhysical)),
+			static_cast<int>(std::ceil(rect.right * deviceToPhysical)),
+			static_cast<int>(std::ceil(rect.bottom * deviceToPhysical))
 		};
 		InvalidateRect(m_hWnd, &rc, false);
 	}
@@ -122,6 +123,14 @@ namespace ui
 	void WindowBase::invalidateRect()
 	{
 		InvalidateRect(m_hWnd, nullptr, false);
+	}
+
+	D2D_RECT_F WindowBase::rectNeedUpdate() const
+	{
+		RECT rc;
+		GetUpdateRect(m_hWnd, &rc, false);
+		const float physicalToDevice = m_dpiInfo.physicalToDevice;
+		return D2D1::RectF(rc.left * physicalToDevice, rc.top * physicalToDevice, rc.right * physicalToDevice, rc.bottom * physicalToDevice);
 	}
 
 	HRESULT WindowBase::prepareDeviceResources()

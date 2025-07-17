@@ -56,7 +56,9 @@ namespace ui
 	{
 		const RenderContext& ctx = renderContext();
 		ctx.renderTarget->BeginDraw();
+		ctx.renderTarget->PushAxisAlignedClip(rectNeedUpdate(), D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 		currentPage().draw(ctx);
+		ctx.renderTarget->PopAxisAlignedClip();
 		return ctx.renderTarget->EndDraw();
 	}
 

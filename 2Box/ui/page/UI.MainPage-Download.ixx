@@ -28,9 +28,9 @@ namespace ui
 				L"",
 				&m_pTextFormat);
 
-			m_loadingIndicator.setAnimRequester([&owner](const D2D1_RECT_F&)
+			m_loadingIndicator.setAnimRequester([&owner](const D2D1_RECT_F& rc)
 			{
-				owner.invalidateRect();
+				owner.invalidateRect(rc);
 			});
 		}
 

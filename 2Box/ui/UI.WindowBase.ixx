@@ -76,6 +76,7 @@ namespace ui
 		void setPhysicalRect(const D2D_RECT_F& rect);
 		void invalidateRect(const D2D_RECT_F& rect);
 		void invalidateRect();
+		D2D_RECT_F rectNeedUpdate() const;
 
 	protected:
 		HRESULT prepareDeviceResources();

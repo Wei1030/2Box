@@ -49,11 +49,6 @@ namespace ui
 			WindowBase::HResult hr;
 			do
 			{
-				hr = renderTarget->CreateLayer(nullptr, &m_layer);
-				if (FAILED(hr))
-				{
-					break;
-				}
 				hr = static_cast<DerivedT*>(this)->createDeviceResourcesImpl(renderTarget);
 				if (FAILED(hr))
 				{
@@ -72,22 +67,18 @@ namespace ui
 		virtual void onDiscardDeviceResources() override
 		{
 			static_cast<DerivedT*>(this)->discardDeviceResourcesImpl();
-			safe_release(&m_layer);
 		}
 
 		virtual void draw(const RenderContext& renderCtx) override
 		{
 			const auto& [renderTarget, solidBrush] = renderCtx;
-			renderTarget->PushLayer(D2D1::LayerParameters(m_bounds), m_layer);
+			renderTarget->PushAxisAlignedClip(m_bounds, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 
 			renderTarget->SetTransform(D2D1::Matrix3x2F::Translation(m_bounds.left, m_bounds.top));
 			static_cast<DerivedT*>(this)->drawImpl(renderCtx);
 			renderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
 
-			renderTarget->PopLayer();
+			renderTarget->PopAxisAlignedClip();
 		}
-
-	protected:
-		ID2D1Layer* m_layer{};
 	};
 }
