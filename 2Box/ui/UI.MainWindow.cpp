@@ -5,26 +5,6 @@ import MainApp;
 
 namespace ui
 {
-	// coro::SharedTask<void> testCoro()
-	// {
-	// 	std::uint64_t currentSize = 0;
-	// 	std::uint64_t totalSize = 0;
-	// 	symbols::Loader loader{ std::format(L"{}\\Symbols", MainApp::getDir()) };
-	// 	symbols::Symbol sym = co_await loader.loadNtdllSymbol(
-	// 		[&](std::uint64_t ts)->coro::SharedTask<void> {
-	// 			co_await  sched::transfer_to(MainApp::get_scheduler());
-	// 			totalSize = ts;
-	// 			OutputDebugStringW(std::format(L"total size: {} \r\n", totalSize).c_str());
-	// 		},
-	// 		[&](std::uint64_t size)->coro::SharedTask<void> {
-	// 			co_await sched::transfer_to(MainApp::get_scheduler());
-	// 			currentSize += size;
-	// 			OutputDebugStringW(std::format(L"{} / {} \r\n", currentSize, totalSize).c_str());
-	// 		}
-	// 	);
-	// 	co_return;
-	// }
-
 	static constexpr int DESIRED_WIDTH = 640;
 	static constexpr int DESIRED_HEIGHT = 480;
 
@@ -34,6 +14,10 @@ namespace ui
 		initWindowPosition();
 
 		m_pages.setCtx(this);
+		m_pages.stateCtx<MainPageType::Download>().setDoneCallback([this]
+		{
+			changePageTo<MainPageType::Home>();
+		});
 		changePageTo<MainPageType::Download>();
 	}
 
@@ -62,6 +46,20 @@ namespace ui
 		return ctx.renderTarget->EndDraw();
 	}
 
+	bool MainWindow::onClose()
+	{
+		if (m_pages.currentStateIndex() == MainPageType::Home)
+		{
+			return false;
+		}
+		m_pages.stateCtx<MainPageType::Download>().setPageExitCallback([this]
+		{
+			destroyWindow();
+		});
+		changePageTo<MainPageType::Home>();
+		return true;
+	}
+
 	void MainWindow::initWindowPosition()
 	{
 		const auto physicalRc = physicalRect();
@@ -77,7 +75,7 @@ namespace ui
 
 		const float desiredX = physicalRc.left + diffWidth * 0.5f;
 		const float desiredY = physicalRc.top + diffHeight * 0.5f;
-		
+
 		setPhysicalRect(D2D1::RectF(
 			desiredX,
 			desiredY,

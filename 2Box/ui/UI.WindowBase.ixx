@@ -79,13 +79,7 @@ namespace ui
 		D2D_RECT_F rectNeedUpdate() const;
 
 	protected:
-		HRESULT prepareDeviceResources();
-		void releaseDeviceResources();
 		const RenderContext& renderContext() const { return m_renderCtx; }
-
-	private:
-		HWND createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
-		                          int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu);
 
 	protected:
 		virtual void onResize(const RectChangeContext& ctx)
@@ -101,9 +95,23 @@ namespace ui
 		{
 		}
 
-		virtual HResult onRender();
+		virtual HResult onRender()
+		{
+			return S_OK;
+		}
+
+		// 返回true表示不要调用默认实现销毁窗口,而是自己处理
+		// 返回false表示默认处理(直接销毁窗口)
+		virtual bool onClose()
+		{
+			return false;
+		}
 
 	private:
+		HWND createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
+		                          int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu);
+		HRESULT prepareDeviceResources();
+		void releaseDeviceResources();
 		void updateDpi();
 		void resize(std::uint32_t width, std::uint32_t height);
 		// 这个不做成虚函数，因为窗口有可能在基类析构中销毁，此时无法调用到子类的虚函数。索性不要这个时机了，反正有子类析构可以用
@@ -113,12 +121,10 @@ namespace ui
 		static void registerWndClassOnce();
 		static LRESULT CALLBACK wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-	protected:
-		DpiInfo m_dpiInfo{};
-		RenderContext m_renderCtx{};
-
 	private:
 		HWND m_hWnd{nullptr};
 		bool m_bIsExitAppWhenWindowDestroyed{false};
+		DpiInfo m_dpiInfo{};
+		RenderContext m_renderCtx{};
 	};
 }

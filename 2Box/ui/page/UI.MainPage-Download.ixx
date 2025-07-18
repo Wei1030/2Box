@@ -2,12 +2,13 @@ export module UI.MainPage:Download;
 
 import "sys_defs.h";
 import std;
+import :Define;
 import MainApp;
 import StateMachine;
+import Coroutine;
+import SymbolLoader;
 import UI.PageBase;
 import UI.LoadingIndicator;
-import :Define;
-
 
 namespace ui
 {
@@ -41,8 +42,27 @@ namespace ui
 
 		void OnExit(WindowBase&)
 		{
+			m_stopSource.request_stop();
+			m_downloadTask.waitUntilDone();
 			m_loadingIndicator.setAnimRequester(nullptr);
 			safe_release(&m_pTextFormat);
+			if (m_exitCallback)
+			{
+				m_exitCallback();
+			}
+		}
+
+		using PageExitCallback = std::move_only_function<void()>;
+		using DoneCallback = std::move_only_function<void()>;
+
+		void setPageExitCallback(PageExitCallback callback)
+		{
+			m_exitCallback = std::move(callback);
+		}
+
+		void setDoneCallback(DoneCallback callback)
+		{
+			m_doneCallback = std::move(callback);
 		}
 
 		virtual WindowBase::HResult onCreateDeviceResources(const RenderContext& renderCtx) override
@@ -90,9 +110,36 @@ namespace ui
 			                        &textRect,
 			                        solidBrush);
 		}
-
+	private:
+		// coro::LazyTask<void> downloadIfNeedAndAnaSymbols()
+		// {
+		// 	std::uint64_t currentSize = 0;
+		// 	std::uint64_t totalSize = 0;
+		// 	symbols::Loader loader{std::format(L"{}\\Symbols", app().exeDir())};
+		// 	// symbols::Symbol sym = co_await loader.loadNtdllSymbol(
+		// 	// 	[&](std::uint64_t ts)-> coro::SharedTask<void>
+		// 	// 	{
+		// 	// 		co_await sched::transfer_to(MainApp::get_scheduler());
+		// 	// 		totalSize = ts;
+		// 	// 		OutputDebugStringW(std::format(L"total size: {} \r\n", totalSize).c_str());
+		// 	// 	},
+		// 	// 	[&](std::uint64_t size)-> coro::SharedTask<void>
+		// 	// 	{
+		// 	// 		co_await sched::transfer_to(MainApp::get_scheduler());
+		// 	// 		currentSize += size;
+		// 	// 		OutputDebugStringW(std::format(L"{} / {} \r\n", currentSize, totalSize).c_str());
+		// 	// 	}
+		// 	// );
+		// 	co_return;
+		// }
+		
 	private:
 		IDWriteTextFormat* m_pTextFormat{nullptr};
 		LoadingIndicator m_loadingIndicator;
+	private:
+		PageExitCallback m_exitCallback;
+		DoneCallback m_doneCallback;
+		std::stop_source m_stopSource;
+		coro::SharedTask<void> m_downloadTask{coro::SharedTask<void>::reject(std::make_exception_ptr(std::runtime_error("download not started")))};
 	};
 }

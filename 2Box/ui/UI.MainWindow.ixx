@@ -23,6 +23,8 @@ namespace ui
 
 		virtual HResult onRender() override;
 
+		virtual bool onClose() override;
+
 	private:
 		void initWindowPosition();
 

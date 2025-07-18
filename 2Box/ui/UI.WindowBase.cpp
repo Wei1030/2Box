@@ -133,6 +133,14 @@ namespace ui
 		return D2D1::RectF(rc.left * physicalToDevice, rc.top * physicalToDevice, rc.right * physicalToDevice, rc.bottom * physicalToDevice);
 	}
 
+	HWND WindowBase::createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
+	                                      int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu)
+	{
+		return CreateWindowExW(dwExStyle, MainApp::appName.data(), lpWindowName, dwStyle,
+		                       X, Y, nWidth, nHeight, hWndParent, hMenu,
+		                       app().moduleInstance(), this);
+	}
+
 	HRESULT WindowBase::prepareDeviceResources()
 	{
 		if (m_renderCtx.renderTarget)
@@ -173,23 +181,6 @@ namespace ui
 		safe_release(&m_renderCtx.renderTarget);
 		safe_release(&m_renderCtx.brush);
 		onDiscardDeviceResources();
-	}
-
-	HWND WindowBase::createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
-	                                      int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu)
-	{
-		return CreateWindowExW(dwExStyle, MainApp::appName.data(), lpWindowName, dwStyle,
-		                       X, Y, nWidth, nHeight, hWndParent, hMenu,
-		                       app().moduleInstance(), this);
-	}
-
-	HRESULT WindowBase::onRender()
-	{
-		m_renderCtx.renderTarget->BeginDraw();
-		m_renderCtx.renderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-		m_renderCtx.renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
-
-		return m_renderCtx.renderTarget->EndDraw();
 	}
 
 	void WindowBase::updateDpi()
@@ -317,6 +308,14 @@ namespace ui
 						ValidateRect(hWnd, nullptr);
 					}
 					return 0;
+				case WM_CLOSE:
+					{
+						if (pWnd->onClose())
+						{
+							return 0;
+						}
+					}
+					break;
 				case WM_DISPLAYCHANGE:
 					{
 						InvalidateRect(hWnd, nullptr, FALSE);
