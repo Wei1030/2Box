@@ -278,42 +278,13 @@ namespace coro
 
 		void waitUntilDone() noexcept
 		{
-			struct OnewayTask
+			SyncLatch syncLatch;
+			[](SharedTask& self, SyncLatch& latch) noexcept -> OnewayTask
 			{
-				struct promise_type
-				{
-					// ReSharper disable CppMemberFunctionMayBeStatic
-					std::suspend_never initial_suspend() noexcept { return {}; }
-					std::suspend_never final_suspend() noexcept { return {}; }
-					void unhandled_exception() noexcept { std::terminate(); }
-					OnewayTask get_return_object() noexcept { return {}; }
-
-					void return_void() noexcept
-					{
-					}
-
-					// ReSharper restore CppMemberFunctionMayBeStatic
-				};
-			};
-			std::atomic<int> flag{1};
-			auto task = [&flag, this]() noexcept -> OnewayTask
-			{
-				try
-				{
-					co_await RefValueAwaiter{m_p};
-				}
-				catch (...)
-				{
-				}
-				flag.store(0, std::memory_order::release);
-				flag.notify_one();
-			}();
-
-			while (flag.exchange(1, std::memory_order::acquire))
-			{
-				// wait until flag is not 1
-				flag.wait(1, std::memory_order::relaxed);
-			}
+				ArriveOnExit guard(latch);
+				co_await RefValueAwaiter{self.m_p};
+			}(*this, syncLatch);
+			syncLatch.wait();
 		}
 
 		decltype(auto) syncAwait()

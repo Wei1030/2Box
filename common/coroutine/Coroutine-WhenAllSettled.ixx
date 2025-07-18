@@ -112,7 +112,7 @@ namespace coro
 			{
 				if (!m_coro.done())
 				{
-					std::terminate();
+					std::unreachable();
 				}
 				m_coro.destroy();
 			}

@@ -177,6 +177,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common.ixx" />
+    <ClCompile Include="coroutine\Coroutine-AsyncScope.ixx" />
     <ClCompile Include="coroutine\Coroutine-Cancellation.ixx" />
     <ClCompile Include="coroutine\Coroutine-Concept.ixx" />
     <ClCompile Include="coroutine\Coroutine-PromiseBase.ixx" />

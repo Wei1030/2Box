@@ -7,3 +7,4 @@ export import :Cancellation;
 export import :WhenAll;
 export import :WhenAllSettled;
 export import :WhenAny;
+export import :AsyncScope;

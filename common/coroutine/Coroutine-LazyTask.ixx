@@ -94,7 +94,7 @@ namespace coro
 				// 不允许异步任务未完成时销毁本类
 				if (!m_coro.done())
 				{
-					std::terminate();
+					std::unreachable();
 				}
 				m_coro.destroy();
 			}
@@ -258,39 +258,13 @@ namespace coro
 
 		decltype(auto) syncAwait()
 		{
-			struct OnewayTask
+			SyncLatch syncLatch;
+			[](LazyTask& self, SyncLatch& latch) noexcept -> OnewayTask
 			{
-				struct promise_type
-				{
-					std::suspend_never initial_suspend() noexcept { return {}; }
-					std::suspend_never final_suspend() noexcept { return {}; }
-					void unhandled_exception() noexcept { std::terminate(); }
-					OnewayTask get_return_object() noexcept { return {}; }
-
-					void return_void() noexcept
-					{
-					}
-				};
-			};
-			std::atomic<int> flag{1};
-			auto task = [&flag, this]() noexcept -> OnewayTask
-			{
-				try
-				{
-					co_await Awaiter{m_coro};
-				}
-				catch (...)
-				{
-				}
-				flag.store(0, std::memory_order::release);
-				flag.notify_one();
-			}();
-
-			while (flag.exchange(1, std::memory_order::acquire))
-			{
-				// wait until flag is not 1
-				flag.wait(1, std::memory_order::relaxed);
-			}
+				ArriveOnExit guard(latch);
+				co_await Awaiter{self.m_coro};
+			}(*this, syncLatch);
+			syncLatch.wait();
 
 			return m_coro.promise().getValue();
 		}

@@ -95,7 +95,7 @@ namespace coro
 				std::rethrow_exception(except);
 			default:
 				// "This can't happen?"
-				std::terminate();
+				std::unreachable();
 			}
 		}
 
@@ -117,7 +117,7 @@ namespace coro
 				std::rethrow_exception(except);
 			default:
 				// "This can't happen?"
-				std::terminate();
+				std::unreachable();
 			}
 		}
 
@@ -139,7 +139,7 @@ namespace coro
 				std::rethrow_exception(except);
 			default:
 				// "This can't happen?"
-				std::terminate();
+				std::unreachable();
 			}
 		}
 
@@ -414,4 +414,68 @@ namespace coro
 	export
 	template <typename T>
 	using GuaranteedResolver = PromisePtr<Resolver<T>>;
+
+	export
+	struct OnewayTask
+	{
+		struct promise_type
+		{
+			// ReSharper disable CppMemberFunctionMayBeStatic
+			std::suspend_never initial_suspend() noexcept { return {}; }
+			std::suspend_never final_suspend() noexcept { return {}; }
+
+			void unhandled_exception() noexcept
+			{
+			}
+
+			OnewayTask get_return_object() noexcept { return {}; }
+
+			void return_void() noexcept
+			{
+			}
+
+			// ReSharper restore CppMemberFunctionMayBeStatic
+		};
+	};
+
+	export struct SyncLatch
+	{
+	public:
+		void arrive() noexcept
+		{
+			m_flag.store(0, std::memory_order::release);
+			m_flag.notify_one();
+		}
+
+		void wait() noexcept
+		{
+			while (m_flag.exchange(1, std::memory_order::acquire))
+			{
+				// wait until flag is not 1
+				m_flag.wait(1, std::memory_order::relaxed);
+			}
+		}
+
+	private:
+		std::atomic<int> m_flag{1};
+	};
+
+	export struct ArriveOnExit
+	{
+		SyncLatch& latch;
+
+		explicit ArriveOnExit(SyncLatch& l) noexcept : latch(l)
+		{
+		}
+
+		ArriveOnExit(const ArriveOnExit&) = delete;
+		ArriveOnExit& operator=(const ArriveOnExit&) = delete;
+		ArriveOnExit(ArriveOnExit&& rhs) = delete;
+		ArriveOnExit& operator=(ArriveOnExit&& rhs) = delete;
+
+		~ArriveOnExit() noexcept
+		{
+			latch.arrive();
+		}
+	};
 }

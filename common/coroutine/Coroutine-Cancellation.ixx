@@ -2,7 +2,6 @@ export module Coroutine:Cancellation;
 
 import std;
 import :Concept;
-import :PromiseBase;
 import :LazyTask;
 
 namespace coro
@@ -75,6 +74,6 @@ namespace coro
 		-> LazyTask<typename AwaitableTraits<std::remove_reference_t<T>>::AwaitResultT>
 	{
 		co_await CancellationSetter{.token = std::move(token)};
-		co_return co_await a;
+		co_return co_await std::move(a);
 	}
 }

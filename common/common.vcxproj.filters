@@ -93,5 +93,8 @@
     <ClCompile Include="state_machine\StateMachine.ixx">
       <Filter>state_machine</Filter>
     </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-AsyncScope.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
