@@ -6,6 +6,7 @@ import :Define;
 import MainApp;
 import StateMachine;
 import Coroutine;
+import Scheduler;
 import SymbolLoader;
 import UI.PageBase;
 import UI.LoadingIndicator;
@@ -29,10 +30,15 @@ namespace ui
 				L"",
 				&m_pTextFormat);
 
+			m_updateWindow = [&owner]
+			{
+				owner.invalidateRect();
+			};
 			m_loadingIndicator.setAnimRequester([&owner](const D2D1_RECT_F& rc)
 			{
 				owner.invalidateRect(rc);
 			});
+			m_task = coro::start_and_shared(coro::co_with_cancellation(downloadIfNeedThenAnaSymbols(), m_stopSource.get_token()));
 		}
 
 		sm::TNextState<MainPageType> OnUpdate(WindowBase&)
@@ -43,26 +49,10 @@ namespace ui
 		void OnExit(WindowBase&)
 		{
 			m_stopSource.request_stop();
-			m_downloadTask.waitUntilDone();
+			m_task.waitUntilDone();
+			m_asyncScope.join();
 			m_loadingIndicator.setAnimRequester(nullptr);
 			safe_release(&m_pTextFormat);
-			if (m_exitCallback)
-			{
-				m_exitCallback();
-			}
-		}
-
-		using PageExitCallback = std::move_only_function<void()>;
-		using DoneCallback = std::move_only_function<void()>;
-
-		void setPageExitCallback(PageExitCallback callback)
-		{
-			m_exitCallback = std::move(callback);
-		}
-
-		void setDoneCallback(DoneCallback callback)
-		{
-			m_doneCallback = std::move(callback);
 		}
 
 		virtual WindowBase::HResult onCreateDeviceResources(const RenderContext& renderCtx) override
@@ -95,12 +85,13 @@ namespace ui
 			renderTarget->FillRoundedRectangle(&trackRect, solidBrush);
 
 			// 绘制进度填充
-			float filledWidth = 0.45f * progressBarWidth;
+			const float progress = m_totalLength ? static_cast<float>(m_currentSize) / m_totalLength : 0.f;
+			float filledWidth = progress * progressBarWidth;
 			m_loadingIndicator.setBounds(D2D1::RectF(barX, barY, barX + filledWidth, barY + progressBarHeight));
 			m_loadingIndicator.draw(renderCtx);
 
 			// 绘制文本标签
-			std::wstring progressText = std::format(L"任务进度: {}%", 45);
+			std::wstring progressText = std::format(L"任务进度: {:.0f}%", progress * 100);
 
 			D2D1_RECT_F textRect = D2D1::RectF(barX, barY - 30, barX + progressBarWidth, barY);
 			solidBrush->SetColor(D2D1::ColorF(0x333333));
@@ -110,36 +101,81 @@ namespace ui
 			                        &textRect,
 			                        solidBrush);
 		}
+
+		coro::LazyTask<void> joinAsync()
+		{
+			co_await m_task;
+			co_return;
+		}
+
+		bool isStopRequested() const
+		{
+			return m_stopSource.stop_requested();
+		}
+
+		void cancelTask()
+		{
+			m_stopSource.request_stop();
+		}
+
 	private:
-		// coro::LazyTask<void> downloadIfNeedAndAnaSymbols()
-		// {
-		// 	std::uint64_t currentSize = 0;
-		// 	std::uint64_t totalSize = 0;
-		// 	symbols::Loader loader{std::format(L"{}\\Symbols", app().exeDir())};
-		// 	// symbols::Symbol sym = co_await loader.loadNtdllSymbol(
-		// 	// 	[&](std::uint64_t ts)-> coro::SharedTask<void>
-		// 	// 	{
-		// 	// 		co_await sched::transfer_to(MainApp::get_scheduler());
-		// 	// 		totalSize = ts;
-		// 	// 		OutputDebugStringW(std::format(L"total size: {} \r\n", totalSize).c_str());
-		// 	// 	},
-		// 	// 	[&](std::uint64_t size)-> coro::SharedTask<void>
-		// 	// 	{
-		// 	// 		co_await sched::transfer_to(MainApp::get_scheduler());
-		// 	// 		currentSize += size;
-		// 	// 		OutputDebugStringW(std::format(L"{} / {} \r\n", currentSize, totalSize).c_str());
-		// 	// 	}
-		// 	// );
-		// 	co_return;
-		// }
-		
+		coro::LazyTask<void> updateTotalSizeInMainThread(std::uint64_t total)
+		{
+			co_await sched::transfer_to(app().get_scheduler());
+			m_totalLength += total;
+			m_updateWindow();
+			co_return;
+		}
+
+		coro::LazyTask<void> updateCurrentSizeInMainThread(std::uint64_t size)
+		{
+			co_await sched::transfer_to(app().get_scheduler());
+			m_currentSize += size;
+			m_updateWindow();
+			co_return;
+		}
+
+		coro::LazyTask<void> downloadIfNeedThenAnaSymbols()
+		{
+			auto totalSizeCallback = [this](std::uint64_t total)
+			{
+				m_asyncScope.spawn(updateTotalSizeInMainThread(total));
+			};
+			auto currentSizeCallback = [this](std::uint64_t size)
+			{
+				m_asyncScope.spawn(updateCurrentSizeInMainThread(size));
+			};
+
+			symbols::Loader loader{std::format(L"{}\\Symbols", app().exeDir())};
+			auto task1 = loader.loadNtdllSymbol(totalSizeCallback, currentSizeCallback);
+			auto task2 = loader.loadWow64NtdllSymbol(totalSizeCallback, currentSizeCallback);
+			try
+			{
+				const auto [symbol, symbolWow64] = co_await coro::when_all(std::move(task1), std::move(task2));
+				co_await sched::transfer_to(app().get_scheduler());
+			}
+			catch (const std::exception&)
+			{
+			}
+			catch (...)
+			{
+			}
+			co_await sched::transfer_to(app().get_scheduler());
+			//
+			co_return;
+		}
+
 	private:
 		IDWriteTextFormat* m_pTextFormat{nullptr};
 		LoadingIndicator m_loadingIndicator;
+
 	private:
-		PageExitCallback m_exitCallback;
-		DoneCallback m_doneCallback;
+		std::uint64_t m_totalLength{0};
+		std::uint64_t m_currentSize{0};
+		coro::AsyncScope m_asyncScope;
 		std::stop_source m_stopSource;
-		coro::SharedTask<void> m_downloadTask{coro::SharedTask<void>::reject(std::make_exception_ptr(std::runtime_error("download not started")))};
+		coro::SharedTask<void> m_task{coro::SharedTask<void>::reject(std::make_exception_ptr(std::runtime_error("task not started")))};
+
+		std::move_only_function<void()> m_updateWindow;
 	};
 }

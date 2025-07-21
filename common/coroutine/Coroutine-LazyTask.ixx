@@ -256,6 +256,14 @@ namespace coro
 			return AwaiterOwned{std::move(*this)};
 		}
 
+		void detachAndStart() && noexcept
+		{
+			[](LazyTask& self) noexcept -> OnewayTask
+			{
+				co_await AwaiterOwned{std::move(self)};
+			}(*this);
+		}
+
 		decltype(auto) syncAwait()
 		{
 			SyncLatch syncLatch;

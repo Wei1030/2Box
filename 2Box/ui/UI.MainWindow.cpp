@@ -2,6 +2,7 @@ module UI.MainWindow;
 
 import std;
 import MainApp;
+import Scheduler;
 
 namespace ui
 {
@@ -12,13 +13,7 @@ namespace ui
 	{
 		setExitAppWhenWindowDestroyed(true);
 		initWindowPosition();
-
-		m_pages.setCtx(this);
-		m_pages.stateCtx<MainPageType::Download>().setDoneCallback([this]
-		{
-			changePageTo<MainPageType::Home>();
-		});
-		changePageTo<MainPageType::Download>();
+		initSymbols().detachAndStart();
 	}
 
 	void MainWindow::onResize(const RectChangeContext& ctx)
@@ -48,16 +43,28 @@ namespace ui
 
 	bool MainWindow::onClose()
 	{
-		if (m_pages.currentStateIndex() == MainPageType::Home)
+		if (m_pages.currentStateIndex() == MainPageType::Download)
 		{
-			return false;
+			auto& downloadPage = m_pages.stateCtx<MainPageType::Download>();
+			if (!downloadPage.isStopRequested())
+			{
+				downloadPage.cancelTask();
+				[](MainWindow& self, TMainPageType<MainPageType, MainPageType::Download>& page) -> coro::OnewayTask
+				{
+					try
+					{
+						co_await page.joinAsync();
+					}
+					catch (...)
+					{
+					}
+					co_await sched::transfer_to(app().get_scheduler());
+					self.destroyWindow();
+				}(*this, downloadPage);
+			}
+			return true;
 		}
-		m_pages.stateCtx<MainPageType::Download>().setPageExitCallback([this]
-		{
-			destroyWindow();
-		});
-		changePageTo<MainPageType::Home>();
-		return true;
+		return false;
 	}
 
 	void MainWindow::initWindowPosition()
@@ -82,5 +89,17 @@ namespace ui
 			desiredX + desiredPhysicalWidth,
 			desiredY + desiredPhysicalHeight
 		));
+	}
+
+	coro::LazyTask<void> MainWindow::initSymbols()
+	{
+		m_pages.setCtx(this);
+		changePageTo<MainPageType::Download>();
+
+		co_await m_pages.stateCtx<MainPageType::Download>().joinAsync();
+		co_await sched::transfer_to(app().get_scheduler());
+		
+		changePageTo<MainPageType::Home>();
+		co_return;
 	}
 }

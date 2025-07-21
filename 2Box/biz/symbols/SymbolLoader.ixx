@@ -104,8 +104,16 @@ namespace symbols
 		coro::LazyTask<Symbol> loadNtdllSymbol(ContentLengthReporter contentLengthReporter, ProgressReporter progressReporter) const
 		{
 			namespace fs = std::filesystem;
-			fs::path systemDir{sys_info::get_system_dir()};
-			fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
+			const fs::path systemDir{sys_info::get_system_dir()};
+			const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
+			co_return co_await loadSymbol(ntdllPath.native(), std::move(contentLengthReporter), std::move(progressReporter));
+		}
+
+		coro::LazyTask<Symbol> loadWow64NtdllSymbol(ContentLengthReporter contentLengthReporter, ProgressReporter progressReporter) const
+		{
+			namespace fs = std::filesystem;
+			const fs::path systemDir{sys_info::get_system_wow64_dir()};
+			const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
 			co_return co_await loadSymbol(ntdllPath.native(), std::move(contentLengthReporter), std::move(progressReporter));
 		}
 
@@ -117,15 +125,66 @@ namespace symbols
 			std::wstring strGuid = std::format(L"{:08X}{:04X}{:04X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:X}", guid.Data1, guid.Data2, guid.Data3,
 			                                   guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
 			                                   guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7], indexInfo.age);
-			fs::path filePdbPath{fs::path{m_searchPath} / fs::path{indexInfo.pdbfile} / fs::path{strGuid} / fs::path{indexInfo.pdbfile}};
+			const fs::path filePdbPath{fs::path{m_searchPath} / fs::path{indexInfo.pdbfile} / fs::path{strGuid} / fs::path{indexInfo.pdbfile}};
 			if (!fs::exists(filePdbPath))
 			{
 				// start download
 				std::shared_ptr<ms::WinHttpRequest> req = m_connection->openRequest(L"GET", std::format(L"download/symbols/{}/{}/{}", indexInfo.pdbfile, strGuid, indexInfo.pdbfile));
 				std::vector<std::byte> bytes = co_await req->request(std::move(contentLengthReporter), std::move(progressReporter));
 				// 将bytes写入文件...
+				co_await writeFile(filePdbPath.native(), bytes);
 			}
 			co_return Symbol{filePath};
+		}
+
+	private:
+		static void writeFileThread(std::wstring_view pdbFile, std::span<std::byte> bytes, const coro::GuaranteedResolver<void>& resolver)
+		{
+			namespace fs = std::filesystem;
+			std::error_code ec;
+			fs::create_directories(fs::path{pdbFile}.parent_path(), ec);
+			if (ec)
+			{
+				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("create_directories failed, error code: {}", ec.value()))));
+				return;
+			}
+
+			HANDLE handle = CreateFileW(std::format(L"\\\\?\\{}", pdbFile).c_str(),
+			                            GENERIC_READ | GENERIC_WRITE,
+			                            0,
+			                            nullptr,
+			                            CREATE_ALWAYS,
+			                            FILE_ATTRIBUTE_NORMAL,
+			                            nullptr);
+			if (handle == INVALID_HANDLE_VALUE)
+			{
+				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("CreateFileW failed, error code: {}", GetLastError()))));
+				return;
+			}
+			if (!WriteFile(handle, bytes.data(), static_cast<DWORD>(bytes.size()), nullptr, nullptr))
+			{
+				CloseHandle(handle);
+				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("WriteFile failed, error code: {}", GetLastError()))));
+				return;
+			}
+			CloseHandle(handle);
+			resolver->resolve();
+		}
+
+		static coro::LazyTask<void> writeFile(std::wstring_view pdbFile, std::span<std::byte> bytes)
+		{
+			co_await coro::LazyTask<void>::create([pdbFile, bytes](coro::GuaranteedResolver<void> resolver)
+			{
+				// 反正设计成开始写文件后不允许取消
+				// 直接简单的创建一个线程阻塞式写文件
+				std::thread{
+					[pdbFile, bytes, res = std::move(resolver)]
+					{
+						writeFileThread(pdbFile, bytes, res);
+					}
+				}.detach();
+			});
+			co_return;
 		}
 
 	private:

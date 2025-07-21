@@ -6,6 +6,7 @@ import UI.WindowBase;
 import UI.PageBase;
 import UI.MainPage;
 import StateMachine;
+import Coroutine;
 
 namespace ui
 {
@@ -27,6 +28,7 @@ namespace ui
 
 	private:
 		void initWindowPosition();
+		coro::LazyTask<void> initSymbols();
 
 	private:
 		template <MainPageType PageType>
@@ -34,6 +36,7 @@ namespace ui
 		{
 			m_pages.transferTo<PageType>();
 			m_pages.update();
+			invalidateRect();
 		}
 
 		PageBase& currentPage()
