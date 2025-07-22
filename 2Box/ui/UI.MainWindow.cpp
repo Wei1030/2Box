@@ -59,6 +59,7 @@ namespace ui
 					{
 					}
 					co_await sched::transfer_to(app().get_scheduler());
+					self.changePageTo<MainPageType::Home>();
 					self.destroyWindow();
 				}(*this, downloadPage);
 			}

@@ -153,6 +153,12 @@ namespace sched
 			}
 		}
 
+		void finish() const noexcept
+		{
+			PostQuitMessage(0);
+			SetEvent(m_hNotifyEvent);
+		}
+
 	private:
 		friend EventLoopBase;
 

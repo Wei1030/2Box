@@ -6,6 +6,15 @@ import Scheduler;
 
 export int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow);
 
+export struct AppCommonTextFormat
+{
+	IDWriteTextFormat* pTitleFormat{nullptr};
+	IDWriteTextFormat* pMainFormat{nullptr};
+	IDWriteTextFormat* pErrorMsgFormat{nullptr};
+	IDWriteTextFormat* pTipsFormat{nullptr};
+	IDWriteTextFormat* pToolBtnFormat{nullptr};
+};
+
 export class MainApp
 {
 public:
@@ -38,6 +47,11 @@ public:
 		return m_pDWriteFactory;
 	}
 
+	const AppCommonTextFormat& textFormat() const noexcept
+	{
+		return m_commonTextFormat;
+	}
+
 	std::wstring_view exeFullName() const noexcept
 	{
 		return m_exeFullName;
@@ -46,6 +60,11 @@ public:
 	std::wstring_view exeDir() const noexcept
 	{
 		return m_exeDir;
+	}
+
+	void exit() const noexcept
+	{
+		m_eventLoop.finish();
 	}
 
 	// ReSharper disable CppInconsistentNaming
@@ -79,6 +98,8 @@ private:
 			throw std::runtime_error(std::format("DWriteCreateFactory fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
 		}
 
+		createCommonTextFormat();
+
 		m_hInstance = hInstance;
 		m_strCmdLine = lpCmdLine;
 		m_nCmdShow = nCmdShow;
@@ -94,9 +115,87 @@ private:
 
 	~MainApp()
 	{
+		safe_release(&m_commonTextFormat.pTitleFormat);
+		safe_release(&m_commonTextFormat.pMainFormat);
+		safe_release(&m_commonTextFormat.pErrorMsgFormat);
+		safe_release(&m_commonTextFormat.pTipsFormat);
+		safe_release(&m_commonTextFormat.pToolBtnFormat);
 		safe_release(&m_pDWriteFactory);
 		safe_release(&m_pDirect2dFactory);
 		CoUninitialize();
+	}
+
+	void createCommonTextFormat()
+	{
+		HRESULT hr = m_pDWriteFactory->CreateTextFormat(
+			L"Segoe UI",
+			nullptr,
+			DWRITE_FONT_WEIGHT_SEMI_BOLD,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			16.0f,
+			L"",
+			&m_commonTextFormat.pTitleFormat);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+
+		hr = m_pDWriteFactory->CreateTextFormat(
+			L"Segoe UI",
+			nullptr,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			14.0f,
+			L"",
+			&m_commonTextFormat.pMainFormat);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+
+		hr = m_pDWriteFactory->CreateTextFormat(
+			L"Segoe UI",
+			nullptr,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			13.0f,
+			L"",
+			&m_commonTextFormat.pErrorMsgFormat);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+
+		hr = m_pDWriteFactory->CreateTextFormat(
+			L"Segoe UI",
+			nullptr,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			12.0f,
+			L"",
+			&m_commonTextFormat.pTipsFormat);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+
+		hr = m_pDWriteFactory->CreateTextFormat(
+			L"Segoe UI",
+			nullptr,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			11.0f,
+			L"",
+			&m_commonTextFormat.pToolBtnFormat);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
 	}
 
 	void runMessageLoop()
@@ -112,6 +211,7 @@ private:
 	std::wstring m_exeDir;
 	ID2D1Factory* m_pDirect2dFactory{nullptr};
 	IDWriteFactory* m_pDWriteFactory{nullptr};
+	AppCommonTextFormat m_commonTextFormat;
 	mutable sched::EventLoopForWinUi m_eventLoop;
 };
 

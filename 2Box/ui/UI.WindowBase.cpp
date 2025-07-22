@@ -233,7 +233,7 @@ namespace ui
 		m_hWnd = nullptr;
 		if (m_bIsExitAppWhenWindowDestroyed)
 		{
-			PostQuitMessage(0);
+			app().exit();
 		}
 	}
 

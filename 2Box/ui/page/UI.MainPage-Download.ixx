@@ -21,16 +21,7 @@ namespace ui
 		void OnEnter(WindowBase& owner)
 		{
 			m_ownerWnd = &owner;
-			app().dWriteFactory()->CreateTextFormat(
-				L"Segoe UI",
-				nullptr,
-				DWRITE_FONT_WEIGHT_NORMAL,
-				DWRITE_FONT_STYLE_NORMAL,
-				DWRITE_FONT_STRETCH_NORMAL,
-				14.0f,
-				L"",
-				&m_pTextFormat);
-			
+
 			m_pLoadingIndicator = new LoadingIndicator(&owner);
 			m_pLoadingIndicator->startAnim();
 			m_task = coro::start_and_shared(coro::co_with_cancellation(downloadIfNeedThenAnaSymbols(), m_stopSource.get_token()));
@@ -47,7 +38,6 @@ namespace ui
 			m_task.waitUntilDone();
 			m_asyncScope.join();
 			delete m_pLoadingIndicator;
-			safe_release(&m_pTextFormat);
 		}
 
 		virtual WindowBase::HResult onCreateDeviceResources(const RenderContext& renderCtx) override
@@ -92,7 +82,7 @@ namespace ui
 			solidBrush->SetColor(D2D1::ColorF(0x333333));
 			renderTarget->DrawTextW(progressText.c_str(),
 			                        static_cast<UINT32>(progressText.length()),
-			                        m_pTextFormat,
+			                        app().textFormat().pMainFormat,
 			                        &textRect,
 			                        solidBrush);
 		}
@@ -162,7 +152,6 @@ namespace ui
 
 	private:
 		WindowBase* m_ownerWnd{nullptr};
-		IDWriteTextFormat* m_pTextFormat{nullptr};
 		LoadingIndicator* m_pLoadingIndicator{nullptr};
 
 	private:
