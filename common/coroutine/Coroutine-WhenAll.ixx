@@ -33,7 +33,7 @@ namespace coro
 
 		void finishAndResumeNextIfNeed() noexcept
 		{
-			if (counter.fetch_sub(1, std::memory_order_relaxed) == 1)
+			if (counter.fetch_sub(1, std::memory_order_acq_rel) == 1)
 			{
 				// 全部任务都完成了
 				const Status lastStatus = status.exchange(Status::Done, std::memory_order_acq_rel);

@@ -1,6 +1,7 @@
 export module UI.ControlBase;
 
 import "sys_defs.h";
+import std;
 export import UI.WindowBase;
 
 namespace ui
@@ -8,6 +9,15 @@ namespace ui
 	export class ControlBase
 	{
 	public:
+		explicit ControlBase(WindowBase* owner) noexcept
+			: m_ownerWnd(owner)
+		{
+			if (!m_ownerWnd)
+			{
+				std::unreachable();
+			}
+		}
+
 		virtual ~ControlBase() = default;
 
 	public:
@@ -36,6 +46,7 @@ namespace ui
 		}
 
 	protected:
+		WindowBase* m_ownerWnd;
 		D2D1_RECT_F m_bounds{};
 	};
 
@@ -43,6 +54,11 @@ namespace ui
 	class ControlTmplBase : public ControlBase
 	{
 	public:
+		explicit ControlTmplBase(WindowBase* owner) noexcept
+			: ControlBase(owner)
+		{
+		}
+
 		virtual WindowBase::HResult onCreateDeviceResources(const RenderContext& renderCtx) override
 		{
 			const auto& [renderTarget, solidBrush] = renderCtx;

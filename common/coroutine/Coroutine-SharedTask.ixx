@@ -216,6 +216,11 @@ namespace coro
 			// ReSharper restore CppUnreachableCode
 		}
 
+		static SharedTask reject(std::string_view reason)
+		{
+			return reject(std::make_exception_ptr(std::runtime_error{reason.data()}));
+		}
+
 		struct AwaiterBase
 		{
 			PromisePtr<promise_type> promisePtr;

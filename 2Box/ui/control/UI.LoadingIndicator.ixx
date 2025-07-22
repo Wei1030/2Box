@@ -12,7 +12,9 @@ namespace ui
 	export class LoadingIndicator final : public ControlTmplBase<LoadingIndicator>
 	{
 	public:
-		LoadingIndicator() : m_animTask(coro::SharedTask<void>::reject(std::make_exception_ptr(std::runtime_error("anim not start"))))
+		explicit LoadingIndicator(WindowBase* owner)
+			: ControlTmplBase(owner)
+			  , m_animTask(coro::SharedTask<void>::reject("anim not start"))
 		{
 		}
 
@@ -21,19 +23,18 @@ namespace ui
 			stopAnim();
 		}
 
-		using AnimRequester = std::move_only_function<void(const D2D1_RECT_F&)>;
-
-		void setAnimRequester(AnimRequester animRequester)
+		void startAnim()
 		{
-			m_animRequester = std::move(animRequester);
-			if (m_animRequester)
-			{
-				startAnim();
-			}
-			else
-			{
-				stopAnim();
-			}
+			stopAnim();
+
+			m_animStopSource = std::stop_source{};
+			m_animTask = coro::start_and_shared(coro::co_with_cancellation(updateShimmerPosition(), m_animStopSource.get_token()));
+		}
+
+		void stopAnim()
+		{
+			m_animStopSource.request_stop();
+			m_animTask.waitUntilDone();
 		}
 
 	private:
@@ -93,20 +94,6 @@ namespace ui
 			renderTarget->FillRoundedRectangle(&shimmerRect, solidBrush);
 		}
 
-		void startAnim()
-		{
-			stopAnim();
-
-			m_animStopSource = std::stop_source{};
-			m_animTask = coro::start_and_shared(coro::co_with_cancellation(updateShimmerPosition(), m_animStopSource.get_token()));
-		}
-
-		void stopAnim()
-		{
-			m_animStopSource.request_stop();
-			m_animTask.waitUntilDone();
-		}
-
 		coro::LazyTask<void> updateShimmerPosition()
 		{
 			static constexpr std::uint64_t intervalMs = 1000 / 60;
@@ -117,10 +104,6 @@ namespace ui
 			while (true)
 			{
 				co_await sched::transfer_after(std::chrono::milliseconds{intervalMs}, app().get_scheduler());
-				if (!m_animRequester)
-				{
-					break;
-				}
 				// calc actual duration
 				const auto lastTimePoint = currentTimePoint;
 				currentTimePoint = std::chrono::steady_clock::now();
@@ -137,14 +120,13 @@ namespace ui
 					m_shimmerPosition = -width;
 				}
 
-				m_animRequester(m_bounds);
+				m_ownerWnd->invalidateRect(m_bounds);
 			}
 		}
 
 	private:
 		ID2D1GradientStopCollection* m_pGradientStops{nullptr};
 		ID2D1LinearGradientBrush* m_pLinearGradientBrush{nullptr};
-		AnimRequester m_animRequester;
 		std::stop_source m_animStopSource{std::nostopstate};
 		coro::SharedTask<void> m_animTask;
 		float m_shimmerPosition{0.f};

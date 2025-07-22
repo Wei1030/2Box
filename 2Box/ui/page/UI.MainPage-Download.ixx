@@ -20,6 +20,7 @@ namespace ui
 	public:
 		void OnEnter(WindowBase& owner)
 		{
+			m_ownerWnd = &owner;
 			app().dWriteFactory()->CreateTextFormat(
 				L"Segoe UI",
 				nullptr,
@@ -29,15 +30,9 @@ namespace ui
 				14.0f,
 				L"",
 				&m_pTextFormat);
-
-			m_updateWindow = [&owner]
-			{
-				owner.invalidateRect();
-			};
-			m_loadingIndicator.setAnimRequester([&owner](const D2D1_RECT_F& rc)
-			{
-				owner.invalidateRect(rc);
-			});
+			
+			m_pLoadingIndicator = new LoadingIndicator(&owner);
+			m_pLoadingIndicator->startAnim();
 			m_task = coro::start_and_shared(coro::co_with_cancellation(downloadIfNeedThenAnaSymbols(), m_stopSource.get_token()));
 		}
 
@@ -51,18 +46,18 @@ namespace ui
 			m_stopSource.request_stop();
 			m_task.waitUntilDone();
 			m_asyncScope.join();
-			m_loadingIndicator.setAnimRequester(nullptr);
+			delete m_pLoadingIndicator;
 			safe_release(&m_pTextFormat);
 		}
 
 		virtual WindowBase::HResult onCreateDeviceResources(const RenderContext& renderCtx) override
 		{
-			return m_loadingIndicator.onCreateDeviceResources(renderCtx);
+			return m_pLoadingIndicator->onCreateDeviceResources(renderCtx);
 		}
 
 		virtual void onDiscardDeviceResources() override
 		{
-			m_loadingIndicator.onDiscardDeviceResources();
+			m_pLoadingIndicator->onDiscardDeviceResources();
 		}
 
 		virtual void draw(const RenderContext& renderCtx) override
@@ -87,8 +82,8 @@ namespace ui
 			// 绘制进度填充
 			const float progress = m_totalLength ? static_cast<float>(m_currentSize) / m_totalLength : 0.f;
 			float filledWidth = progress * progressBarWidth;
-			m_loadingIndicator.setBounds(D2D1::RectF(barX, barY, barX + filledWidth, barY + progressBarHeight));
-			m_loadingIndicator.draw(renderCtx);
+			m_pLoadingIndicator->setBounds(D2D1::RectF(barX, barY, barX + filledWidth, barY + progressBarHeight));
+			m_pLoadingIndicator->draw(renderCtx);
 
 			// 绘制文本标签
 			std::wstring progressText = std::format(L"任务进度: {:.0f}%", progress * 100);
@@ -123,7 +118,7 @@ namespace ui
 		{
 			co_await sched::transfer_to(app().get_scheduler());
 			m_totalLength += total;
-			m_updateWindow();
+			m_ownerWnd->invalidateRect();
 			co_return;
 		}
 
@@ -131,7 +126,7 @@ namespace ui
 		{
 			co_await sched::transfer_to(app().get_scheduler());
 			m_currentSize += size;
-			m_updateWindow();
+			m_ownerWnd->invalidateRect();
 			co_return;
 		}
 
@@ -166,16 +161,15 @@ namespace ui
 		}
 
 	private:
+		WindowBase* m_ownerWnd{nullptr};
 		IDWriteTextFormat* m_pTextFormat{nullptr};
-		LoadingIndicator m_loadingIndicator;
+		LoadingIndicator* m_pLoadingIndicator{nullptr};
 
 	private:
 		std::uint64_t m_totalLength{0};
 		std::uint64_t m_currentSize{0};
 		coro::AsyncScope m_asyncScope;
 		std::stop_source m_stopSource;
-		coro::SharedTask<void> m_task{coro::SharedTask<void>::reject(std::make_exception_ptr(std::runtime_error("task not started")))};
-
-		std::move_only_function<void()> m_updateWindow;
+		coro::SharedTask<void> m_task{coro::SharedTask<void>::reject("task not started")};
 	};
 }
