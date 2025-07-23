@@ -6,8 +6,8 @@ import Scheduler;
 
 namespace ui
 {
-	static constexpr int DESIRED_WIDTH = 640;
-	static constexpr int DESIRED_HEIGHT = 480;
+	static constexpr int DESIRED_WIDTH = 1024;
+	static constexpr int DESIRED_HEIGHT = 768;
 
 	MainWindow::MainWindow() : WindowBase({MainApp::appName})
 	{

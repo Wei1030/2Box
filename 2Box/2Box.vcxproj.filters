@@ -28,6 +28,9 @@
     <Filter Include="src\ui\page">
       <UniqueIdentifier>{095e2e98-aeb8-4520-8f09-3c4847487ba4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\ui\control\biz_ctrl">
+      <UniqueIdentifier>{89547748-09e1-4c2c-988e-dff53e2d4417}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -89,6 +92,9 @@
     </ClCompile>
     <ClCompile Include="ui\control\UI.LoadingIndicator.ixx">
       <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

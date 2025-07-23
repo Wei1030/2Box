@@ -12,11 +12,7 @@ namespace ui
 	export class LoadingIndicator final : public ControlTmplBase<LoadingIndicator>
 	{
 	public:
-		explicit LoadingIndicator(WindowBase* owner)
-			: ControlTmplBase(owner)
-			  , m_animTask(coro::SharedTask<void>::reject("anim not start"))
-		{
-		}
+		using ControlTmplBase::ControlTmplBase;
 
 		virtual ~LoadingIndicator()
 		{
@@ -120,7 +116,7 @@ namespace ui
 					m_shimmerPosition = -width;
 				}
 
-				m_ownerWnd->invalidateRect(m_bounds);
+				update();
 			}
 		}
 
@@ -128,7 +124,7 @@ namespace ui
 		ID2D1GradientStopCollection* m_pGradientStops{nullptr};
 		ID2D1LinearGradientBrush* m_pLinearGradientBrush{nullptr};
 		std::stop_source m_animStopSource{std::nostopstate};
-		coro::SharedTask<void> m_animTask;
+		coro::SharedTask<void> m_animTask{coro::SharedTask<void>::reject("anim not start")};
 		float m_shimmerPosition{0.f};
 	};
 }

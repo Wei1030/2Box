@@ -63,8 +63,9 @@ namespace ui
 		template <std::uint8_t... Is>
 		HResult createDeviceResourcesForAllPages(std::integer_sequence<std::uint8_t, Is...>)
 		{
+			ID2D1HwndRenderTarget* renderTarget = renderContext().renderTarget;
 			HResult hr;
-			((hr = m_pages.stateCtx<static_cast<MainPageType>(Is)>().onCreateDeviceResources(renderContext()), FAILED(hr)) || ...);
+			((hr = m_pages.stateCtx<static_cast<MainPageType>(Is)>().onCreateDeviceResources(renderTarget), FAILED(hr)) || ...);
 			return hr;
 		}
 
