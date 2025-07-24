@@ -9,38 +9,58 @@ import WinHttp;
 
 namespace symbols
 {
+	export SYMSRV_INDEX_INFOW file_index_info(std::wstring_view filePath)
+	{
+		SYMSRV_INDEX_INFOW indexInfo{sizeof(SYMSRV_INDEX_INFOW)};
+		if (!SymSrvGetFileIndexInfoW(filePath.data(), &indexInfo, 0))
+		{
+			throw std::runtime_error(std::format("SymSrvGetFileIndexInfoW failed, error code: {}", GetLastError()));
+		}
+		return indexInfo;
+	}
+
+	export void ensure_pdb_exists(const SYMSRV_INDEX_INFOW& indexInfo)
+	{
+		wchar_t pdbPath[MAX_PATH + 1] = {};
+		if (!SymFindFileInPathW(GetCurrentProcess(), nullptr,
+		                        indexInfo.pdbfile,
+		                        const_cast<GUID*>(&indexInfo.guid),
+		                        indexInfo.age,
+		                        0,
+		                        SSRVOPT_GUIDPTR,
+		                        pdbPath,
+		                        nullptr, nullptr))
+		{
+			throw std::runtime_error(std::format("SymFindFileInPathW failed, error code: {}", GetLastError()));
+		}
+	}
+
+	export struct PdbPathInfo
+	{
+		std::wstring pdbPath;
+		std::wstring downloadObjName;
+	};
+
+	export PdbPathInfo parse_pdb_path(const SYMSRV_INDEX_INFOW& indexInfo, std::wstring_view rootPath = {})
+	{
+		namespace fs = std::filesystem;
+		PdbPathInfo result;
+		const GUID& guid = indexInfo.guid;
+		const std::wstring strGuid = std::format(L"{:08X}{:04X}{:04X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:X}", guid.Data1, guid.Data2, guid.Data3,
+		                                         guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
+		                                         guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7], indexInfo.age);
+		const fs::path filePdbPath{fs::path{rootPath} / fs::path{indexInfo.pdbfile} / fs::path{strGuid} / fs::path{indexInfo.pdbfile}};
+		result.pdbPath = filePdbPath.native();
+		result.downloadObjName = std::format(L"download/symbols/{}/{}/{}", indexInfo.pdbfile, strGuid, indexInfo.pdbfile);
+		return result;
+	}
+
 	export class Symbol
 	{
 	public:
-		static SYMSRV_INDEX_INFOW fileIndexInfo(std::wstring_view filePath)
-		{
-			SYMSRV_INDEX_INFOW indexInfo{sizeof(SYMSRV_INDEX_INFOW)};
-			if (!SymSrvGetFileIndexInfoW(filePath.data(), &indexInfo, 0))
-			{
-				throw std::runtime_error(std::format("SymSrvGetFileIndexInfoW failed, error code: {}", GetLastError()));
-			}
-			return indexInfo;
-		}
-
-		static void ensurePdbExists(const SYMSRV_INDEX_INFOW& indexInfo)
-		{
-			wchar_t pdbPath[MAX_PATH + 1] = {};
-			if (!SymFindFileInPathW(GetCurrentProcess(), nullptr,
-			                        indexInfo.pdbfile,
-			                        const_cast<GUID*>(&indexInfo.guid),
-			                        indexInfo.age,
-			                        0,
-			                        SSRVOPT_GUIDPTR,
-			                        pdbPath,
-			                        nullptr, nullptr))
-			{
-				throw std::runtime_error(std::format("SymFindFileInPathW failed, error code: {}", GetLastError()));
-			}
-		}
-
 		explicit Symbol(std::wstring_view filePath)
 		{
-			ensurePdbExists(fileIndexInfo(filePath));
+			ensure_pdb_exists(file_index_info(filePath));
 
 			m_modBase = SymLoadModuleExW(GetCurrentProcess(), nullptr, filePath.data(), nullptr, 0, 0, nullptr, 0);
 			if (!m_modBase)
@@ -120,7 +140,7 @@ namespace symbols
 		coro::LazyTask<Symbol> loadSymbol(std::wstring filePath, ContentLengthReporter contentLengthReporter, ProgressReporter progressReporter) const
 		{
 			namespace fs = std::filesystem;
-			SYMSRV_INDEX_INFOW indexInfo = Symbol::fileIndexInfo(filePath);
+			SYMSRV_INDEX_INFOW indexInfo = file_index_info(filePath);
 			GUID& guid = indexInfo.guid;
 			std::wstring strGuid = std::format(L"{:08X}{:04X}{:04X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:X}", guid.Data1, guid.Data2, guid.Data3,
 			                                   guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],

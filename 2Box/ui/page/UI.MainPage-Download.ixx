@@ -8,6 +8,7 @@ import StateMachine;
 import Coroutine;
 import Scheduler;
 import SymbolLoader;
+import Utility.SystemInfo;
 import UI.PageBase;
 import UI.FileStatusCtrl;
 
@@ -23,17 +24,9 @@ namespace ui
 		void OnEnter(WindowBase& owner)
 		{
 			m_ownerWnd = &owner;
-			if (SUCCEEDED(app().dWriteFactory()->CreateTextLayout(downloadPageTitle.data(),
-				static_cast<UINT32>(downloadPageTitle.size()),
-				app().textFormat().pTitleFormat,
-				std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
-				&m_pTextLayout)))
-			{
-				m_pTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
-			}
 
-			m_p32FileStatusCtrl = new FileStatusCtrl(&owner);
-			m_p64FileStatusCtrl = new FileStatusCtrl(&owner);
+			initTextLayout();
+			initFileStatusCtrl();
 
 			//m_task = coro::start_and_shared(coro::co_with_cancellation(downloadIfNeedThenAnaSymbols(), m_stopSource.get_token()));
 		}
@@ -49,21 +42,29 @@ namespace ui
 			m_task.waitUntilDone();
 			m_asyncScope.join();
 			delete m_p32FileStatusCtrl;
+#ifdef _WIN64
 			delete m_p64FileStatusCtrl;
+#endif
 			safe_release(&m_pTextLayout);
 		}
 
 		virtual WindowBase::HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
 		{
 			WindowBase::HResult hr;
-			(hr = m_p32FileStatusCtrl->onCreateDeviceResources(renderTarget), FAILED(hr)) || (hr = m_p64FileStatusCtrl->onCreateDeviceResources(renderTarget), FAILED(hr));
+			(hr = m_p32FileStatusCtrl->onCreateDeviceResources(renderTarget), FAILED(hr))
+#ifdef _WIN64
+				|| (hr = m_p64FileStatusCtrl->onCreateDeviceResources(renderTarget), FAILED(hr))
+#endif
+				;
 			return hr;
 		}
 
 		virtual void onDiscardDeviceResources() override
 		{
 			m_p32FileStatusCtrl->onDiscardDeviceResources();
+#ifdef _WIN64
 			m_p64FileStatusCtrl->onDiscardDeviceResources();
+#endif
 		}
 
 		virtual void draw(const RenderContext& renderCtx) override
@@ -73,13 +74,7 @@ namespace ui
 			auto size = renderTarget->GetSize();
 
 			constexpr float bottomMargin = 20.f;
-			const float contentWidth = size.width / 2;
-			const float fileCtrl32Height = m_p32FileStatusCtrl->preferredHeight();
-			const float fileCtrl64Height = m_p64FileStatusCtrl->preferredHeight();
-			const float contentHeight = fileCtrl32Height + bottomMargin + fileCtrl64Height;
-			const float contentXPos = (size.width - contentWidth) / 2;
-			float contentYPos = (size.height - contentHeight) / 2;
-
+			const float contentWidth = size.width * 0.618f;
 			float titleTextHeight = 24.f;
 			if (m_pTextLayout)
 			{
@@ -90,20 +85,26 @@ namespace ui
 					titleTextHeight = textMetrics.height;
 				}
 			}
-			const float titleYPos = contentYPos - bottomMargin - titleTextHeight;
+			
+			const float contentXPos = (size.width - contentWidth) / 2;
+			float contentYPos = bottomMargin;
 			solidBrush->SetColor(D2D1::ColorF(0x2b579a));
 			renderTarget->DrawTextW(downloadPageTitle.data(),
 			                        static_cast<UINT32>(downloadPageTitle.length()),
 			                        app().textFormat().pTitleFormat,
-			                        D2D1::RectF(contentXPos, titleYPos, contentXPos + contentWidth, titleYPos + titleTextHeight),
+			                        D2D1::RectF(contentXPos, contentYPos, contentXPos + contentWidth, contentYPos + titleTextHeight),
 			                        solidBrush);
+			contentYPos += titleTextHeight + bottomMargin;
 
+			const float fileCtrl32Height = m_p32FileStatusCtrl->preferredHeight();
 			m_p32FileStatusCtrl->setBounds(D2D1::RectF(contentXPos, contentYPos, contentXPos + contentWidth, contentYPos + fileCtrl32Height));
 			m_p32FileStatusCtrl->draw(renderCtx);
-
 			contentYPos += fileCtrl32Height + bottomMargin;
+#ifdef _WIN64
+			const float fileCtrl64Height = m_p64FileStatusCtrl->preferredHeight();
 			m_p64FileStatusCtrl->setBounds(D2D1::RectF(contentXPos, contentYPos, contentXPos + contentWidth, contentYPos + fileCtrl64Height));
 			m_p64FileStatusCtrl->draw(renderCtx);
+#endif
 		}
 
 		coro::LazyTask<void> joinAsync()
@@ -123,6 +124,55 @@ namespace ui
 		}
 
 	private:
+		void initTextLayout()
+		{
+			if (SUCCEEDED(app().dWriteFactory()->CreateTextLayout(downloadPageTitle.data(),
+				static_cast<UINT32>(downloadPageTitle.size()),
+				app().textFormat().pTitleFormat,
+				std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+				&m_pTextLayout)))
+			{
+				[[maybe_unused]] HRESULT hr = m_pTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
+			}
+		}
+
+		static constexpr std::wstring_view downloadServerName = L"msdl.microsoft.com";
+
+		void initFileStatusCtrl()
+		{
+			namespace fs = std::filesystem;
+			static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
+
+			{
+				m_p32FileStatusCtrl = new FileStatusCtrl(m_ownerWnd);
+				m_p32FileStatusCtrl->setDownloadServerName(downloadServerName);
+#ifdef _WIN64
+				const fs::path systemDir{sys_info::get_system_wow64_dir()};
+#else
+				const fs::path systemDir{sys_info::get_system_dir()};
+#endif
+				const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
+				const SYMSRV_INDEX_INFOW indexInfo = symbols::file_index_info(ntdllPath.native());
+				m_p32FileStatusCtrl->setFileName(indexInfo.pdbfile);
+				const auto [pdbPath, objName] = symbols::parse_pdb_path(indexInfo, searchPath);
+				m_p32FileStatusCtrl->setPdbPath(pdbPath);
+				m_p32FileStatusCtrl->setDownloadObjName(objName);
+			}
+			{
+#ifdef _WIN64
+				m_p64FileStatusCtrl = new FileStatusCtrl(m_ownerWnd);
+				m_p64FileStatusCtrl->setDownloadServerName(downloadServerName);
+				const fs::path systemDir{sys_info::get_system_dir()};
+				const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
+				const SYMSRV_INDEX_INFOW indexInfo = symbols::file_index_info(ntdllPath.native());
+				m_p64FileStatusCtrl->setFileName(indexInfo.pdbfile);
+				const auto [pdbPath, objName] = symbols::parse_pdb_path(indexInfo, searchPath);
+				m_p64FileStatusCtrl->setPdbPath(pdbPath);
+				m_p64FileStatusCtrl->setDownloadObjName(objName);
+#endif
+			}
+		}
+
 		coro::LazyTask<void> updateTotalSizeInMainThread(std::uint64_t total)
 		{
 			co_await sched::transfer_to(app().get_scheduler());
@@ -173,7 +223,9 @@ namespace ui
 		WindowBase* m_ownerWnd{nullptr};
 		IDWriteTextLayout* m_pTextLayout{nullptr};
 		FileStatusCtrl* m_p32FileStatusCtrl{nullptr};
+#ifdef _WIN64
 		FileStatusCtrl* m_p64FileStatusCtrl{nullptr};
+#endif
 
 	private:
 		std::uint64_t m_totalLength{0};
