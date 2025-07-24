@@ -8,6 +8,15 @@ import "sys_defs.hpp";
 
 import UI.MainWindow;
 
+namespace 
+{
+	void clear_quit_msg() noexcept
+	{
+		MSG msg;
+		PeekMessageW(&msg, nullptr, WM_QUIT, WM_QUIT, PM_REMOVE);
+	}
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
 	try
@@ -24,7 +33,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 	}
 	catch (const std::exception& e)
 	{
+		// 由于app的析构会触发PostQuitMessage
+		// 所以需要在 MessageBox 前清除WM_QUIT消息，否则MessageBox窗口会立即销毁并返回
+		clear_quit_msg();
 		MessageBoxA(nullptr, e.what(), MainApp::appNameA.data(), MB_OK);
+	}
+	catch (...)
+	{
+		clear_quit_msg();
+		MessageBoxW(nullptr, L"Unknown error", MainApp::appName.data(), MB_OK);
 	}
 	return 0;
 }

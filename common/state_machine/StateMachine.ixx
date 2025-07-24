@@ -37,9 +37,46 @@ namespace sm
 	struct StateCoroVisitor
 	{
 		template <typename State>
+		std::coroutine_handle<> operator()(const State& InState)
+		{
+			if (auto e = InState.Coro.promise().ExceptionPtr)
+			{
+				std::rethrow_exception(e);
+			}
+			return InState.Coro;
+		}
+	};
+
+	struct StateCoroVisitorNoExcept
+	{
+		template <typename State>
 		std::coroutine_handle<> operator()(const State& InState) noexcept
 		{
+			if (auto e = InState.Coro.promise().ExceptionPtr)
+			{
+				return std::noop_coroutine();
+			}
 			return InState.Coro;
+		}
+	};
+
+	struct StateResumeVisitor
+	{
+		template <typename State>
+		void operator()(const State& InState)
+		{
+			auto& promise = InState.Coro.promise();
+			if (promise.ExceptionPtr)
+			{
+				std::rethrow_exception(promise.ExceptionPtr);
+			}
+
+			InState.Coro.resume();
+
+			if (promise.ExceptionPtr)
+			{
+				std::rethrow_exception(promise.ExceptionPtr);
+			}
 		}
 	};
 
@@ -112,7 +149,7 @@ namespace sm
 		void update() const
 		{
 			const auto& StateVariant = StateArray[CurrentStateIndex];
-			std::visit(StateCoroVisitor{}, StateVariant).resume();
+			std::visit(StateResumeVisitor{}, StateVariant);
 		}
 
 	public:
@@ -134,6 +171,7 @@ namespace sm
 			struct promise_type
 			{
 				TStateType<static_cast<StateIndexType>(StateIndex)>* StateCtxPtr;
+				std::exception_ptr ExceptionPtr{nullptr};
 
 				std::suspend_never initial_suspend() noexcept
 				{
@@ -151,6 +189,7 @@ namespace sm
 
 				void unhandled_exception() noexcept
 				{
+					ExceptionPtr = std::current_exception();
 				}
 
 				TState get_return_object() noexcept
@@ -202,20 +241,20 @@ namespace sm
 				Coro.promise().StateCtxPtr = StateCtxPtr;
 
 				UnderlyingIndexType NextStateIndex = static_cast<UnderlyingIndexType>(NextState.NextStateIndex);
+				Machine->CurrentStateIndex = NextStateIndex;
+
 				if (StateIndex == NextStateIndex)
 				{
-					Machine->CurrentStateIndex = StateIndex;
 					return std::noop_coroutine();
 				}
 
 				if (!NextState.bIsTransferImmediately)
 				{
-					Machine->CurrentStateIndex = NextStateIndex;
 					return std::noop_coroutine();
 				}
 
 				const auto& StateVariant = Machine->StateArray[NextStateIndex];
-				return std::visit(StateCoroVisitor{}, StateVariant);
+				return std::visit(StateCoroVisitorNoExcept{}, StateVariant);
 			}
 
 			void await_resume() const
@@ -255,12 +294,20 @@ namespace sm
 
 				CtxRefType Ctx = *CtxWrapper.CtxPtr;
 
-				if (bHasTransferred)
+				try
 				{
-					StateCtx.OnEnter(Ctx);
-				}
+					if (bHasTransferred)
+					{
+						StateCtx.OnEnter(Ctx);
+					}
 
-				NextState = StateCtx.OnUpdate(Ctx);
+					NextState = StateCtx.OnUpdate(Ctx);
+				}
+				catch (...)
+				{
+					StateCtx.OnExit(Ctx);
+					std::rethrow_exception(std::current_exception());
+				}
 
 				bHasTransferred = NextState.NextStateIndex != static_cast<StateIndexType>(StateIndex);
 				if (bHasTransferred)

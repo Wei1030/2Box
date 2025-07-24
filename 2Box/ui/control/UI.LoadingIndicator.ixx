@@ -3,16 +3,23 @@ export module UI.LoadingIndicator;
 import "sys_defs.h";
 import std;
 import MainApp;
-import UI.ControlBase;
 import Coroutine;
 import Scheduler;
+import UI.ControlBase;
 
 namespace ui
 {
 	export class LoadingIndicator final : public ControlTmplBase<LoadingIndicator>
 	{
 	public:
+#ifndef __INTELLISENSE__
 		using ControlTmplBase::ControlTmplBase;
+#else
+		template <typename... Args>
+		explicit LoadingIndicator(Args&&... args) : ControlTmplBase(std::forward<Args>(args)...)
+		{
+		}
+#endif
 
 		virtual ~LoadingIndicator()
 		{

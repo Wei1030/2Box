@@ -266,74 +266,91 @@ namespace ui
 
 	LRESULT WindowBase::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
-		if (message == WM_CREATE)
+		try
 		{
-			const LPCREATESTRUCTW pcs = reinterpret_cast<LPCREATESTRUCTW>(lParam);
-			SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pcs->lpCreateParams));
-		}
-		else if (message == WM_NCCREATE)
-		{
-			if (win32_api::EnableNonClientDpiScaling)
+			if (message == WM_CREATE)
 			{
-				win32_api::EnableNonClientDpiScaling(hWnd);
+				const LPCREATESTRUCTW pcs = reinterpret_cast<LPCREATESTRUCTW>(lParam);
+				SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pcs->lpCreateParams));
 			}
-		}
-		else
-		{
-			if (WindowBase* pWnd = reinterpret_cast<WindowBase*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA)))
+			else if (message == WM_NCCREATE)
 			{
-				switch (message)
+				if (win32_api::EnableNonClientDpiScaling)
 				{
-				case WM_DESTROY:
+					win32_api::EnableNonClientDpiScaling(hWnd);
+				}
+			}
+			else
+			{
+				if (WindowBase* pWnd = reinterpret_cast<WindowBase*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA)))
+				{
+					switch (message)
 					{
-						pWnd->onDestroy();
-					}
-					return 0;
-				case WM_SIZE:
-					{
-						const std::uint32_t width = LOWORD(lParam);
-						const std::uint32_t height = HIWORD(lParam);
-						pWnd->resize(width, height);
-					}
-					return 0;
-				case WM_PAINT:
-					{
-						if (SUCCEEDED(pWnd->prepareDeviceResources()))
+					case WM_DESTROY:
 						{
-							if (FAILED(pWnd->onRender()))
+							pWnd->onDestroy();
+						}
+						return 0;
+					case WM_SIZE:
+						{
+							const std::uint32_t width = LOWORD(lParam);
+							const std::uint32_t height = HIWORD(lParam);
+							pWnd->resize(width, height);
+						}
+						return 0;
+					case WM_PAINT:
+						{
+							if (SUCCEEDED(pWnd->prepareDeviceResources()))
 							{
-								pWnd->releaseDeviceResources();
+								if (FAILED(pWnd->onRender()))
+								{
+									pWnd->releaseDeviceResources();
+								}
+							}
+							ValidateRect(hWnd, nullptr);
+						}
+						return 0;
+					case WM_CLOSE:
+						{
+							if (pWnd->onClose())
+							{
+								return 0;
 							}
 						}
-						ValidateRect(hWnd, nullptr);
-					}
-					return 0;
-				case WM_CLOSE:
-					{
-						if (pWnd->onClose())
+						break;
+					case WM_DISPLAYCHANGE:
 						{
-							return 0;
+							InvalidateRect(hWnd, nullptr, FALSE);
 						}
+						return 0;
+					case WM_DPICHANGED:
+						{
+							pWnd->updateDpi();
+							RECT* pNewRc = reinterpret_cast<RECT*>(lParam);
+							pWnd->setPhysicalRect(D2D1::RectF(static_cast<float>(pNewRc->left), static_cast<float>(pNewRc->top),
+							                                  static_cast<float>(pNewRc->right), static_cast<float>(pNewRc->bottom)));
+						}
+						break;
+					default:
+						break;
 					}
-					break;
-				case WM_DISPLAYCHANGE:
-					{
-						InvalidateRect(hWnd, nullptr, FALSE);
-					}
-					return 0;
-				case WM_DPICHANGED:
-					{
-						pWnd->updateDpi();
-						RECT* pNewRc = reinterpret_cast<RECT*>(lParam);
-						pWnd->setPhysicalRect(D2D1::RectF(static_cast<float>(pNewRc->left), static_cast<float>(pNewRc->top), static_cast<float>(pNewRc->right), static_cast<float>(pNewRc->bottom)));
-					}
-					break;
-				default:
-					break;
 				}
 			}
 		}
-
+		catch (const std::exception& e)
+		{
+			app().get_scheduler().addTask([except = std::make_exception_ptr(e)]
+			{
+				std::rethrow_exception(except);
+			});
+		}
+		catch (...)
+		{
+			app().get_scheduler().addTask([]
+			{
+				throw std::runtime_error("Unknown error occur in WndProc!");
+			});
+		}
 		return DefWindowProcW(hWnd, message, wParam, lParam);
 	}
 }

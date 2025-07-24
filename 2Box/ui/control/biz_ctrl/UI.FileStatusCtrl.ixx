@@ -3,9 +3,9 @@ export module UI.FileStatusCtrl;
 import std;
 import "sys_defs.h";
 import MainApp;
+import StateMachine;
 import UI.ControlBase;
 import UI.LoadingIndicator;
-import StateMachine;
 
 namespace ui
 {
@@ -392,7 +392,7 @@ namespace ui
 		void drawDownloading(const RenderContext& renderCtx) const
 		{
 			drawBaseContent(renderCtx);
-			drawStatusContent(renderCtx, D2D1::ColorF(0x0078d7), std::format(L"正在下载: {:.0f}%", m_progress * 100));
+			drawStatusContent(renderCtx, D2D1::ColorF(0x0078d7), std::format(L"正在下载: {:.0f}%", m_progress * 100.f));
 			drawTipsContent(renderCtx, D2D1::ColorF(0x605e5c), std::format(L"下载源: https://{}/{}", m_downloadServerName, m_downloadObjName));
 			drawLoadingContent(renderCtx);
 			drawLoadingIndicator(renderCtx, m_progress);
@@ -421,8 +421,8 @@ namespace ui
 		std::wstring m_downloadServerName;
 		std::wstring m_downloadObjName;
 		std::wstring m_pdbPath;
-		std::wstring m_errorMsg{L"asdasdasdasd哈哈哈"};
-		float m_progress{0.4f};
+		std::wstring m_errorMsg;
+		float m_progress{0.f};
 		std::unique_ptr<LoadingIndicator> m_pLoadingIndicator{nullptr};
 		sm::StateMachine<TPainterType, EPainterType, PainterContext> m_painter;
 	};
