@@ -75,6 +75,11 @@ namespace ui
 			m_ownerWnd->invalidateRect(m_boundsInOwner);
 		}
 
+		void updateWholeWnd() const
+		{
+			m_ownerWnd->invalidateRect();
+		}
+
 	public:
 		virtual WindowBase::HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget)
 		{

@@ -83,6 +83,12 @@ namespace coro
 			syncLatch.wait();
 		}
 
+		// must join first
+		void reset() noexcept
+		{
+			m_count.store(1, std::memory_order_relaxed);
+		}
+
 	private:
 		void onWorkStarted() noexcept
 		{

@@ -45,20 +45,13 @@ namespace ui
 	{
 		if (m_pages.currentStateIndex() == MainPageType::Download)
 		{
-			auto& downloadPage = m_pages.stateCtx<MainPageType::Download>();
-			if (!downloadPage.isStopRequested())
+			const auto& downloadPage = m_pages.stateCtx<MainPageType::Download>();
+			if (!downloadPage.isCancelled())
 			{
 				downloadPage.cancelTask();
-				[](MainWindow& self, TMainPageType<MainPageType, MainPageType::Download>& page) -> coro::OnewayTask
+				[](MainWindow& self, const TMainPageType<MainPageType, MainPageType::Download>& page) -> coro::OnewayTask
 				{
-					try
-					{
-						co_await page.joinAsync();
-					}
-					catch (...)
-					{
-					}
-					co_await sched::transfer_to(app().get_scheduler());
+					co_await page.joinAsync();
 					self.changePageTo<MainPageType::Home>();
 					self.destroyWindow();
 				}(*this, downloadPage);
@@ -98,9 +91,11 @@ namespace ui
 		changePageTo<MainPageType::Download>();
 
 		co_await m_pages.stateCtx<MainPageType::Download>().joinAsync();
-		co_await sched::transfer_to(app().get_scheduler());
 		
-		changePageTo<MainPageType::Home>();
+		if (m_pages.stateCtx<MainPageType::Download>().isFileVerified())
+		{
+			changePageTo<MainPageType::Home>();	
+		}		
 		co_return;
 	}
 }

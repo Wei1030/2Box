@@ -27,8 +27,6 @@ namespace ui
 
 			initTextLayout();
 			initFileStatusCtrl();
-
-			//m_task = coro::start_and_shared(coro::co_with_cancellation(downloadIfNeedThenAnaSymbols(), m_stopSource.get_token()));
 		}
 
 		// ReSharper disable once CppMemberFunctionMayBeStatic
@@ -39,11 +37,10 @@ namespace ui
 
 		void OnExit(WindowBase&)
 		{
-			m_stopSource.request_stop();
-			m_task.waitUntilDone();
-			m_asyncScope.join();
+			m_p32FileStatusCtrl->stopAnaTask();
 			delete m_p32FileStatusCtrl;
 #ifdef _WIN64
+			m_p64FileStatusCtrl->stopAnaTask();
 			delete m_p64FileStatusCtrl;
 #endif
 			m_pTextLayout.reset();
@@ -86,7 +83,7 @@ namespace ui
 					titleTextHeight = textMetrics.height;
 				}
 			}
-			
+
 			const float contentXPos = (size.width - contentWidth) / 2;
 			float contentYPos = bottomMargin;
 			solidBrush->SetColor(D2D1::ColorF(0x2b579a));
@@ -108,20 +105,40 @@ namespace ui
 #endif
 		}
 
-		coro::LazyTask<void> joinAsync()
+		coro::LazyTask<void> joinAsync() const
 		{
-			co_await m_task;
+#ifdef _WIN64
+			co_await coro::when_all_settled(m_p64FileStatusCtrl->joinAsync(), m_p32FileStatusCtrl->joinAsync());
+#else
+			co_await m_p32FileStatusCtrl->joinAsync();
+#endif
 			co_return;
 		}
 
-		bool isStopRequested() const
+		bool isFileVerified() const
 		{
-			return m_stopSource.stop_requested();
+#ifdef _WIN64
+			return m_p64FileStatusCtrl->isFileVerified() && m_p32FileStatusCtrl->isFileVerified();
+#else
+			return m_p32FileStatusCtrl->isFileVerified();
+#endif
 		}
 
-		void cancelTask()
+		void cancelTask() const
 		{
-			m_stopSource.request_stop();
+#ifdef _WIN64
+			m_p64FileStatusCtrl->cancelTask();
+#endif
+			m_p32FileStatusCtrl->cancelTask();
+		}
+
+		bool isCancelled() const
+		{
+#ifdef _WIN64
+			return m_p64FileStatusCtrl->isCancelled() && m_p32FileStatusCtrl->isCancelled();
+#else
+			return m_p32FileStatusCtrl->isCancelled();
+#endif
 		}
 
 	private:
@@ -158,6 +175,7 @@ namespace ui
 				const auto [pdbPath, objName] = symbols::parse_pdb_path(indexInfo, searchPath);
 				m_p32FileStatusCtrl->setPdbPath(pdbPath);
 				m_p32FileStatusCtrl->setDownloadObjName(objName);
+				m_p32FileStatusCtrl->startAnaTask();
 			}
 			{
 #ifdef _WIN64
@@ -170,54 +188,9 @@ namespace ui
 				const auto [pdbPath, objName] = symbols::parse_pdb_path(indexInfo, searchPath);
 				m_p64FileStatusCtrl->setPdbPath(pdbPath);
 				m_p64FileStatusCtrl->setDownloadObjName(objName);
+				m_p64FileStatusCtrl->startAnaTask();
 #endif
 			}
-		}
-
-		coro::LazyTask<void> updateTotalSizeInMainThread(std::uint64_t total)
-		{
-			co_await sched::transfer_to(app().get_scheduler());
-			m_totalLength += total;
-			m_ownerWnd->invalidateRect();
-			co_return;
-		}
-
-		coro::LazyTask<void> updateCurrentSizeInMainThread(std::uint64_t size)
-		{
-			co_await sched::transfer_to(app().get_scheduler());
-			m_currentSize += size;
-			m_ownerWnd->invalidateRect();
-			co_return;
-		}
-
-		coro::LazyTask<void> downloadIfNeedThenAnaSymbols()
-		{
-			auto totalSizeCallback = [this](std::uint64_t total)
-			{
-				m_asyncScope.spawn(updateTotalSizeInMainThread(total));
-			};
-			auto currentSizeCallback = [this](std::uint64_t size)
-			{
-				m_asyncScope.spawn(updateCurrentSizeInMainThread(size));
-			};
-
-			symbols::Loader loader{std::format(L"{}\\Symbols", app().exeDir())};
-			auto task1 = loader.loadNtdllSymbol(totalSizeCallback, currentSizeCallback);
-			auto task2 = loader.loadWow64NtdllSymbol(totalSizeCallback, currentSizeCallback);
-			try
-			{
-				const auto [symbol, symbolWow64] = co_await coro::when_all(std::move(task1), std::move(task2));
-				co_await sched::transfer_to(app().get_scheduler());
-			}
-			catch (const std::exception&)
-			{
-			}
-			catch (...)
-			{
-			}
-			co_await sched::transfer_to(app().get_scheduler());
-			//
-			co_return;
 		}
 
 	private:
@@ -227,12 +200,5 @@ namespace ui
 #ifdef _WIN64
 		FileStatusCtrl* m_p64FileStatusCtrl{nullptr};
 #endif
-
-	private:
-		std::uint64_t m_totalLength{0};
-		std::uint64_t m_currentSize{0};
-		coro::AsyncScope m_asyncScope;
-		std::stop_source m_stopSource;
-		coro::SharedTask<void> m_task{coro::SharedTask<void>::reject("task not started")};
 	};
 }

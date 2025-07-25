@@ -3,6 +3,8 @@ export module UI.FileStatusCtrl;
 import std;
 import "sys_defs.h";
 import StateMachine;
+import WinHttp;
+import Coroutine;
 import UI.ControlBase;
 import UI.LoadingIndicator;
 
@@ -99,6 +101,11 @@ namespace ui
 			initialize();
 		}
 
+		virtual ~FileStatusCtrl()
+		{
+			stopAnaTask();
+		}
+
 		void setFileName(std::wstring_view fileName)
 		{
 			m_fileName = fileName;
@@ -119,6 +126,24 @@ namespace ui
 			m_pdbPath = pdbPath;
 		}
 
+		void startAnaTask();
+		void stopAnaTask();
+		coro::LazyTask<void> joinAsync();
+		bool isFileVerified() const
+		{
+			return m_painter.currentStateIndex() == EPainterType::Verified;
+		}
+
+		void cancelTask()
+		{
+			m_stopSource.request_stop();
+		}
+
+		bool isCancelled() const
+		{
+			return m_stopSource.stop_requested();
+		}
+
 		static constexpr float padding = 15.f;
 		static constexpr float margin = 8.f;
 		static constexpr float titleFileNameHeight = 20.f;
@@ -130,7 +155,7 @@ namespace ui
 		static constexpr float infoAreaHeight = subAreaPadding * 2.f + tipsTextHeight * 3.f + margin * 2.f;
 		static constexpr float infoLabelWidth = 60.f;
 
-		float preferredHeight() const
+		float preferredHeight() const noexcept
 		{
 			switch (m_painter.currentStateIndex())
 			{
@@ -187,6 +212,11 @@ namespace ui
 		void drawError(const RenderContext& renderCtx) const;
 
 	private:
+		coro::LazyTask<void> updateTotalSizeInMainThread(std::uint64_t total);
+		coro::LazyTask<void> updateCurrentSizeInMainThread(std::uint64_t size);
+		coro::LazyTask<void> startAnaTaskImpl();
+
+	private:
 		std::wstring m_fileName;
 		std::wstring m_downloadServerName;
 		std::wstring m_downloadObjName;
@@ -195,6 +225,14 @@ namespace ui
 		float m_progress{0.f};
 		std::unique_ptr<LoadingIndicator> m_pLoadingIndicator{nullptr};
 		sm::StateMachine<TPainterType, EPainterType, PainterContext> m_painter;
+
+	private:
+		std::shared_ptr<ms::WinHttpConnection> m_connection;
+		std::uint64_t m_totalLength{0};
+		std::uint64_t m_currentSize{0};
+		coro::AsyncScope m_asyncScope;
+		std::stop_source m_stopSource{std::nostopstate};
+		coro::SharedTask<void> m_task{coro::SharedTask<void>::reject("task not started")};
 	};
 
 	// ReSharper disable CppMemberFunctionMayBeStatic

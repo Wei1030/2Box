@@ -1,10 +1,42 @@
 module UI.FileStatusCtrl;
 
+import "sys_defs.h";
+#ifndef _SYS_DEFS_H_
+#pragma message("Just for IntelliSense. You should not see this message!")
+import "sys_defs.hpp";
+#endif
+
 import std;
 import MainApp;
+import Scheduler;
 
 namespace ui
 {
+	void FileStatusCtrl::startAnaTask()
+	{
+		stopAnaTask();
+		m_asyncScope.reset();
+		
+		m_stopSource = std::stop_source{};
+		m_task = coro::start_and_shared(coro::co_with_cancellation(startAnaTaskImpl(), m_stopSource.get_token()));
+	}
+
+	void FileStatusCtrl::stopAnaTask()
+	{
+		m_stopSource.request_stop();
+		m_task.waitUntilDone();
+		m_asyncScope.join();
+
+		m_totalLength = 0;
+		m_currentSize = 0;
+	}
+
+	coro::LazyTask<void> FileStatusCtrl::joinAsync()
+	{
+		co_await m_task;
+		co_return;
+	}
+
 	void FileStatusCtrl::drawImpl(const RenderContext& renderCtx)
 	{
 		app().textFormat().setAllTextEllipsisTrimming();
@@ -250,5 +282,166 @@ namespace ui
 		drawErrorContent(renderCtx);
 		drawInfoRoundedArea(renderCtx);
 		drawInfoContent(renderCtx);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////
+	coro::LazyTask<void> FileStatusCtrl::updateTotalSizeInMainThread(std::uint64_t total)
+	{
+		co_await sched::transfer_to(app().get_scheduler());
+		m_totalLength += total;
+		if (m_totalLength)
+		{
+			m_progress = static_cast<float>(m_currentSize * 1.0 / m_totalLength);
+		}
+		else
+		{
+			m_progress = 0.f;
+		}
+		update();
+		co_return;
+	}
+
+	coro::LazyTask<void> FileStatusCtrl::updateCurrentSizeInMainThread(std::uint64_t size)
+	{
+		co_await sched::transfer_to(app().get_scheduler());
+		m_currentSize += size;
+		if (m_totalLength)
+		{
+			m_progress = static_cast<float>(m_currentSize * 1.0 / m_totalLength);
+		}
+		else
+		{
+			m_progress = 0.f;
+		}
+		update();
+		co_return;
+	}
+
+	namespace
+	{
+		std::wstring utf8_to_wide_string(std::string_view utf8)
+		{
+			const int len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), static_cast<int>(utf8.size()), nullptr, 0);
+			if (len == 0)
+			{
+				throw std::runtime_error{std::format("MultiByteToWideChar fail, error code: {}", GetLastError())};
+			}
+			std::wstring result(len, 0);
+			if (!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), static_cast<int>(utf8.size()), result.data(), len))
+			{
+				throw std::runtime_error{std::format("MultiByteToWideChar fail, error code: {}", GetLastError())};
+			}
+			return result;
+		}
+
+		void write_file_thread(std::wstring_view pdbFile, std::span<std::byte> bytes, const coro::GuaranteedResolver<void>& resolver)
+		{
+			namespace fs = std::filesystem;
+			std::error_code ec;
+			fs::create_directories(fs::path{pdbFile}.parent_path(), ec);
+			if (ec)
+			{
+				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("create_directories failed, error code: {}", ec.value()))));
+				return;
+			}
+
+			HANDLE handle = CreateFileW(std::format(L"\\\\?\\{}", pdbFile).c_str(),
+			                            GENERIC_READ | GENERIC_WRITE,
+			                            0,
+			                            nullptr,
+			                            CREATE_ALWAYS,
+			                            FILE_ATTRIBUTE_NORMAL,
+			                            nullptr);
+			if (handle == INVALID_HANDLE_VALUE)
+			{
+				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("CreateFileW failed, error code: {}", GetLastError()))));
+				return;
+			}
+			if (!WriteFile(handle, bytes.data(), static_cast<DWORD>(bytes.size()), nullptr, nullptr))
+			{
+				CloseHandle(handle);
+				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("WriteFile failed, error code: {}", GetLastError()))));
+				return;
+			}
+			CloseHandle(handle);
+			resolver->resolve();
+		}
+
+		coro::LazyTask<void> write_file(std::wstring_view pdbFile, std::span<std::byte> bytes)
+		{
+			co_await coro::LazyTask<void>::create([pdbFile, bytes](coro::GuaranteedResolver<void> resolver)
+			{
+				// 反正设计成开始写文件后不允许取消
+				// 直接简单的创建一个线程阻塞式写文件
+				std::thread{
+					[pdbFile, bytes, res = std::move(resolver)]
+					{
+						write_file_thread(pdbFile, bytes, res);
+					}
+				}.detach();
+			});
+			co_return;
+		}
+	}
+
+	coro::LazyTask<void> FileStatusCtrl::startAnaTaskImpl()
+	{
+		namespace fs = std::filesystem;
+
+		std::wstring errMsg;
+		
+		try
+		{
+			m_painter.transferTo<EPainterType::Initial>();
+			const fs::path filePdbPath{m_pdbPath};
+			if (!fs::exists(filePdbPath))
+			{
+				m_connection = ms::get_default_win_http_session()->createConnection(m_downloadServerName);
+
+				auto totalSizeCallback = [this](std::uint64_t total)
+				{
+					m_asyncScope.spawn(updateTotalSizeInMainThread(total));
+				};
+				auto currentSizeCallback = [this](std::uint64_t size)
+				{
+					m_asyncScope.spawn(updateCurrentSizeInMainThread(size));
+				};
+				// start download
+				m_painter.transferTo<EPainterType::Downloading>();
+				updateWholeWnd();
+				const std::shared_ptr<ms::WinHttpRequest> req = m_connection->openRequest(L"GET", m_downloadObjName);
+				std::vector<std::byte> bytes = co_await req->request(totalSizeCallback, currentSizeCallback);
+				co_await sched::transfer_to(app().get_scheduler());
+				m_painter.transferTo<EPainterType::Writing>();
+				updateWholeWnd();
+				// 将bytes写入文件...
+				co_await write_file(filePdbPath.native(), bytes);
+				if (!fs::exists(filePdbPath))
+				{
+					throw std::runtime_error{"write file failed"};
+				}
+			}
+		}
+		catch (const std::exception& e)
+		{
+			errMsg = utf8_to_wide_string(e.what());
+		}
+		catch (...)
+		{
+			errMsg = L"unknown error in startAnaTask";
+		}
+
+		co_await sched::transfer_to(app().get_scheduler());
+		
+		if (errMsg.empty())
+		{
+			m_painter.transferTo<EPainterType::Verified>();
+		}
+		else
+		{
+			m_errorMsg = errMsg;
+			m_painter.transferTo<EPainterType::Error>();
+		}
+		updateWholeWnd();
 	}
 }
