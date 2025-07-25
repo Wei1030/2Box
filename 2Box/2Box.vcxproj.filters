@@ -96,6 +96,12 @@
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx">
       <Filter>src\ui\control\biz_ctrl</Filter>
     </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.LoadingIndicator.cpp">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\embed_dll.rc">

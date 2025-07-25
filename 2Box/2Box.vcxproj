@@ -32,8 +32,10 @@
     <ClCompile Include="app\MainApp.ixx" />
     <ClCompile Include="biz\http\WinHttp.ixx" />
     <ClCompile Include="biz\symbols\SymbolLoader.ixx" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx" />
     <ClCompile Include="ui\control\UI.ControlBase.ixx" />
+    <ClCompile Include="ui\control\UI.LoadingIndicator.cpp" />
     <ClCompile Include="ui\control\UI.LoadingIndicator.ixx" />
     <ClCompile Include="ui\page\UI.MainPage-Define.ixx" />
     <ClCompile Include="ui\page\UI.MainPage-Download.ixx" />
