@@ -14,7 +14,7 @@ namespace ui
 		using ControlTmplBase::ControlTmplBase;
 #else
 		template <typename... Args>
-		explicit LoadingIndicator(Args&&... args) : ControlTmplBase(std::forward<Args>(args)...)
+		explicit LoadingIndicator(Args&&... args) noexcept : ControlTmplBase(std::forward<Args>(args)...)
 		{
 		}
 #endif
@@ -71,8 +71,8 @@ namespace ui
 
 		void discardDeviceResourcesImpl()
 		{
-			safe_release(&m_pLinearGradientBrush);
-			safe_release(&m_pGradientStops);
+			m_pLinearGradientBrush.reset();
+			m_pGradientStops.reset();
 		}
 
 		void drawImpl(const RenderContext& renderCtx) const
@@ -98,8 +98,8 @@ namespace ui
 		coro::LazyTask<void> updateShimmerPosition();
 
 	private:
-		ID2D1GradientStopCollection* m_pGradientStops{nullptr};
-		ID2D1LinearGradientBrush* m_pLinearGradientBrush{nullptr};
+		UniqueComPtr<ID2D1GradientStopCollection> m_pGradientStops;
+		UniqueComPtr<ID2D1LinearGradientBrush> m_pLinearGradientBrush;
 		std::stop_source m_animStopSource{std::nostopstate};
 		coro::SharedTask<void> m_animTask{coro::SharedTask<void>::reject("anim not start")};
 		float m_shimmerPosition{0.f};

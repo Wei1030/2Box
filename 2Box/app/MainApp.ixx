@@ -9,32 +9,17 @@ export class MainApp;
 
 export struct AppCommonTextFormat
 {
-	IDWriteTextFormat* pTitleFormat{nullptr};
-	IDWriteTextFormat* pMainFormat{nullptr};
-	IDWriteTextFormat* pErrorMsgFormat{nullptr};
-	IDWriteTextFormat* pTipsFormat{nullptr};
-	IDWriteTextFormat* pToolBtnFormat{nullptr};
+	UniqueComPtr<IDWriteTextFormat> pTitleFormat;
+	UniqueComPtr<IDWriteTextFormat> pMainFormat;
+	UniqueComPtr<IDWriteTextFormat> pErrorMsgFormat;
+	UniqueComPtr<IDWriteTextFormat> pTipsFormat;
+	UniqueComPtr<IDWriteTextFormat> pToolBtnFormat;
 
-	IDWriteInlineObject* pTitleEllipsisTrimmingSign{nullptr};
-	IDWriteInlineObject* pMainEllipsisTrimmingSign{nullptr};
-	IDWriteInlineObject* pErrorMsgEllipsisTrimmingSign{nullptr};
-	IDWriteInlineObject* pTipsEllipsisTrimmingSign{nullptr};
-	IDWriteInlineObject* pToolBtnEllipsisTrimmingSign{nullptr};
-
-	~AppCommonTextFormat()
-	{
-		safe_release(&pTitleFormat);
-		safe_release(&pMainFormat);
-		safe_release(&pErrorMsgFormat);
-		safe_release(&pTipsFormat);
-		safe_release(&pToolBtnFormat);
-
-		safe_release(&pTitleEllipsisTrimmingSign);
-		safe_release(&pMainEllipsisTrimmingSign);
-		safe_release(&pErrorMsgEllipsisTrimmingSign);
-		safe_release(&pTipsEllipsisTrimmingSign);
-		safe_release(&pToolBtnEllipsisTrimmingSign);
-	}
+	UniqueComPtr<IDWriteInlineObject> pTitleEllipsisTrimmingSign;
+	UniqueComPtr<IDWriteInlineObject> pMainEllipsisTrimmingSign;
+	UniqueComPtr<IDWriteInlineObject> pErrorMsgEllipsisTrimmingSign;
+	UniqueComPtr<IDWriteInlineObject> pTipsEllipsisTrimmingSign;
+	UniqueComPtr<IDWriteInlineObject> pToolBtnEllipsisTrimmingSign;
 
 	void setAllTextEllipsisTrimming() const
 	{
@@ -187,12 +172,12 @@ public:
 
 	ID2D1Factory* d2d1Factory() const noexcept
 	{
-		return m_pDirect2dFactory;
+		return m_pDirect2dFactory.get();
 	}
 
 	IDWriteFactory* dWriteFactory() const noexcept
 	{
-		return m_pDWriteFactory;
+		return m_pDWriteFactory.get();
 	}
 
 	const AppCommonTextFormat& textFormat() const noexcept
@@ -228,13 +213,7 @@ private:
 
 	MainApp(HINSTANCE hInstance, std::wstring_view lpCmdLine, int nCmdShow)
 	{
-		HRESULT hr = CoInitialize(nullptr);
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(std::format("CoInitialize fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
-		}
-
-		hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pDirect2dFactory);
+		HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pDirect2dFactory);
 		if (FAILED(hr))
 		{
 			throw std::runtime_error(std::format("D2D1CreateFactory fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
@@ -261,13 +240,6 @@ private:
 		m_exeDir = fsPath.parent_path().native();
 	}
 
-	~MainApp()
-	{
-		safe_release(&m_pDWriteFactory);
-		safe_release(&m_pDirect2dFactory);
-		CoUninitialize();
-	}
-
 	void runMessageLoop() const
 	{
 		m_eventLoop.run();
@@ -279,9 +251,30 @@ private:
 	int m_nCmdShow{SW_HIDE};
 	std::wstring m_exeFullName;
 	std::wstring m_exeDir;
-	ID2D1Factory* m_pDirect2dFactory{nullptr};
-	IDWriteFactory* m_pDWriteFactory{nullptr};
+
+private:
+	struct ComInitGuard
+	{
+		ComInitGuard()
+		{
+			if (const HRESULT hr = CoInitialize(nullptr); FAILED(hr))
+			{
+				throw std::runtime_error(std::format("CoInitialize fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+			}
+		}
+
+		~ComInitGuard()
+		{
+			CoUninitialize();
+		}
+	};
+
+	[[no_unique_address]] ComInitGuard m_comInitGuard;
+	UniqueComPtr<ID2D1Factory> m_pDirect2dFactory;
+	UniqueComPtr<IDWriteFactory> m_pDWriteFactory;
 	AppCommonTextFormat m_commonTextFormat;
+
+private:
 	mutable sched::EventLoopForWinUi m_eventLoop;
 };
 

@@ -31,6 +31,7 @@ namespace ui
 			//m_task = coro::start_and_shared(coro::co_with_cancellation(downloadIfNeedThenAnaSymbols(), m_stopSource.get_token()));
 		}
 
+		// ReSharper disable once CppMemberFunctionMayBeStatic
 		sm::TNextState<MainPageType> OnUpdate(WindowBase&)
 		{
 			return {MainPageType::Download};
@@ -45,7 +46,7 @@ namespace ui
 #ifdef _WIN64
 			delete m_p64FileStatusCtrl;
 #endif
-			safe_release(&m_pTextLayout);
+			m_pTextLayout.reset();
 		}
 
 		virtual WindowBase::HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
@@ -132,7 +133,7 @@ namespace ui
 				std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
 				&m_pTextLayout)))
 			{
-				[[maybe_unused]] HRESULT hr = m_pTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
+				m_pTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
 			}
 		}
 
@@ -221,7 +222,7 @@ namespace ui
 
 	private:
 		WindowBase* m_ownerWnd{nullptr};
-		IDWriteTextLayout* m_pTextLayout{nullptr};
+		UniqueComPtr<IDWriteTextLayout> m_pTextLayout;
 		FileStatusCtrl* m_p32FileStatusCtrl{nullptr};
 #ifdef _WIN64
 		FileStatusCtrl* m_p64FileStatusCtrl{nullptr};

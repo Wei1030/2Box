@@ -126,17 +126,17 @@ namespace sm
 			}
 		}
 
-		StateIndexType currentStateIndex() const
+		StateIndexType currentStateIndex() const noexcept
 		{
 			return static_cast<StateIndexType>(CurrentStateIndex);
 		}
 
-		StateIndexType stateIndexLastUpdated() const
+		StateIndexType stateIndexLastUpdated() const noexcept
 		{
 			return static_cast<StateIndexType>(StateIndexLastUpdated);
 		}
 
-		void setCtx(CtxPtrType InPtr)
+		void setCtx(CtxPtrType InPtr) noexcept
 		{
 			CtxWrapper.CtxPtr = InPtr;
 		}

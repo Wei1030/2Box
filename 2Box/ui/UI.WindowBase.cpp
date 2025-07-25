@@ -42,11 +42,7 @@ namespace ui
 
 	WindowBase::~WindowBase()
 	{
-		if (m_hWnd)
-		{
-			DestroyWindow(m_hWnd);
-			m_hWnd = nullptr;
-		}
+		destroyWindow();
 	}
 
 	void WindowBase::show(int nCmdShow /*= SW_SHOW*/) const
@@ -60,8 +56,8 @@ namespace ui
 
 	void WindowBase::destroyWindow()
 	{
-		safe_release(&m_renderCtx.renderTarget);
-		safe_release(&m_renderCtx.brush);
+		m_renderCtx.renderTarget.reset();
+		m_renderCtx.brush.reset();
 
 		if (m_hWnd)
 		{
@@ -178,8 +174,8 @@ namespace ui
 
 	void WindowBase::releaseDeviceResources()
 	{
-		safe_release(&m_renderCtx.renderTarget);
-		safe_release(&m_renderCtx.brush);
+		m_renderCtx.renderTarget.reset();
+		m_renderCtx.brush.reset();
 		onDiscardDeviceResources();
 	}
 

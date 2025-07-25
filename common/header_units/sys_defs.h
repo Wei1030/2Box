@@ -21,14 +21,86 @@
 #include <dwrite.h>
 
 template <class Interface>
-inline void safe_release(Interface** ppInterfaceToRelease)
+class UniqueComPtr
 {
-	if (*ppInterfaceToRelease != nullptr)
+public:
+	UniqueComPtr() noexcept = default;
+	UniqueComPtr(const UniqueComPtr&) = delete;
+	UniqueComPtr& operator=(const UniqueComPtr&) = delete;
+
+	UniqueComPtr(UniqueComPtr&& that) noexcept : m_p(that.m_p)
 	{
-		(*ppInterfaceToRelease)->Release();
-		(*ppInterfaceToRelease) = nullptr;
+		that.m_p = nullptr;
 	}
-}
+
+	~UniqueComPtr()
+	{
+		if (m_p)
+		{
+			m_p->Release();
+		}
+	}
+
+	void reset(Interface* p = nullptr) noexcept
+	{
+		if (m_p)
+		{
+			m_p->Release();
+		}
+		m_p = p;
+	}
+
+	void swap(UniqueComPtr& that) noexcept
+	{
+		Interface* tmp = m_p;
+		m_p = that.m_p;
+		that.m_p = tmp;
+	}
+
+	friend void swap(UniqueComPtr& p1, UniqueComPtr& p2) noexcept
+	{
+		p1.swap(p2);
+	}
+
+	UniqueComPtr& operator=(UniqueComPtr&& that) noexcept
+	{
+		UniqueComPtr(static_cast<UniqueComPtr&&>(that)).swap(*this);
+		return *this;
+	}
+
+	Interface** operator&() noexcept
+	{
+		return &m_p;
+	}
+
+	Interface* operator->() const noexcept
+	{
+		return m_p;
+	}
+
+	operator Interface*() const noexcept
+	{
+		return m_p;
+	}
+
+	Interface* get() const noexcept
+	{
+		return m_p;
+	}
+
+	explicit operator bool() const noexcept
+	{
+		return m_p != nullptr;
+	}
+
+	bool operator!() const noexcept
+	{
+		return m_p == nullptr;
+	}
+
+private:
+	Interface* m_p{nullptr};
+};
 
 struct ReflectiveInjectParams
 {
@@ -36,7 +108,7 @@ struct ReflectiveInjectParams
 	DWORD loadLibraryARVA;
 	DWORD getProcAddressRVA;
 	DWORD flushInstructionCacheRVA;
-	
+
 	ULONGLONG dllFileAddress;
 	DWORD dllFileSize;
 	DWORD dllRelocationRVA;
@@ -44,7 +116,6 @@ struct ReflectiveInjectParams
 	ULONGLONG dllImageBase;
 	DWORD entryPointRVA;
 };
-
 
 
 #endif

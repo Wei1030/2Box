@@ -14,20 +14,8 @@ namespace ui
 
 	export struct RenderContext
 	{
-		RenderContext() = default;
-		RenderContext(const RenderContext& rhs) = delete;
-		RenderContext& operator=(const RenderContext& rhs) = delete;
-		RenderContext(RenderContext&& rhs) = delete;
-		RenderContext& operator=(RenderContext&& rhs) = delete;
-
-		~RenderContext()
-		{
-			safe_release(&renderTarget);
-			safe_release(&brush);
-		}
-
-		ID2D1HwndRenderTarget* renderTarget{nullptr};
-		ID2D1SolidColorBrush* brush{nullptr};
+		UniqueComPtr<ID2D1HwndRenderTarget> renderTarget;
+		UniqueComPtr<ID2D1SolidColorBrush> brush;
 	};
 
 	export struct RectChangeContext
