@@ -5,6 +5,7 @@ import "sys_defs.h";
 import Scheduler;
 
 export int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow);
+export class MainApp;
 
 export struct AppCommonTextFormat
 {
@@ -13,9 +14,156 @@ export struct AppCommonTextFormat
 	IDWriteTextFormat* pErrorMsgFormat{nullptr};
 	IDWriteTextFormat* pTipsFormat{nullptr};
 	IDWriteTextFormat* pToolBtnFormat{nullptr};
+
+	IDWriteInlineObject* pTitleEllipsisTrimmingSign{nullptr};
+	IDWriteInlineObject* pMainEllipsisTrimmingSign{nullptr};
+	IDWriteInlineObject* pErrorMsgEllipsisTrimmingSign{nullptr};
+	IDWriteInlineObject* pTipsEllipsisTrimmingSign{nullptr};
+	IDWriteInlineObject* pToolBtnEllipsisTrimmingSign{nullptr};
+
+	~AppCommonTextFormat()
+	{
+		safe_release(&pTitleFormat);
+		safe_release(&pMainFormat);
+		safe_release(&pErrorMsgFormat);
+		safe_release(&pTipsFormat);
+		safe_release(&pToolBtnFormat);
+
+		safe_release(&pTitleEllipsisTrimmingSign);
+		safe_release(&pMainEllipsisTrimmingSign);
+		safe_release(&pErrorMsgEllipsisTrimmingSign);
+		safe_release(&pTipsEllipsisTrimmingSign);
+		safe_release(&pToolBtnEllipsisTrimmingSign);
+	}
+
+	void setAllTextEllipsisTrimming() const
+	{
+		setTitleEllipsisTrimming();
+		setMainEllipsisTrimming();
+		setErrorMsgEllipsisTrimming();
+		setTipsEllipsisTrimming();
+		setToolBtnEllipsisTrimming();
+	}
+
+	void clearAllTextEllipsisTrimming() const
+	{
+		clearTitleTrimming();
+		clearMainEllipsisTrimming();
+		clearErrorMsgTrimming();
+		clearTipsEllipsisTrimming();
+		clearToolBtnEllipsisTrimming();
+	}
+
+	void setTitleEllipsisTrimming() const
+	{
+		pTitleFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_CHARACTER};
+		pTitleFormat->SetTrimming(&trimming, pTitleEllipsisTrimmingSign);
+	}
+
+	void clearTitleTrimming() const
+	{
+		pTitleFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_NONE};
+		pTitleFormat->SetTrimming(&trimming, nullptr);
+	}
+
+	void setMainEllipsisTrimming() const
+	{
+		pMainFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_CHARACTER};
+		pMainFormat->SetTrimming(&trimming, pMainEllipsisTrimmingSign);
+	}
+
+	void clearMainEllipsisTrimming() const
+	{
+		pMainFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_NONE};
+		pMainFormat->SetTrimming(&trimming, nullptr);
+	}
+
+	void setErrorMsgEllipsisTrimming() const
+	{
+		pErrorMsgFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_CHARACTER};
+		pErrorMsgFormat->SetTrimming(&trimming, pErrorMsgEllipsisTrimmingSign);
+	}
+
+	void clearErrorMsgTrimming() const
+	{
+		pErrorMsgFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_NONE};
+		pErrorMsgFormat->SetTrimming(&trimming, nullptr);
+	}
+
+	void setTipsEllipsisTrimming() const
+	{
+		pTipsFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_CHARACTER};
+		pTipsFormat->SetTrimming(&trimming, pTipsEllipsisTrimmingSign);
+	}
+
+	void clearTipsEllipsisTrimming() const
+	{
+		pTipsFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_NONE};
+		pTipsFormat->SetTrimming(&trimming, nullptr);
+	}
+
+	void setToolBtnEllipsisTrimming() const
+	{
+		pToolBtnFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_CHARACTER};
+		pToolBtnFormat->SetTrimming(&trimming, pToolBtnEllipsisTrimmingSign);
+	}
+
+	void clearToolBtnEllipsisTrimming() const
+	{
+		pToolBtnFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
+		constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_NONE};
+		pToolBtnFormat->SetTrimming(&trimming, nullptr);
+	}
+
+private:
+	friend class MainApp;
+
+	static void createCommonTextAbout(IDWriteFactory* pDWriteFactory, DWRITE_FONT_WEIGHT weight, float fontSize, IDWriteTextFormat** ppTextFormat, IDWriteInlineObject** ppEllipsisTrimmingSign)
+	{
+		HRESULT hr = pDWriteFactory->CreateTextFormat(
+			L"Segoe UI",
+			nullptr,
+			weight,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			fontSize,
+			L"",
+			ppTextFormat);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+
+		hr = pDWriteFactory->CreateEllipsisTrimmingSign(
+			*ppTextFormat,
+			ppEllipsisTrimmingSign
+		);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(std::format("CreateEllipsisTrimmingSign fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
+		}
+	}
+
+	void createAllCommonTextFormat(IDWriteFactory* pDWriteFactory)
+	{
+		createCommonTextAbout(pDWriteFactory, DWRITE_FONT_WEIGHT_SEMI_BOLD, 16.f, &pTitleFormat, &pTitleEllipsisTrimmingSign);
+		createCommonTextAbout(pDWriteFactory, DWRITE_FONT_WEIGHT_NORMAL, 14.f, &pMainFormat, &pMainEllipsisTrimmingSign);
+		createCommonTextAbout(pDWriteFactory, DWRITE_FONT_WEIGHT_NORMAL, 13.f, &pErrorMsgFormat, &pErrorMsgEllipsisTrimmingSign);
+		createCommonTextAbout(pDWriteFactory, DWRITE_FONT_WEIGHT_NORMAL, 12.f, &pTipsFormat, &pTipsEllipsisTrimmingSign);
+		createCommonTextAbout(pDWriteFactory, DWRITE_FONT_WEIGHT_NORMAL, 11.f, &pToolBtnFormat, &pToolBtnEllipsisTrimmingSign);
+	}
 };
 
-export class MainApp
+class MainApp
 {
 public:
 	static constexpr std::wstring_view appName{L"2Box"};
@@ -98,7 +246,7 @@ private:
 			throw std::runtime_error(std::format("DWriteCreateFactory fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
 		}
 
-		createCommonTextFormat();
+		m_commonTextFormat.createAllCommonTextFormat(m_pDWriteFactory);
 
 		m_hInstance = hInstance;
 		m_strCmdLine = lpCmdLine;
@@ -115,90 +263,12 @@ private:
 
 	~MainApp()
 	{
-		safe_release(&m_commonTextFormat.pTitleFormat);
-		safe_release(&m_commonTextFormat.pMainFormat);
-		safe_release(&m_commonTextFormat.pErrorMsgFormat);
-		safe_release(&m_commonTextFormat.pTipsFormat);
-		safe_release(&m_commonTextFormat.pToolBtnFormat);
 		safe_release(&m_pDWriteFactory);
 		safe_release(&m_pDirect2dFactory);
 		CoUninitialize();
 	}
 
-	void createCommonTextFormat()
-	{
-		HRESULT hr = m_pDWriteFactory->CreateTextFormat(
-			L"Segoe UI",
-			nullptr,
-			DWRITE_FONT_WEIGHT_SEMI_BOLD,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			16.0f,
-			L"",
-			&m_commonTextFormat.pTitleFormat);
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
-		}
-
-		hr = m_pDWriteFactory->CreateTextFormat(
-			L"Segoe UI",
-			nullptr,
-			DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			14.0f,
-			L"",
-			&m_commonTextFormat.pMainFormat);
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
-		}
-
-		hr = m_pDWriteFactory->CreateTextFormat(
-			L"Segoe UI",
-			nullptr,
-			DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			13.0f,
-			L"",
-			&m_commonTextFormat.pErrorMsgFormat);
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
-		}
-
-		hr = m_pDWriteFactory->CreateTextFormat(
-			L"Segoe UI",
-			nullptr,
-			DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			12.0f,
-			L"",
-			&m_commonTextFormat.pTipsFormat);
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
-		}
-
-		hr = m_pDWriteFactory->CreateTextFormat(
-			L"Segoe UI",
-			nullptr,
-			DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			11.0f,
-			L"",
-			&m_commonTextFormat.pToolBtnFormat);
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(std::format("CreateTextFormat fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)));
-		}
-	}
-
-	void runMessageLoop()
+	void runMessageLoop() const
 	{
 		m_eventLoop.run();
 	}
@@ -215,7 +285,7 @@ private:
 	mutable sched::EventLoopForWinUi m_eventLoop;
 };
 
-MainApp* g_app{nullptr};
+inline MainApp* g_app{nullptr};
 
 export MainApp& app() noexcept
 {

@@ -36,12 +36,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 		// 由于app的析构会触发PostQuitMessage
 		// 所以需要在 MessageBox 前清除WM_QUIT消息，否则MessageBox窗口会立即销毁并返回
 		clear_quit_msg();
-		MessageBoxA(nullptr, e.what(), MainApp::appNameA.data(), MB_OK);
+		MessageBoxA(nullptr, e.what(), MainApp::appNameA.data(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
 	}
 	catch (...)
 	{
 		clear_quit_msg();
-		MessageBoxW(nullptr, L"Unknown error", MainApp::appName.data(), MB_OK);
+		MessageBoxW(nullptr, L"Unknown error", MainApp::appName.data(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
 	}
 	return 0;
 }
