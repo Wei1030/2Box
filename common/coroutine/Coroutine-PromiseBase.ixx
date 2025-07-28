@@ -231,6 +231,26 @@ namespace coro
 			m_cont.resume();
 		}
 
+		void rejectWithRuntimeError(std::string_view errorMsg)
+		{
+			if (m_settled.exchange(true, std::memory_order_relaxed))
+			{
+				return;
+			}
+			this->set_exception(std::make_exception_ptr(std::runtime_error{errorMsg.data()}));
+			m_cont.resume();
+		}
+
+		void cancel()
+		{
+			if (m_settled.exchange(true, std::memory_order_relaxed))
+			{
+				return;
+			}
+			this->set_exception(std::make_exception_ptr(std::runtime_error{"operation canceled"}));
+			m_cont.resume();
+		}
+
 		void abandon()
 		{
 			if (m_settled.exchange(true, std::memory_order_relaxed))

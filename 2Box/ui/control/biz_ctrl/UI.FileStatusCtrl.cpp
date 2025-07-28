@@ -16,7 +16,7 @@ namespace ui
 	{
 		stopAnaTask();
 		m_asyncScope.reset();
-		
+
 		m_stopSource = std::stop_source{};
 		m_task = coro::start_and_shared(coro::co_with_cancellation(startAnaTaskImpl(), m_stopSource.get_token()));
 	}
@@ -27,13 +27,23 @@ namespace ui
 		m_task.waitUntilDone();
 		m_asyncScope.join();
 
+		m_pLoadingIndicator->stopAnim();
 		m_totalLength = 0;
 		m_currentSize = 0;
 	}
 
 	coro::LazyTask<void> FileStatusCtrl::joinAsync()
 	{
-		co_await m_task;
+		try
+		{
+			co_await m_task;
+			co_return;
+		}
+		catch (...)
+		{
+		}
+		co_await sched::transfer_to(app().get_scheduler());
+		stopAnaTask();
 		co_return;
 	}
 
@@ -341,7 +351,7 @@ namespace ui
 			fs::create_directories(fs::path{pdbFile}.parent_path(), ec);
 			if (ec)
 			{
-				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("create_directories failed, error code: {}", ec.value()))));
+				resolver->rejectWithRuntimeError(std::format("create_directories failed, error code: {}", ec.value()));
 				return;
 			}
 
@@ -354,13 +364,15 @@ namespace ui
 			                            nullptr);
 			if (handle == INVALID_HANDLE_VALUE)
 			{
-				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("CreateFileW failed, error code: {}", GetLastError()))));
+				resolver->rejectWithRuntimeError(std::format("CreateFileW failed, error code: {}", GetLastError()));
 				return;
 			}
-			if (!WriteFile(handle, bytes.data(), static_cast<DWORD>(bytes.size()), nullptr, nullptr))
+			// On Windows 7: lpNumberOfBytesWritten parameter can not be NULL.
+			DWORD numberOfBytesWritten = 0;
+			if (!WriteFile(handle, bytes.data(), static_cast<DWORD>(bytes.size()), &numberOfBytesWritten, nullptr))
 			{
 				CloseHandle(handle);
-				resolver->reject(std::make_exception_ptr(std::runtime_error(std::format("WriteFile failed, error code: {}", GetLastError()))));
+				resolver->rejectWithRuntimeError(std::format("WriteFile failed, error code: {}", GetLastError()));
 				return;
 			}
 			CloseHandle(handle);
@@ -389,7 +401,7 @@ namespace ui
 		namespace fs = std::filesystem;
 
 		std::wstring errMsg;
-		
+
 		try
 		{
 			m_painter.transferTo<EPainterType::Initial>();
@@ -408,6 +420,7 @@ namespace ui
 				};
 				// start download
 				m_painter.transferTo<EPainterType::Downloading>();
+				m_pLoadingIndicator->startAnim();
 				updateWholeWnd();
 				const std::shared_ptr<ms::WinHttpRequest> req = m_connection->openRequest(L"GET", m_downloadObjName);
 				std::vector<std::byte> bytes = co_await req->request(totalSizeCallback, currentSizeCallback);
@@ -432,7 +445,8 @@ namespace ui
 		}
 
 		co_await sched::transfer_to(app().get_scheduler());
-		
+		m_pLoadingIndicator->stopAnim();
+
 		if (errMsg.empty())
 		{
 			m_painter.transferTo<EPainterType::Verified>();

@@ -37,11 +37,9 @@ namespace ui
 
 		void OnExit(WindowBase&)
 		{
-			m_p32FileStatusCtrl->stopAnaTask();
-			delete m_p32FileStatusCtrl;
+			m_p32FileStatusCtrl.reset();
 #ifdef _WIN64
-			m_p64FileStatusCtrl->stopAnaTask();
-			delete m_p64FileStatusCtrl;
+			m_p64FileStatusCtrl.reset();
 #endif
 			m_pTextLayout.reset();
 		}
@@ -108,7 +106,7 @@ namespace ui
 		coro::LazyTask<void> joinAsync() const
 		{
 #ifdef _WIN64
-			co_await coro::when_all_settled(m_p64FileStatusCtrl->joinAsync(), m_p32FileStatusCtrl->joinAsync());
+			co_await coro::when_all(m_p64FileStatusCtrl->joinAsync(), m_p32FileStatusCtrl->joinAsync());
 #else
 			co_await m_p32FileStatusCtrl->joinAsync();
 #endif
@@ -162,7 +160,7 @@ namespace ui
 			static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
 
 			{
-				m_p32FileStatusCtrl = new FileStatusCtrl(m_ownerWnd);
+				m_p32FileStatusCtrl = std::make_unique<FileStatusCtrl>(m_ownerWnd);
 				m_p32FileStatusCtrl->setDownloadServerName(downloadServerName);
 #ifdef _WIN64
 				const fs::path systemDir{sys_info::get_system_wow64_dir()};
@@ -179,7 +177,7 @@ namespace ui
 			}
 			{
 #ifdef _WIN64
-				m_p64FileStatusCtrl = new FileStatusCtrl(m_ownerWnd);
+				m_p64FileStatusCtrl = std::make_unique<FileStatusCtrl>(m_ownerWnd);
 				m_p64FileStatusCtrl->setDownloadServerName(downloadServerName);
 				const fs::path systemDir{sys_info::get_system_dir()};
 				const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
@@ -196,9 +194,9 @@ namespace ui
 	private:
 		WindowBase* m_ownerWnd{nullptr};
 		UniqueComPtr<IDWriteTextLayout> m_pTextLayout;
-		FileStatusCtrl* m_p32FileStatusCtrl{nullptr};
+		std::unique_ptr<FileStatusCtrl> m_p32FileStatusCtrl{nullptr};
 #ifdef _WIN64
-		FileStatusCtrl* m_p64FileStatusCtrl{nullptr};
+		std::unique_ptr<FileStatusCtrl> m_p64FileStatusCtrl{nullptr};
 #endif
 	};
 }

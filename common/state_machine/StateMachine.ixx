@@ -294,13 +294,13 @@ namespace sm
 
 				CtxRefType Ctx = *CtxWrapper.CtxPtr;
 
+				if (bHasTransferred)
+				{
+					StateCtx.OnEnter(Ctx);
+				}
+
 				try
 				{
-					if (bHasTransferred)
-					{
-						StateCtx.OnEnter(Ctx);
-					}
-
 					NextState = StateCtx.OnUpdate(Ctx);
 				}
 				catch (...)

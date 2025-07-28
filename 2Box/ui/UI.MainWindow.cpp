@@ -52,7 +52,6 @@ namespace ui
 				[](MainWindow& self, const TMainPageType<MainPageType, MainPageType::Download>& page) -> coro::OnewayTask
 				{
 					co_await page.joinAsync();
-					self.changePageTo<MainPageType::Home>();
 					self.destroyWindow();
 				}(*this, downloadPage);
 			}
@@ -91,11 +90,12 @@ namespace ui
 		changePageTo<MainPageType::Download>();
 
 		co_await m_pages.stateCtx<MainPageType::Download>().joinAsync();
-		
-		if (m_pages.stateCtx<MainPageType::Download>().isFileVerified())
+
+		if (m_pages.currentStateIndex() == MainPageType::Download
+			&& m_pages.stateCtx<MainPageType::Download>().isFileVerified())
 		{
-			changePageTo<MainPageType::Home>();	
-		}		
+			changePageTo<MainPageType::Home>();
+		}
 		co_return;
 	}
 }
