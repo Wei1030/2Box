@@ -1,41 +1,31 @@
-export module UI.MainPage:Download;
+export module UI.Page:Download;
 
 import "sys_defs.h";
 import std;
-import :Define;
 import MainApp;
-import StateMachine;
 import Coroutine;
 import Scheduler;
 import SymbolLoader;
 import Utility.SystemInfo;
-import UI.PageBase;
+import UI.Core;
 import UI.FileStatusCtrl;
 
 namespace ui
 {
-	export
-	template <>
-	class TMainPageType<MainPageType, MainPageType::Download> final : public PageBase
+	export class DownloadPage final : public RendererInterface
 	{
 	public:
 		static constexpr std::wstring_view downloadPageTitle = L"正在验证必需的PDB符号文件。软件首次启动或系统更新时，可能需要从微软官方下载，请耐心等待。";
 
-		void OnEnter(WindowBase& owner)
+		explicit DownloadPage(WindowBase* owner)
 		{
-			m_ownerWnd = &owner;
+			m_ownerWnd = owner;
 
 			initTextLayout();
 			initFileStatusCtrl();
 		}
 
-		// ReSharper disable once CppMemberFunctionMayBeStatic
-		sm::TNextState<MainPageType> OnUpdate(WindowBase&)
-		{
-			return {MainPageType::Download};
-		}
-
-		void OnExit(WindowBase&)
+		virtual ~DownloadPage()
 		{
 			m_p32FileStatusCtrl.reset();
 #ifdef _WIN64
@@ -44,9 +34,9 @@ namespace ui
 			m_pTextLayout.reset();
 		}
 
-		virtual WindowBase::HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
+		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
 		{
-			WindowBase::HResult hr;
+			HResult hr;
 			(hr = m_p32FileStatusCtrl->onCreateDeviceResources(renderTarget), FAILED(hr))
 #ifdef _WIN64
 				|| (hr = m_p64FileStatusCtrl->onCreateDeviceResources(renderTarget), FAILED(hr))

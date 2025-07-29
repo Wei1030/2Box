@@ -5,7 +5,8 @@ import "sys_defs.h";
 import StateMachine;
 import WinHttp;
 import Coroutine;
-import UI.ControlBase;
+import UI.Core;
+import UI.ControlTmplBase;
 import UI.LoadingIndicator;
 
 namespace ui
@@ -183,7 +184,7 @@ namespace ui
 		template <typename PainterEnumType, PainterEnumType>
 		friend class TPainterType;
 
-		WindowBase::HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget) const
+		HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget) const
 		{
 			return m_pLoadingIndicator->onCreateDeviceResources(renderTarget);
 		}

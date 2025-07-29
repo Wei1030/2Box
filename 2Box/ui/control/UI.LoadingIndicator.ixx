@@ -3,7 +3,8 @@ export module UI.LoadingIndicator;
 import "sys_defs.h";
 import std;
 import Coroutine;
-import UI.ControlBase;
+import UI.Core;
+import UI.ControlTmplBase;
 
 namespace ui
 {
@@ -41,13 +42,13 @@ namespace ui
 	private:
 		friend ControlTmplBase;
 
-		WindowBase::HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget)
+		HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget)
 		{
 			D2D1_GRADIENT_STOP gradientStops[2] = {
 				{0.0f, D2D1::ColorF(0x4A9DF8)},
 				{1.0f, D2D1::ColorF(0x6AC0FF)}
 			};
-			WindowBase::HResult hr = renderTarget->CreateGradientStopCollection(
+			HResult hr = renderTarget->CreateGradientStopCollection(
 				gradientStops,
 				2,
 				D2D1_GAMMA_2_2,

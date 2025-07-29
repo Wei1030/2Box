@@ -2,10 +2,8 @@ export module UI.MainWindow;
 
 import "sys_defs.h";
 import std;
-import UI.WindowBase;
-import UI.PageBase;
-import UI.MainPage;
-import StateMachine;
+import UI.Core;
+import UI.Page;
 import Coroutine;
 
 namespace ui
@@ -15,15 +13,12 @@ namespace ui
 	public:
 		MainWindow();
 
-	protected:
-		virtual void onResize(const RectChangeContext& ctx) override;
-
-		virtual HResult onCreateDeviceResources() override;
-
+	public:
+		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override;
 		virtual void onDiscardDeviceResources() override;
+		virtual void draw(const RenderContext& renderCtx) override;
 
-		virtual HResult onRender() override;
-
+	protected:
 		virtual bool onClose() override;
 
 	private:
@@ -31,52 +26,45 @@ namespace ui
 		coro::LazyTask<void> initSymbols();
 
 	private:
-		template <MainPageType PageType>
+		template <typename PageType>
 		void changePageTo()
 		{
-			m_pages.transferTo<PageType>();
-			m_pages.update();
+			m_pages = std::make_unique<PageType>(this);
+			requestCreateDeviceResources();
 			invalidateRect();
 		}
 
-		PageBase& currentPage()
+		template <typename PageType>
+		bool isPage() const
 		{
-			if (m_pages.currentStateIndex() == MainPageType::Download)
+			return std::holds_alternative<std::unique_ptr<PageType>>(m_pages);
+		}
+
+		template <typename PageType>
+		PageType& getPage() const
+		{
+			if (std::holds_alternative<std::unique_ptr<PageType>>(m_pages))
 			{
-				return m_pages.stateCtx<MainPageType::Download>();
+				return *std::get<std::unique_ptr<PageType>>(m_pages).get();
 			}
+			throw std::runtime_error("page not exists");
+		}
 
-			if (m_pages.currentStateIndex() == MainPageType::Home)
+		RendererInterface* currentRenderer() const
+		{
+			if (std::holds_alternative<std::unique_ptr<DownloadPage>>(m_pages))
 			{
-				return m_pages.stateCtx<MainPageType::Home>();
+				return std::get<std::unique_ptr<DownloadPage>>(m_pages).get();
 			}
-
-			throw std::runtime_error("Unknown state");
-		}
-
-		template <std::uint8_t... Is>
-		void resizeAllPages(std::integer_sequence<std::uint8_t, Is...>, const RectChangeContext& ctx)
-		{
-			(m_pages.stateCtx<static_cast<MainPageType>(Is)>().onResize(ctx), ...);
-		}
-
-		template <std::uint8_t... Is>
-		HResult createDeviceResourcesForAllPages(std::integer_sequence<std::uint8_t, Is...>)
-		{
-			ID2D1HwndRenderTarget* renderTarget = renderContext().renderTarget;
-			HResult hr;
-			((hr = m_pages.stateCtx<static_cast<MainPageType>(Is)>().onCreateDeviceResources(renderTarget), FAILED(hr)) || ...);
-			return hr;
-		}
-
-		template <std::uint8_t... Is>
-		void discardDeviceResourcesForAllPages(std::integer_sequence<std::uint8_t, Is...>)
-		{
-			(m_pages.stateCtx<static_cast<MainPageType>(Is)>().onDiscardDeviceResources(), ...);
+			if (std::holds_alternative<std::unique_ptr<HomePage>>(m_pages))
+			{
+				return std::get<std::unique_ptr<HomePage>>(m_pages).get();
+			}
+			throw std::runtime_error("unknown state");
 		}
 
 	private:
-		sm::StateMachine<TMainPageType, MainPageType, WindowBase> m_pages;
+		std::variant<std::monostate, std::unique_ptr<DownloadPage>, std::unique_ptr<HomePage>> m_pages;
 	};
 
 	export MainWindow* g_main_wnd{nullptr};

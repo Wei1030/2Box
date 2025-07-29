@@ -1,6 +1,6 @@
 module;
 #include "res/resource.h"
-module UI.WindowBase;
+module UI.Core;
 
 import "sys_defs.h";
 #ifndef _SYS_DEFS_H_
@@ -129,6 +129,27 @@ namespace ui
 		return D2D1::RectF(rc.left * physicalToDevice, rc.top * physicalToDevice, rc.right * physicalToDevice, rc.bottom * physicalToDevice);
 	}
 
+	void WindowBase::requestCreateDeviceResources()
+	{
+		if (m_renderCtx.renderTarget)
+		{
+			if (FAILED(onCreateDeviceResources(m_renderCtx.renderTarget)))
+			{
+				releaseDeviceResources();
+			}
+		}
+	}
+
+	HResult WindowBase::onRender()
+	{
+		const RenderContext& ctx = renderContext();
+		ctx.renderTarget->BeginDraw();
+		ctx.renderTarget->PushAxisAlignedClip(rectNeedUpdate(), D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+		this->draw(ctx);
+		ctx.renderTarget->PopAxisAlignedClip();
+		return ctx.renderTarget->EndDraw();
+	}
+
 	HWND WindowBase::createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
 	                                      int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu)
 	{
@@ -137,7 +158,7 @@ namespace ui
 		                       app().moduleInstance(), this);
 	}
 
-	HRESULT WindowBase::prepareDeviceResources()
+	HResult WindowBase::prepareDeviceResources()
 	{
 		if (m_renderCtx.renderTarget)
 		{
@@ -154,8 +175,8 @@ namespace ui
 			rc.right - rc.left,
 			rc.bottom - rc.top
 		);
-		// Create a Direct2D render target.
-		HRESULT hr = app().d2d1Factory()->CreateHwndRenderTarget(
+		
+		HResult hr = app().d2d1Factory()->CreateHwndRenderTarget(
 			D2D1::RenderTargetProperties(),
 			D2D1::HwndRenderTargetProperties(m_hWnd, size),
 			&m_renderCtx.renderTarget
@@ -169,7 +190,7 @@ namespace ui
 		{
 			return hr;
 		}
-		return onCreateDeviceResources();
+		return onCreateDeviceResources(m_renderCtx.renderTarget);
 	}
 
 	void WindowBase::releaseDeviceResources()
@@ -218,10 +239,7 @@ namespace ui
 			// the next time EndDraw is called.
 			m_renderCtx.renderTarget->Resize(D2D1::SizeU(width, height));
 		}
-		onResize({
-			D2D1::RectU(0, 0, width, height),
-			D2D1::RectF(0.f, 0.f, width * m_dpiInfo.physicalToDevice, height * m_dpiInfo.physicalToDevice)
-		});
+		onResize(width, height);
 	}
 
 	void WindowBase::onDestroy()
@@ -302,6 +320,10 @@ namespace ui
 								{
 									pWnd->releaseDeviceResources();
 								}
+							}
+							else
+							{
+								pWnd->releaseDeviceResources();
 							}
 							ValidateRect(hWnd, nullptr);
 						}

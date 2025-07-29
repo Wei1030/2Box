@@ -16,40 +16,30 @@ namespace ui
 		initSymbols().detachAndStart();
 	}
 
-	void MainWindow::onResize(const RectChangeContext& ctx)
+	HResult MainWindow::onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget)
 	{
-		resizeAllPages(std::make_integer_sequence<std::uint8_t, static_cast<std::uint8_t>(MainPageType::TotalCount)>(), ctx);
-	}
-
-	WindowBase::HResult MainWindow::onCreateDeviceResources()
-	{
-		return createDeviceResourcesForAllPages(std::make_integer_sequence<std::uint8_t, static_cast<std::uint8_t>(MainPageType::TotalCount)>());
+		return currentRenderer()->onCreateDeviceResources(renderTarget);
 	}
 
 	void MainWindow::onDiscardDeviceResources()
 	{
-		discardDeviceResourcesForAllPages(std::make_integer_sequence<std::uint8_t, static_cast<std::uint8_t>(MainPageType::TotalCount)>());
+		currentRenderer()->onDiscardDeviceResources();
 	}
 
-	WindowBase::HResult MainWindow::onRender()
+	void MainWindow::draw(const RenderContext& renderCtx)
 	{
-		const RenderContext& ctx = renderContext();
-		ctx.renderTarget->BeginDraw();
-		ctx.renderTarget->PushAxisAlignedClip(rectNeedUpdate(), D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-		currentPage().draw(ctx);
-		ctx.renderTarget->PopAxisAlignedClip();
-		return ctx.renderTarget->EndDraw();
+		currentRenderer()->draw(renderCtx);
 	}
 
 	bool MainWindow::onClose()
 	{
-		if (m_pages.currentStateIndex() == MainPageType::Download)
+		if (isPage<DownloadPage>())
 		{
-			const auto& downloadPage = m_pages.stateCtx<MainPageType::Download>();
+			const DownloadPage& downloadPage = getPage<DownloadPage>();
 			if (!downloadPage.isCancelled())
 			{
 				downloadPage.cancelTask();
-				[](MainWindow& self, const TMainPageType<MainPageType, MainPageType::Download>& page) -> coro::OnewayTask
+				[](MainWindow& self, const DownloadPage& page) -> coro::OnewayTask
 				{
 					co_await page.joinAsync();
 					self.destroyWindow();
@@ -86,15 +76,13 @@ namespace ui
 
 	coro::LazyTask<void> MainWindow::initSymbols()
 	{
-		m_pages.setCtx(this);
-		changePageTo<MainPageType::Download>();
+		changePageTo<DownloadPage>();
 
-		co_await m_pages.stateCtx<MainPageType::Download>().joinAsync();
+		co_await getPage<DownloadPage>().joinAsync();
 
-		if (m_pages.currentStateIndex() == MainPageType::Download
-			&& m_pages.stateCtx<MainPageType::Download>().isFileVerified())
+		if (getPage<DownloadPage>().isFileVerified())
 		{
-			changePageTo<MainPageType::Home>();
+			changePageTo<HomePage>();
 		}
 		co_return;
 	}

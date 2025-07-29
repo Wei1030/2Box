@@ -31,6 +31,9 @@
     <Filter Include="src\ui\control\biz_ctrl">
       <UniqueIdentifier>{89547748-09e1-4c2c-988e-dff53e2d4417}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\ui\core">
+      <UniqueIdentifier>{e00ae490-4214-47ff-b69c-49b80ac2f25d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -54,40 +57,19 @@
     <ClCompile Include="app\MainApp.cpp">
       <Filter>src\app</Filter>
     </ClCompile>
-    <ClCompile Include="ui\UI.WindowBase.cpp">
-      <Filter>src\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="ui\UI.WindowBase.ixx">
-      <Filter>src\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="ui\UI.MainWindow.ixx">
-      <Filter>src\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="ui\UI.MainWindow.cpp">
-      <Filter>src\ui</Filter>
-    </ClCompile>
     <ClCompile Include="biz\symbols\SymbolLoader.ixx">
       <Filter>src\biz\symbols</Filter>
     </ClCompile>
     <ClCompile Include="biz\http\WinHttp.ixx">
       <Filter>src\biz\http</Filter>
     </ClCompile>
-    <ClCompile Include="ui\control\UI.ControlBase.ixx">
-      <Filter>src\ui\control</Filter>
-    </ClCompile>
-    <ClCompile Include="ui\page\UI.MainPage-Home.ixx">
+    <ClCompile Include="ui\page\UI.Page-Home.ixx">
       <Filter>src\ui\page</Filter>
     </ClCompile>
-    <ClCompile Include="ui\page\UI.MainPage-Download.ixx">
+    <ClCompile Include="ui\page\UI.Page-Download.ixx">
       <Filter>src\ui\page</Filter>
     </ClCompile>
-    <ClCompile Include="ui\page\UI.MainPage.ixx">
-      <Filter>src\ui\page</Filter>
-    </ClCompile>
-    <ClCompile Include="ui\page\UI.MainPage-Define.ixx">
-      <Filter>src\ui\page</Filter>
-    </ClCompile>
-    <ClCompile Include="ui\page\UI.PageBase.ixx">
+    <ClCompile Include="ui\page\UI.Page.ixx">
       <Filter>src\ui\page</Filter>
     </ClCompile>
     <ClCompile Include="ui\control\UI.LoadingIndicator.ixx">
@@ -100,6 +82,21 @@
       <Filter>src\ui\control\biz_ctrl</Filter>
     </ClCompile>
     <ClCompile Include="ui\control\UI.LoadingIndicator.cpp">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\core\UI.Core.ixx">
+      <Filter>src\ui\core</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\core\UI.Core-WindowBase.cpp">
+      <Filter>src\ui\core</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\UI.MainWindow.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\UI.MainWindow.ixx">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.ControlTmplBase.ixx">
       <Filter>src\ui\control</Filter>
     </ClCompile>
   </ItemGroup>
