@@ -242,32 +242,35 @@ namespace ui
 		onResize(width, height);
 	}
 
-	void WindowBase::mouseMove(int physicalX, int physicalY, std::size_t button)
+	void WindowBase::mouseMove(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState)
 	{
 		const float physicalToDevice = m_dpiInfo.physicalToDevice;
 		const MouseEvent e{
 			D2D1::Point2F(physicalX * physicalToDevice, physicalY * physicalToDevice),
-			button
+			button,
+			downState
 		};
 		m_controlManager.onMouseMove(e);
 	}
 
-	void WindowBase::mouseDown(int physicalX, int physicalY, std::size_t button)
+	void WindowBase::mouseDown(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState)
 	{
 		const float physicalToDevice = m_dpiInfo.physicalToDevice;
 		const MouseEvent e{
 			D2D1::Point2F(physicalX * physicalToDevice, physicalY * physicalToDevice),
-			button
+			button,
+			downState
 		};
 		m_controlManager.onMouseDown(e);
 	}
 
-	void WindowBase::mouseUp(int physicalX, int physicalY, std::size_t button)
+	void WindowBase::mouseUp(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState)
 	{
 		const float physicalToDevice = m_dpiInfo.physicalToDevice;
 		const MouseEvent e{
 			D2D1::Point2F(physicalX * physicalToDevice, physicalY * physicalToDevice),
-			button
+			button,
+			downState
 		};
 		m_controlManager.onMouseUp(e);
 	}
@@ -372,24 +375,46 @@ namespace ui
 						}
 						return 0;
 					case WM_MOUSEMOVE:
-						pWnd->mouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), wParam);
+						pWnd->mouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::NotInvolved, wParam);
 						break;
 					case WM_LBUTTONDOWN:
+						pWnd->mouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::Left, wParam);
+						break;
 					case WM_RBUTTONDOWN:
+						pWnd->mouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::Right, wParam);
+						break;
 					case WM_MBUTTONDOWN:
+						pWnd->mouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::Middle, wParam);
+						break;
 					case WM_XBUTTONDOWN:
-						pWnd->mouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), wParam);
+						{
+							const WORD fwKeys = GET_KEYSTATE_WPARAM(wParam);
+							const WORD fwButton = GET_XBUTTON_WPARAM(wParam);
+							const MouseEvent::ButtonType xButton = fwButton == XBUTTON1 ? MouseEvent::ButtonType::X1 : MouseEvent::ButtonType::X2;
+							pWnd->mouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), xButton, fwKeys);
+						}
 						break;
 					case WM_LBUTTONUP:
+						pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::Left, wParam);
+						break;
 					case WM_RBUTTONUP:
+						pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::Right, wParam);
+						break;
 					case WM_MBUTTONUP:
+						pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::Middle, wParam);
+						break;
 					case WM_XBUTTONUP:
-						pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), wParam);
+						{
+							const WORD fwKeys = GET_KEYSTATE_WPARAM(wParam);
+							const WORD fwButton = GET_XBUTTON_WPARAM(wParam);
+							const MouseEvent::ButtonType xButton = fwButton == XBUTTON1 ? MouseEvent::ButtonType::X1 : MouseEvent::ButtonType::X2;
+							pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), xButton, fwKeys);
+						}
 						break;
 					case WM_DPICHANGED:
 						{
 							pWnd->updateDpi();
-							RECT* pNewRc = reinterpret_cast<RECT*>(lParam);
+							const RECT* pNewRc = reinterpret_cast<RECT*>(lParam);
 							pWnd->setPhysicalRect(D2D1::RectF(static_cast<float>(pNewRc->left), static_cast<float>(pNewRc->top),
 							                                  static_cast<float>(pNewRc->right), static_cast<float>(pNewRc->bottom)));
 						}

@@ -19,17 +19,30 @@ namespace ui
 	{
 		D2D1_POINT_2F point;
 
-		enum BtnState
+		enum class ButtonType : std::uint8_t
+		{
+			NotInvolved,
+			Left,
+			Right,
+			Middle,
+			X1,
+			X2,
+		};
+
+		ButtonType button;
+
+		enum DownState
 		{
 			LeftButtonDown = 0x0001,
 			RightButtonDown = 0x0002,
+			ShiftDown = 0x0004,
 			ControlDown = 0x0008,
 			MiddleButtonDown = 0x0010,
 			XButton1Down = 0x0020,
 			XButton2Down = 0x0040,
 		};
 
-		std::size_t button;
+		std::size_t downState;
 	};
 
 	export class RendererInterface
@@ -194,6 +207,14 @@ namespace ui
 
 		void removeControl(const ControlBase* control)
 		{
+			if (m_currentHovered == control)
+			{
+				m_currentHovered = nullptr;
+			}
+			if (m_currentPressed == control)
+			{
+				m_currentPressed = nullptr;
+			}
 			for (auto it = m_controls.begin(); it != m_controls.end(); ++it)
 			{
 				if (*it == control)
@@ -238,7 +259,10 @@ namespace ui
 			if (m_currentHovered)
 			{
 				m_currentHovered->onMouseDown(e);
-				m_currentPressed = m_currentHovered;
+				if (e.button == MouseEvent::ButtonType::Left)
+				{
+					m_currentPressed = m_currentHovered;
+				}
 			}
 		}
 
@@ -247,11 +271,17 @@ namespace ui
 			if (m_currentPressed)
 			{
 				m_currentPressed->onMouseUp(e);
-				if (m_currentPressed == m_currentHovered)
+				if (e.button == MouseEvent::ButtonType::Left)
 				{
-					m_currentPressed->onClick(e);
+					if (m_currentPressed == m_currentHovered)
+					{
+						m_currentPressed->onClick(e);
+					}
+					else
+					{
+						m_currentPressed = nullptr;
+					}
 				}
-				m_currentPressed = nullptr;
 			}
 		}
 
@@ -336,9 +366,9 @@ namespace ui
 		void releaseDeviceResources();
 		void updateDpi();
 		void resize(std::uint32_t width, std::uint32_t height);
-		void mouseMove(int physicalX, int physicalY, std::size_t button);
-		void mouseDown(int physicalX, int physicalY, std::size_t button);
-		void mouseUp(int physicalX, int physicalY, std::size_t button);
+		void mouseMove(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
+		void mouseDown(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
+		void mouseUp(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
 		// 这个不做成虚函数，因为窗口有可能在基类析构中销毁，此时无法调用到子类的虚函数。索性不要这个时机了，反正有子类析构可以用
 		void onDestroy();
 

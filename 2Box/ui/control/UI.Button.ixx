@@ -44,6 +44,13 @@ namespace ui
 			void OnExit(PainterContext&)
 			{
 			}
+
+		public:
+			D2D1_COLOR_F textColor{D2D1::ColorF(0xffffff)};
+			D2D1_COLOR_F backgroundColor{D2D1::ColorF(0x000000)};
+			IDWriteTextFormat* textFormat{nullptr};
+			UniqueComPtr<IDWriteTextLayout> textLayout;
+			std::wstring text;
 		};
 
 		template <>
@@ -82,6 +89,7 @@ namespace ui
 	{
 		using EPainterType = button_detail::EPainterType;
 		using PainterContext = button_detail::PainterContext;
+		using PainterStateCtx = button_detail::PainterBase;
 		using PainterNormalStateCtx = button_detail::TPainterType<EPainterType, EPainterType::Normal>;
 		using PainterHoverStateCtx = button_detail::TPainterType<EPainterType, EPainterType::Hover>;
 		using PainterActiveStateCtx = button_detail::TPainterType<EPainterType, EPainterType::Active>;
@@ -93,6 +101,38 @@ namespace ui
 		{
 			initialize();
 		}
+
+		enum class EState
+		{
+			Normal,
+			Hover,
+			Active,
+			Disabled,
+			All
+		};
+
+		void setTextColor(const D2D1_COLOR_F& color, EState state = EState::All)
+		{
+			if (state == EState::All)
+			{
+				applyAllState(std::make_index_sequence<static_cast<std::size_t>(EState::All)>(), &Button::setTextColor, this, color);
+				return;
+			}
+			ctxFromState(state).textColor = color;
+		}
+
+		void setBackgroundColor(const D2D1_COLOR_F& color, EState state = EState::All)
+		{
+			if (state == EState::All)
+			{
+				applyAllState(std::make_index_sequence<static_cast<std::size_t>(EState::All)>(), &Button::setBackgroundColor, this, color);
+				return;
+			}
+			ctxFromState(state).backgroundColor = color;
+		}
+
+		void setTextFormat(IDWriteTextFormat* textFormat, EState state = EState::All);
+		void setText(std::wstring_view text, EState state = EState::All);
 
 	protected:
 		virtual void onMouseEnter(const MouseEvent& e) override;
@@ -108,11 +148,31 @@ namespace ui
 		template <typename PainterEnumType, PainterEnumType>
 		friend class button_detail::TPainterType;
 
+		void drawByState(const RenderContext& renderCtx, const PainterStateCtx& stateCtx) const;
 
-		void drawNormal(const RenderContext& renderCtx, const PainterNormalStateCtx& stateCtx) const;
-		void drawHover(const RenderContext& renderCtx, const PainterHoverStateCtx& stateCtx) const;
-		void drawActive(const RenderContext& renderCtx, const PainterActiveStateCtx& stateCtx) const;
-		void drawDisabled(const RenderContext& renderCtx, const PainterDisabledStateCtx& stateCtx) const;
+	private:
+		button_detail::PainterBase& ctxFromState(EState state)
+		{
+			switch (state)
+			{
+			case EState::Normal:
+				return m_painter.stateCtx<EPainterType::Normal>();
+			case EState::Hover:
+				return m_painter.stateCtx<EPainterType::Hover>();
+			case EState::Active:
+				return m_painter.stateCtx<EPainterType::Active>();
+			case EState::Disabled:
+				return m_painter.stateCtx<EPainterType::Disabled>();
+			default:
+				return m_painter.stateCtx<EPainterType::Normal>();
+			}
+		}
+
+		template <std::size_t... Is, typename Func, typename... Args>
+		void applyAllState(std::index_sequence<Is...>, Func&& func, Args&&... args)
+		{
+			(std::invoke(std::forward<Func>(func), std::forward<Args>(args)..., static_cast<EState>(Is)), ...);
+		}
 
 	private:
 		sm::StateMachine<button_detail::TPainterType, EPainterType, PainterContext> m_painter;
@@ -127,25 +187,25 @@ namespace ui
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Normal>::OnUpdate(PainterContext& ctx) const
 		{
-			ctx.btn.drawNormal(ctx.renderCtx, *this);
+			ctx.btn.drawByState(ctx.renderCtx, *this);
 			return {EPainterType::Normal};
 		}
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Hover>::OnUpdate(PainterContext& ctx) const
 		{
-			ctx.btn.drawHover(ctx.renderCtx, *this);
+			ctx.btn.drawByState(ctx.renderCtx, *this);
 			return {EPainterType::Hover};
 		}
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Active>::OnUpdate(PainterContext& ctx) const
 		{
-			ctx.btn.drawActive(ctx.renderCtx, *this);
+			ctx.btn.drawByState(ctx.renderCtx, *this);
 			return {EPainterType::Active};
 		}
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Disabled>::OnUpdate(PainterContext& ctx) const
 		{
-			ctx.btn.drawDisabled(ctx.renderCtx, *this);
+			ctx.btn.drawByState(ctx.renderCtx, *this);
 			return {EPainterType::Disabled};
 		}
 
