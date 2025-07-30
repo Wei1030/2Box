@@ -96,7 +96,10 @@
     <ClCompile Include="ui\UI.MainWindow.ixx">
       <Filter>src\ui</Filter>
     </ClCompile>
-    <ClCompile Include="ui\control\UI.ControlTmplBase.ixx">
+    <ClCompile Include="ui\control\UI.Button.ixx">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.Button.cpp">
       <Filter>src\ui\control</Filter>
     </ClCompile>
   </ItemGroup>

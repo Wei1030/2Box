@@ -34,7 +34,8 @@
     <ClCompile Include="biz\symbols\SymbolLoader.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx" />
-    <ClCompile Include="ui\control\UI.ControlTmplBase.ixx" />
+    <ClCompile Include="ui\control\UI.Button.cpp" />
+    <ClCompile Include="ui\control\UI.Button.ixx" />
     <ClCompile Include="ui\control\UI.LoadingIndicator.cpp" />
     <ClCompile Include="ui\control\UI.LoadingIndicator.ixx" />
     <ClCompile Include="ui\core\UI.Core-WindowBase.cpp" />

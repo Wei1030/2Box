@@ -6,98 +6,103 @@ import StateMachine;
 import WinHttp;
 import Coroutine;
 import UI.Core;
-import UI.ControlTmplBase;
 import UI.LoadingIndicator;
 
 namespace ui
 {
 	export class FileStatusCtrl;
 
-	enum class EPainterType : std::uint8_t
+	namespace fsc_detail
 	{
-		Initial,
-		Verified,
-		Downloading,
-		Writing,
-		Error,
-		TotalCount
-	};
-
-	template <typename PainterEnumType, PainterEnumType>
-	class TPainterType
-	{
-	};
-
-	struct PainterContext
-	{
-		FileStatusCtrl& ctrl;
-		const RenderContext& renderCtx;
-	};
-
-	// ReSharper disable CppMemberFunctionMayBeStatic
-	// ReSharper disable CppInconsistentNaming
-
-	class PainterBase
-	{
-	public:
-		void OnEnter(PainterContext&)
+		enum class EPainterType : std::uint8_t
 		{
-		}
+			Initial,
+			Verified,
+			Downloading,
+			Writing,
+			Error,
+			TotalCount
+		};
 
-		void OnExit(PainterContext&)
+		template <typename PainterEnumType, PainterEnumType>
+		class TPainterType
 		{
-		}
-	};
+		};
 
-	template <>
-	class TPainterType<EPainterType, EPainterType::Initial> : public PainterBase
+		struct PainterContext
+		{
+			FileStatusCtrl& ctrl;
+			const RenderContext& renderCtx;
+		};
+
+		// ReSharper disable CppMemberFunctionMayBeStatic
+		// ReSharper disable CppInconsistentNaming
+
+		class PainterBase
+		{
+		public:
+			void OnEnter(PainterContext&)
+			{
+			}
+
+			void OnExit(PainterContext&)
+			{
+			}
+		};
+
+		template <>
+		class TPainterType<EPainterType, EPainterType::Initial> : public PainterBase
+		{
+		public:
+			inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
+		};
+
+		template <>
+		class TPainterType<EPainterType, EPainterType::Verified> : public PainterBase
+		{
+		public:
+			inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
+		};
+
+		template <>
+		class TPainterType<EPainterType, EPainterType::Downloading> : public PainterBase
+		{
+		public:
+			inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
+		};
+
+		template <>
+		class TPainterType<EPainterType, EPainterType::Writing> : public PainterBase
+		{
+		public:
+			inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
+		};
+
+		template <>
+		class TPainterType<EPainterType, EPainterType::Error> : public PainterBase
+		{
+		public:
+			inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
+		};
+
+		// ReSharper restore CppParameterMayBeConstPtrOrRef
+		// ReSharper restore CppInconsistentNaming
+	}
+
+	class FileStatusCtrl final : public ControlBase
 	{
-	public:
-		inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
-	};
+		using EPainterType = fsc_detail::EPainterType;
+		using PainterContext = fsc_detail::PainterContext;
 
-	template <>
-	class TPainterType<EPainterType, EPainterType::Verified> : public PainterBase
-	{
-	public:
-		inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
-	};
-
-	template <>
-	class TPainterType<EPainterType, EPainterType::Downloading> : public PainterBase
-	{
-	public:
-		inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
-	};
-
-	template <>
-	class TPainterType<EPainterType, EPainterType::Writing> : public PainterBase
-	{
-	public:
-		inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
-	};
-
-	template <>
-	class TPainterType<EPainterType, EPainterType::Error> : public PainterBase
-	{
-	public:
-		inline sm::TNextState<EPainterType> OnUpdate(PainterContext& ctx);
-	};
-
-	// ReSharper restore CppParameterMayBeConstPtrOrRef
-	// ReSharper restore CppInconsistentNaming
-
-	class FileStatusCtrl final : public ControlTmplBase<FileStatusCtrl>
-	{
 	public:
 		explicit FileStatusCtrl(WindowBase* owner)
-			: ControlTmplBase(owner)
+			: ControlBase(owner)
 		{
 			initialize();
 		}
 
 		explicit FileStatusCtrl(ControlBase* parent)
-			: ControlTmplBase(parent)
+			: ControlBase(parent)
 		{
 			initialize();
 		}
@@ -130,6 +135,7 @@ namespace ui
 		void startAnaTask();
 		void stopAnaTask();
 		coro::LazyTask<void> joinAsync();
+
 		bool isFileVerified() const
 		{
 			return m_painter.currentStateIndex() == EPainterType::Verified;
@@ -173,6 +179,12 @@ namespace ui
 			}
 		}
 
+	public:
+		virtual void onDiscardDeviceResources() override
+		{
+			m_pLoadingIndicator->onDiscardDeviceResources();
+		}
+
 	private:
 		void initialize()
 		{
@@ -180,21 +192,15 @@ namespace ui
 			m_painter.transferTo<EPainterType::Initial>();
 		}
 
-		friend ControlTmplBase;
 		template <typename PainterEnumType, PainterEnumType>
-		friend class TPainterType;
+		friend class fsc_detail::TPainterType;
 
-		HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget) const
+		virtual HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget) override
 		{
 			return m_pLoadingIndicator->onCreateDeviceResources(renderTarget);
 		}
 
-		void discardDeviceResourcesImpl() const
-		{
-			m_pLoadingIndicator->onDiscardDeviceResources();
-		}
-
-		void drawImpl(const RenderContext& renderCtx);
+		virtual void drawImpl(const RenderContext& renderCtx) override;
 		void drawBaseContent(const RenderContext& renderCtx) const;
 		void drawStatusContent(const RenderContext& renderCtx, const D2D1_COLOR_F& color, std::wstring_view statusText) const;
 		void drawTipsContent(const RenderContext& renderCtx, const D2D1_COLOR_F& color, std::wstring_view tipsText) const;
@@ -225,7 +231,7 @@ namespace ui
 		std::wstring m_errorMsg;
 		float m_progress{0.f};
 		std::unique_ptr<LoadingIndicator> m_pLoadingIndicator{nullptr};
-		sm::StateMachine<TPainterType, EPainterType, PainterContext> m_painter;
+		sm::StateMachine<fsc_detail::TPainterType, EPainterType, PainterContext> m_painter;
 
 	private:
 		std::shared_ptr<ms::WinHttpConnection> m_connection;
@@ -236,39 +242,42 @@ namespace ui
 		coro::SharedTask<void> m_task{coro::SharedTask<void>::reject("task not started")};
 	};
 
-	// ReSharper disable CppMemberFunctionMayBeStatic
-	// ReSharper disable CppParameterMayBeConstPtrOrRef
-
-	sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Initial>::OnUpdate(PainterContext& ctx)
+	namespace fsc_detail
 	{
-		ctx.ctrl.drawInitial(ctx.renderCtx);
-		return {EPainterType::Initial};
-	}
+		// ReSharper disable CppMemberFunctionMayBeStatic
+		// ReSharper disable CppParameterMayBeConstPtrOrRef
 
-	sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Verified>::OnUpdate(PainterContext& ctx)
-	{
-		ctx.ctrl.drawVerified(ctx.renderCtx);
-		return {EPainterType::Verified};
-	}
+		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Initial>::OnUpdate(PainterContext& ctx)
+		{
+			ctx.ctrl.drawInitial(ctx.renderCtx);
+			return {EPainterType::Initial};
+		}
 
-	sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Downloading>::OnUpdate(PainterContext& ctx)
-	{
-		ctx.ctrl.drawDownloading(ctx.renderCtx);
-		return {EPainterType::Downloading};
-	}
+		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Verified>::OnUpdate(PainterContext& ctx)
+		{
+			ctx.ctrl.drawVerified(ctx.renderCtx);
+			return {EPainterType::Verified};
+		}
 
-	sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Writing>::OnUpdate(PainterContext& ctx)
-	{
-		ctx.ctrl.drawWriting(ctx.renderCtx);
-		return {EPainterType::Writing};
-	}
+		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Downloading>::OnUpdate(PainterContext& ctx)
+		{
+			ctx.ctrl.drawDownloading(ctx.renderCtx);
+			return {EPainterType::Downloading};
+		}
 
-	sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Error>::OnUpdate(PainterContext& ctx)
-	{
-		ctx.ctrl.drawError(ctx.renderCtx);
-		return {EPainterType::Error};
-	}
+		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Writing>::OnUpdate(PainterContext& ctx)
+		{
+			ctx.ctrl.drawWriting(ctx.renderCtx);
+			return {EPainterType::Writing};
+		}
 
-	// ReSharper restore CppParameterMayBeConstPtrOrRef
-	// ReSharper restore CppMemberFunctionMayBeStatic
+		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Error>::OnUpdate(PainterContext& ctx)
+		{
+			ctx.ctrl.drawError(ctx.renderCtx);
+			return {EPainterType::Error};
+		}
+
+		// ReSharper restore CppParameterMayBeConstPtrOrRef
+		// ReSharper restore CppMemberFunctionMayBeStatic
+	}
 }

@@ -14,6 +14,24 @@ namespace ui
 		UniqueComPtr<ID2D1SolidColorBrush> brush;
 	};
 
+
+	export struct MouseEvent
+	{
+		D2D1_POINT_2F point;
+
+		enum BtnState
+		{
+			LeftButtonDown = 0x0001,
+			RightButtonDown = 0x0002,
+			ControlDown = 0x0008,
+			MiddleButtonDown = 0x0010,
+			XButton1Down = 0x0020,
+			XButton2Down = 0x0040,
+		};
+
+		std::size_t button;
+	};
+
 	export class RendererInterface
 	{
 	public:
@@ -77,6 +95,83 @@ namespace ui
 		void update() const;
 		void updateWholeWnd() const;
 
+	public:
+		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
+		{
+			HResult hr;
+			do
+			{
+				hr = createDeviceResourcesImpl(renderTarget);
+				if (FAILED(hr))
+				{
+					break;
+				}
+			}
+			while (false);
+
+			if (FAILED(hr))
+			{
+				onDiscardDeviceResources();
+			}
+			return hr;
+		}
+
+		virtual void draw(const RenderContext& renderCtx) override
+		{
+			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+
+			renderTarget->PushAxisAlignedClip(m_bounds, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+
+			D2D1_MATRIX_3X2_F oldTransform;
+			renderTarget->GetTransform(&oldTransform);
+			renderTarget->SetTransform(D2D1::Matrix3x2F::Translation(m_bounds.left, m_bounds.top) * oldTransform);
+
+			drawImpl(renderCtx);
+
+			renderTarget->SetTransform(oldTransform);
+
+			renderTarget->PopAxisAlignedClip();
+		}
+
+	protected:
+		friend class ControlManager;
+
+		bool hitTest(D2D1_POINT_2F point) const
+		{
+			return point.x >= m_boundsInOwner.left && point.x <= m_boundsInOwner.right &&
+				point.y >= m_boundsInOwner.top && point.y <= m_boundsInOwner.bottom;
+		}
+
+		virtual void onMouseEnter(const MouseEvent& e)
+		{
+		}
+
+		virtual void onMouseLeave(const MouseEvent& e)
+		{
+		}
+
+		virtual void onMouseDown(const MouseEvent& e)
+		{
+		}
+
+		virtual void onMouseUp(const MouseEvent& e)
+		{
+		}
+
+		virtual void onClick(const MouseEvent& e)
+		{
+		}
+
+	private:
+		virtual HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget)
+		{
+			return S_OK;
+		}
+
+		virtual void drawImpl(const RenderContext& renderCtx)
+		{
+		}
+
 	protected:
 		WindowBase* m_ownerWnd;
 		ControlBase* m_parent;
@@ -106,6 +201,57 @@ namespace ui
 					m_controls.erase(it);
 					break;
 				}
+			}
+		}
+
+		void onMouseMove(const MouseEvent& e)
+		{
+			ControlBase* hovered = nullptr;
+
+			// 从最上层开始检测
+			for (auto it = m_controls.rbegin(); it != m_controls.rend(); ++it)
+			{
+				if ((*it)->hitTest(e.point))
+				{
+					hovered = *it;
+					break;
+				}
+			}
+			if (hovered != m_currentHovered)
+			{
+				if (m_currentHovered)
+				{
+					m_currentHovered->onMouseLeave(e);
+				}
+				if (hovered)
+				{
+					hovered->onMouseEnter(e);
+				}
+				m_currentHovered = hovered;
+			}
+
+			m_lastMousePos = e.point;
+		}
+
+		void onMouseDown(const MouseEvent& e)
+		{
+			if (m_currentHovered)
+			{
+				m_currentHovered->onMouseDown(e);
+				m_currentPressed = m_currentHovered;
+			}
+		}
+
+		void onMouseUp(const MouseEvent& e)
+		{
+			if (m_currentPressed)
+			{
+				m_currentPressed->onMouseUp(e);
+				if (m_currentPressed == m_currentHovered)
+				{
+					m_currentPressed->onClick(e);
+				}
+				m_currentPressed = nullptr;
 			}
 		}
 
@@ -173,7 +319,7 @@ namespace ui
 		virtual void onResize(std::uint32_t width, std::uint32_t height)
 		{
 		}
-		
+
 		virtual HResult onRender();
 
 		// 返回true表示不要调用默认实现销毁窗口,而是自己处理
@@ -190,6 +336,9 @@ namespace ui
 		void releaseDeviceResources();
 		void updateDpi();
 		void resize(std::uint32_t width, std::uint32_t height);
+		void mouseMove(int physicalX, int physicalY, std::size_t button);
+		void mouseDown(int physicalX, int physicalY, std::size_t button);
+		void mouseUp(int physicalX, int physicalY, std::size_t button);
 		// 这个不做成虚函数，因为窗口有可能在基类析构中销毁，此时无法调用到子类的虚函数。索性不要这个时机了，反正有子类析构可以用
 		void onDestroy();
 

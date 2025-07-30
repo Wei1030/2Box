@@ -8,6 +8,7 @@
 #define NOMINMAX
 // Windows 头文件
 #include <windows.h>
+#include <windowsx.h>
 #include <tlhelp32.h>
 #include <winhttp.h>
 #include <dbghelp.h>

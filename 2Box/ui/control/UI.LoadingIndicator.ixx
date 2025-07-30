@@ -4,21 +4,13 @@ import "sys_defs.h";
 import std;
 import Coroutine;
 import UI.Core;
-import UI.ControlTmplBase;
 
 namespace ui
 {
-	export class LoadingIndicator final : public ControlTmplBase<LoadingIndicator>
+	export class LoadingIndicator final : public ControlBase
 	{
 	public:
-#ifndef __INTELLISENSE__
-		using ControlTmplBase::ControlTmplBase;
-#else
-		template <typename... Args>
-		explicit LoadingIndicator(Args&&... args) noexcept : ControlTmplBase(std::forward<Args>(args)...)
-		{
-		}
-#endif
+		using ControlBase::ControlBase;
 
 		virtual ~LoadingIndicator()
 		{
@@ -39,10 +31,15 @@ namespace ui
 			m_animTask.waitUntilDone();
 		}
 
-	private:
-		friend ControlTmplBase;
+	public:
+		virtual void onDiscardDeviceResources() override
+		{
+			m_pLinearGradientBrush.reset();
+			m_pGradientStops.reset();
+		}
 
-		HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget)
+	private:
+		virtual HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget) override
 		{
 			D2D1_GRADIENT_STOP gradientStops[2] = {
 				{0.0f, D2D1::ColorF(0x4A9DF8)},
@@ -70,15 +67,10 @@ namespace ui
 			return hr;
 		}
 
-		void discardDeviceResourcesImpl()
+		virtual void drawImpl(const RenderContext& renderCtx) override
 		{
-			m_pLinearGradientBrush.reset();
-			m_pGradientStops.reset();
-		}
-
-		void drawImpl(const RenderContext& renderCtx) const
-		{
-			const auto& [renderTarget, solidBrush] = renderCtx;
+			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+			const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 			const auto drawSize = size();
 
 			// 绘制背景

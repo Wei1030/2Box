@@ -175,7 +175,7 @@ namespace ui
 			rc.right - rc.left,
 			rc.bottom - rc.top
 		);
-		
+
 		HResult hr = app().d2d1Factory()->CreateHwndRenderTarget(
 			D2D1::RenderTargetProperties(),
 			D2D1::HwndRenderTargetProperties(m_hWnd, size),
@@ -240,6 +240,36 @@ namespace ui
 			m_renderCtx.renderTarget->Resize(D2D1::SizeU(width, height));
 		}
 		onResize(width, height);
+	}
+
+	void WindowBase::mouseMove(int physicalX, int physicalY, std::size_t button)
+	{
+		const float physicalToDevice = m_dpiInfo.physicalToDevice;
+		const MouseEvent e{
+			D2D1::Point2F(physicalX * physicalToDevice, physicalY * physicalToDevice),
+			button
+		};
+		m_controlManager.onMouseMove(e);
+	}
+
+	void WindowBase::mouseDown(int physicalX, int physicalY, std::size_t button)
+	{
+		const float physicalToDevice = m_dpiInfo.physicalToDevice;
+		const MouseEvent e{
+			D2D1::Point2F(physicalX * physicalToDevice, physicalY * physicalToDevice),
+			button
+		};
+		m_controlManager.onMouseDown(e);
+	}
+
+	void WindowBase::mouseUp(int physicalX, int physicalY, std::size_t button)
+	{
+		const float physicalToDevice = m_dpiInfo.physicalToDevice;
+		const MouseEvent e{
+			D2D1::Point2F(physicalX * physicalToDevice, physicalY * physicalToDevice),
+			button
+		};
+		m_controlManager.onMouseUp(e);
 	}
 
 	void WindowBase::onDestroy()
@@ -341,6 +371,21 @@ namespace ui
 							InvalidateRect(hWnd, nullptr, FALSE);
 						}
 						return 0;
+					case WM_MOUSEMOVE:
+						pWnd->mouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), wParam);
+						break;
+					case WM_LBUTTONDOWN:
+					case WM_RBUTTONDOWN:
+					case WM_MBUTTONDOWN:
+					case WM_XBUTTONDOWN:
+						pWnd->mouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), wParam);
+						break;
+					case WM_LBUTTONUP:
+					case WM_RBUTTONUP:
+					case WM_MBUTTONUP:
+					case WM_XBUTTONUP:
+						pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), wParam);
+						break;
 					case WM_DPICHANGED:
 						{
 							pWnd->updateDpi();
