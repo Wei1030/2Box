@@ -103,6 +103,10 @@ namespace ui
 
 	void Button::onClick(const MouseEvent& e)
 	{
+		if (m_onClick)
+		{
+			m_onClick();
+		}
 	}
 
 	void Button::initialize()

@@ -151,7 +151,6 @@ namespace ui
 
 			{
 				m_p32FileStatusCtrl = std::make_unique<FileStatusCtrl>(m_ownerWnd);
-				m_p32FileStatusCtrl->setDownloadServerName(downloadServerName);
 #ifdef _WIN64
 				const fs::path systemDir{sys_info::get_system_wow64_dir()};
 #else
@@ -159,23 +158,20 @@ namespace ui
 #endif
 				const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
 				const SYMSRV_INDEX_INFOW indexInfo = symbols::file_index_info(ntdllPath.native());
-				m_p32FileStatusCtrl->setFileName(indexInfo.pdbfile);
-				const auto [pdbPath, objName] = symbols::parse_pdb_path(indexInfo, searchPath);
-				m_p32FileStatusCtrl->setPdbPath(pdbPath);
-				m_p32FileStatusCtrl->setDownloadObjName(objName);
+				const auto [pdbDir, objName] = symbols::parse_pdb_path(indexInfo, searchPath);
+				m_p32FileStatusCtrl->setFilePath(pdbDir, indexInfo.pdbfile);
+				m_p32FileStatusCtrl->setDownloadUrl(downloadServerName, objName);
 				m_p32FileStatusCtrl->startAnaTask();
 			}
 			{
 #ifdef _WIN64
 				m_p64FileStatusCtrl = std::make_unique<FileStatusCtrl>(m_ownerWnd);
-				m_p64FileStatusCtrl->setDownloadServerName(downloadServerName);
 				const fs::path systemDir{sys_info::get_system_dir()};
 				const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
 				const SYMSRV_INDEX_INFOW indexInfo = symbols::file_index_info(ntdllPath.native());
-				m_p64FileStatusCtrl->setFileName(indexInfo.pdbfile);
-				const auto [pdbPath, objName] = symbols::parse_pdb_path(indexInfo, searchPath);
-				m_p64FileStatusCtrl->setPdbPath(pdbPath);
-				m_p64FileStatusCtrl->setDownloadObjName(objName);
+				const auto [pdbDir, objName] = symbols::parse_pdb_path(indexInfo, searchPath);
+				m_p64FileStatusCtrl->setFilePath(pdbDir, indexInfo.pdbfile);
+				m_p64FileStatusCtrl->setDownloadUrl(downloadServerName, objName);
 				m_p64FileStatusCtrl->startAnaTask();
 #endif
 			}

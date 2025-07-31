@@ -7,6 +7,7 @@ import WinHttp;
 import Coroutine;
 import UI.Core;
 import UI.LoadingIndicator;
+import UI.Button;
 
 namespace ui
 {
@@ -87,6 +88,32 @@ namespace ui
 
 		// ReSharper restore CppParameterMayBeConstPtrOrRef
 		// ReSharper restore CppInconsistentNaming
+
+		class CopyButton
+		{
+		public:
+			void initialize(ControlBase* parent);
+
+			void setTextToCopy(std::wstring_view text)
+			{
+				m_text = text;
+			}
+
+			Button* operator->() const noexcept
+			{
+				return m_button.get();
+			}
+
+			~CopyButton()
+			{
+				m_stopSource.request_stop();
+			}
+
+		private:
+			std::unique_ptr<Button> m_button{nullptr};
+			std::wstring m_text;
+			std::stop_source m_stopSource{std::nostopstate};
+		};
 	}
 
 	class FileStatusCtrl final : public ControlBase
@@ -112,25 +139,8 @@ namespace ui
 			stopAnaTask();
 		}
 
-		void setFileName(std::wstring_view fileName)
-		{
-			m_fileName = fileName;
-		}
-
-		void setDownloadServerName(std::wstring_view downloadServerName)
-		{
-			m_downloadServerName = downloadServerName;
-		}
-
-		void setDownloadObjName(std::wstring_view downloadObjName)
-		{
-			m_downloadObjName = downloadObjName;
-		}
-
-		void setPdbPath(std::wstring_view pdbPath)
-		{
-			m_pdbPath = pdbPath;
-		}
+		void setFilePath(std::wstring_view fileDir, std::wstring_view fileName);
+		void setDownloadUrl(std::wstring_view serverName, std::wstring_view objName);
 
 		void startAnaTask();
 		void stopAnaTask();
@@ -186,11 +196,7 @@ namespace ui
 		}
 
 	private:
-		void initialize()
-		{
-			m_pLoadingIndicator = std::make_unique<LoadingIndicator>(this);
-			m_painter.transferTo<EPainterType::Initial>();
-		}
+		void initialize();
 
 		template <typename PainterEnumType, PainterEnumType>
 		friend class fsc_detail::TPainterType;
@@ -225,12 +231,22 @@ namespace ui
 
 	private:
 		std::wstring m_fileName;
+		std::wstring m_fileDir;
+		std::wstring m_filePath;
+
 		std::wstring m_downloadServerName;
 		std::wstring m_downloadObjName;
-		std::wstring m_pdbPath;
+		std::wstring m_downloadUrl;
+
 		std::wstring m_errorMsg;
 		float m_progress{0.f};
 		std::unique_ptr<LoadingIndicator> m_pLoadingIndicator{nullptr};
+		fsc_detail::CopyButton m_copyUrlBtn;
+		fsc_detail::CopyButton m_copyDirBtn;
+		fsc_detail::CopyButton m_copyFileNameBtn;
+		UniqueComPtr<IDWriteTextLayout> m_pUrlLayout;
+		UniqueComPtr<IDWriteTextLayout> m_pDirLayout;
+		UniqueComPtr<IDWriteTextLayout> m_pFileNameLayout;
 		sm::StateMachine<fsc_detail::TPainterType, EPainterType, PainterContext> m_painter;
 
 	private:

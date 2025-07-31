@@ -10,8 +10,110 @@ import std;
 import MainApp;
 import Scheduler;
 
+namespace
+{
+	void create_tips_text_layout(std::wstring_view text, UniqueComPtr<IDWriteTextLayout>& textLayout)
+	{
+		textLayout.reset();
+		app().dWriteFactory()->CreateTextLayout(text.data(),
+		                                        static_cast<UINT32>(text.length()),
+		                                        app().textFormat().pTipsFormat,
+		                                        std::numeric_limits<float>::max(), ui::FileStatusCtrl::tipsTextHeight,
+		                                        &textLayout);
+		if (textLayout)
+		{
+			textLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+			constexpr DWRITE_TRIMMING trimming{DWRITE_TRIMMING_GRANULARITY_CHARACTER};
+			textLayout->SetTrimming(&trimming, app().textFormat().pTipsEllipsisTrimmingSign);
+		}
+	}
+
+	bool copy_text_to_clipboard(HWND hWnd, std::wstring_view text)
+	{
+		if (!OpenClipboard(hWnd))
+		{
+			return false;
+		}
+		EmptyClipboard();
+
+		const HGLOBAL hCopy = GlobalAlloc(GMEM_MOVEABLE, (text.length() + 1) * sizeof(wchar_t));
+		if (hCopy == nullptr)
+		{
+			CloseClipboard();
+			return false;
+		}
+		wchar_t* pStrCopy = static_cast<wchar_t*>(GlobalLock(hCopy));
+		if (!pStrCopy)
+		{
+			GlobalFree(hCopy);
+			CloseClipboard();
+			return false;
+		}
+
+		memcpy(pStrCopy, text.data(), text.length() * sizeof(wchar_t));
+		pStrCopy[text.length()] = 0;
+
+		GlobalUnlock(hCopy);
+		const HANDLE hData = SetClipboardData(CF_UNICODETEXT, hCopy);
+		CloseClipboard();
+		return hData != nullptr;
+	}
+}
+
 namespace ui
 {
+	void fsc_detail::CopyButton::initialize(ControlBase* parent)
+	{
+		m_button = std::make_unique<Button>(parent);
+		m_button->setBackgroundColor(D2D1::ColorF(0xd3d3d3));
+		m_button->setBackgroundColor(D2D1::ColorF(0xe6e6e6), Button::EState::Normal);
+		m_button->setTextColor(D2D1::ColorF(0x323130));
+		m_button->setTextFormat(app().textFormat().pToolBtnFormat);
+		m_button->setText(L"复制");
+
+		m_button->setOnClick([this, owner = parent->owner()]
+		{
+			if (copy_text_to_clipboard(owner->nativeHandle(), m_text))
+			{
+				m_button->setText(L"已复制");
+				m_button->update();
+				// stop last timer
+				m_stopSource.request_stop();
+				// create new timer
+				m_stopSource = std::stop_source{};
+				app().get_scheduler().addTimer(std::chrono::seconds(3), [this]
+				{
+					m_button->setText(L"复制");
+					m_button->update();
+				}, m_stopSource.get_token());
+			}
+		});
+	}
+
+	void FileStatusCtrl::setFilePath(std::wstring_view fileDir, std::wstring_view fileName)
+	{
+		m_fileDir = fileDir;
+		m_fileName = fileName;
+		m_filePath = std::format(L"{}/{}", fileDir, fileName);
+
+		create_tips_text_layout(fileDir, m_pDirLayout);
+		create_tips_text_layout(fileName, m_pFileNameLayout);
+
+		m_copyDirBtn.setTextToCopy(fileDir);
+		m_copyFileNameBtn.setTextToCopy(fileName);
+	}
+
+	void FileStatusCtrl::setDownloadUrl(std::wstring_view serverName, std::wstring_view objName)
+	{
+		m_downloadServerName = serverName;
+		m_downloadObjName = objName;
+		m_downloadUrl = std::format(L"https://{}/{}", serverName, objName);
+
+		create_tips_text_layout(m_downloadUrl, m_pUrlLayout);
+
+		m_copyUrlBtn.setTextToCopy(m_downloadUrl);
+	}
+
 	void FileStatusCtrl::startAnaTask()
 	{
 		stopAnaTask();
@@ -47,6 +149,16 @@ namespace ui
 		co_return;
 	}
 
+	void FileStatusCtrl::initialize()
+	{
+		m_pLoadingIndicator = std::make_unique<LoadingIndicator>(this);
+		m_copyUrlBtn.initialize(this);
+		m_copyDirBtn.initialize(this);
+		m_copyFileNameBtn.initialize(this);
+
+		m_painter.transferTo<EPainterType::Initial>();
+	}
+
 	void FileStatusCtrl::drawImpl(const RenderContext& renderCtx)
 	{
 		app().textFormat().setAllTextEllipsisTrimming();
@@ -60,7 +172,8 @@ namespace ui
 
 	void FileStatusCtrl::drawBaseContent(const RenderContext& renderCtx) const
 	{
-		const auto& [renderTarget, solidBrush] = renderCtx;
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		const auto drawSize = size();
 		const D2D1_ROUNDED_RECT round = D2D1::RoundedRect(
 			D2D1::RectF(0, 0, drawSize.width, drawSize.height),
@@ -81,7 +194,8 @@ namespace ui
 
 	void FileStatusCtrl::drawStatusContent(const RenderContext& renderCtx, const D2D1_COLOR_F& color, std::wstring_view statusText) const
 	{
-		const auto& [renderTarget, solidBrush] = renderCtx;
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		constexpr float yPos = padding + titleFileNameHeight + margin;
 		solidBrush->SetColor(color);
 		renderTarget->DrawTextW(statusText.data(),
@@ -93,7 +207,8 @@ namespace ui
 
 	void FileStatusCtrl::drawTipsContent(const RenderContext& renderCtx, const D2D1_COLOR_F& color, std::wstring_view tipsText) const
 	{
-		const auto& [renderTarget, solidBrush] = renderCtx;
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		constexpr float yPos = padding + titleFileNameHeight + statusTextHeight + margin * 2;
 		solidBrush->SetColor(color);
 		renderTarget->DrawTextW(tipsText.data(),
@@ -105,7 +220,8 @@ namespace ui
 
 	void FileStatusCtrl::drawLoadingContent(const RenderContext& renderCtx) const
 	{
-		const auto& [renderTarget, solidBrush] = renderCtx;
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		constexpr float yPos = padding + titleFileNameHeight + statusTextHeight + tipsTextHeight + margin * 3;
 		const D2D1_ROUNDED_RECT trackRect = D2D1::RoundedRect(
 			D2D1::RectF(padding, yPos, size().width - padding, yPos + loadingIndicatorHeight),
@@ -125,7 +241,8 @@ namespace ui
 
 	void FileStatusCtrl::drawErrorRoundedArea(const RenderContext& renderCtx) const
 	{
-		const auto& [renderTarget, solidBrush] = renderCtx;
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		constexpr float yPos = padding + titleFileNameHeight + statusTextHeight + margin * 2;
 		D2D1_RECT_F errorBgRect = D2D1::RectF(padding, yPos, size().width - padding, yPos + errorAreaHeight);
 		const D2D1_ROUNDED_RECT errorBgRoundedRect = D2D1::RoundedRect(errorBgRect, 4.f, 4.f);
@@ -141,7 +258,8 @@ namespace ui
 
 	void FileStatusCtrl::drawErrorContent(const RenderContext& renderCtx) const
 	{
-		const auto& [renderTarget, solidBrush] = renderCtx;
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		const auto drawSize = size();
 		const float contentRight = drawSize.width - padding;
 
@@ -186,7 +304,8 @@ namespace ui
 
 	void FileStatusCtrl::drawInfoRoundedArea(const RenderContext& renderCtx) const
 	{
-		const auto& [renderTarget, solidBrush] = renderCtx;
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		constexpr float yPos = padding + titleFileNameHeight + statusTextHeight + errorAreaHeight + margin * 3;
 		const D2D1_ROUNDED_RECT infoRoundedRect = D2D1::RoundedRect(
 			D2D1::RectF(padding, yPos, size().width - padding, yPos + infoAreaHeight),
@@ -197,11 +316,14 @@ namespace ui
 
 	void FileStatusCtrl::drawInfoContent(const RenderContext& renderCtx) const
 	{
-		const auto& [renderTarget, solidBrush] = renderCtx;
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		const auto drawSize = size();
-		const float contentRight = drawSize.width - padding;
+		const float contentRight = drawSize.width - padding - subAreaPadding;
 		constexpr float xPos = padding + subAreaPadding;
 		constexpr float labelRight = xPos + infoLabelWidth;
+		constexpr float copyBtnWidth = 48.f;
+		const float infoValueWidth = contentRight - labelRight - copyBtnWidth - margin;
 
 		{
 			constexpr float yPos = padding + titleFileNameHeight + statusTextHeight + errorAreaHeight + margin * 3 + subAreaPadding;
@@ -212,13 +334,29 @@ namespace ui
 			                        app().textFormat().pTipsFormat,
 			                        D2D1::RectF(xPos, yPos, labelRight, yPos + tipsTextHeight),
 			                        solidBrush);
-			const std::wstring value = std::format(L"https://{}/{}", m_downloadServerName, m_downloadObjName);
 			solidBrush->SetColor(D2D1::ColorF(0x333333));
-			renderTarget->DrawTextW(value.c_str(),
-			                        static_cast<UINT32>(value.length()),
-			                        app().textFormat().pTipsFormat,
-			                        D2D1::RectF(labelRight, yPos, contentRight, yPos + tipsTextHeight),
-			                        solidBrush);
+			float textWidth = infoValueWidth;
+			if (m_pUrlLayout)
+			{
+				m_pUrlLayout->SetMaxWidth(infoValueWidth);
+				DWRITE_TEXT_METRICS textMetrics;
+				if (SUCCEEDED(m_pUrlLayout->GetMetrics(&textMetrics)))
+				{
+					textWidth = textMetrics.width;
+				}
+				renderTarget->DrawTextLayout(D2D1::Point2F(labelRight, yPos), m_pUrlLayout, solidBrush);
+			}
+			else
+			{
+				renderTarget->DrawTextW(m_downloadUrl.c_str(),
+				                        static_cast<UINT32>(m_downloadUrl.length()),
+				                        app().textFormat().pTipsFormat,
+				                        D2D1::RectF(labelRight, yPos, labelRight + textWidth, yPos + tipsTextHeight),
+				                        solidBrush);
+			}
+			const float btnXPos = labelRight + textWidth + margin;
+			m_copyUrlBtn->setBounds(D2D1::RectF(btnXPos, yPos, btnXPos + copyBtnWidth, yPos + tipsTextHeight));
+			m_copyUrlBtn->draw(renderCtx);
 		}
 		{
 			constexpr float yPos = padding + titleFileNameHeight + statusTextHeight + errorAreaHeight + margin * 4 + subAreaPadding + tipsTextHeight;
@@ -230,11 +368,28 @@ namespace ui
 			                        D2D1::RectF(xPos, yPos, labelRight, yPos + tipsTextHeight),
 			                        solidBrush);
 			solidBrush->SetColor(D2D1::ColorF(0x333333));
-			renderTarget->DrawTextW(m_pdbPath.c_str(),
-			                        static_cast<UINT32>(m_pdbPath.length()),
-			                        app().textFormat().pTipsFormat,
-			                        D2D1::RectF(labelRight, yPos, contentRight, yPos + tipsTextHeight),
-			                        solidBrush);
+			float textWidth = infoValueWidth;
+			if (m_pDirLayout)
+			{
+				m_pDirLayout->SetMaxWidth(infoValueWidth);
+				DWRITE_TEXT_METRICS textMetrics;
+				if (SUCCEEDED(m_pDirLayout->GetMetrics(&textMetrics)))
+				{
+					textWidth = textMetrics.width;
+				}
+				renderTarget->DrawTextLayout(D2D1::Point2F(labelRight, yPos), m_pDirLayout, solidBrush);
+			}
+			else
+			{
+				renderTarget->DrawTextW(m_fileDir.c_str(),
+				                        static_cast<UINT32>(m_fileDir.length()),
+				                        app().textFormat().pTipsFormat,
+				                        D2D1::RectF(labelRight, yPos, labelRight + textWidth, yPos + tipsTextHeight),
+				                        solidBrush);
+			}
+			const float btnXPos = labelRight + textWidth + margin;
+			m_copyDirBtn->setBounds(D2D1::RectF(btnXPos, yPos, btnXPos + copyBtnWidth, yPos + tipsTextHeight));
+			m_copyDirBtn->draw(renderCtx);
 		}
 		{
 			constexpr float yPos = padding + titleFileNameHeight + statusTextHeight + errorAreaHeight + margin * 5 + subAreaPadding + tipsTextHeight * 2;
@@ -246,11 +401,28 @@ namespace ui
 			                        D2D1::RectF(xPos, yPos, labelRight, yPos + tipsTextHeight),
 			                        solidBrush);
 			solidBrush->SetColor(D2D1::ColorF(0x333333));
-			renderTarget->DrawTextW(m_fileName.c_str(),
-			                        static_cast<UINT32>(m_fileName.length()),
-			                        app().textFormat().pTipsFormat,
-			                        D2D1::RectF(labelRight, yPos, contentRight, yPos + tipsTextHeight),
-			                        solidBrush);
+			float textWidth = infoValueWidth;
+			if (m_pFileNameLayout)
+			{
+				m_pFileNameLayout->SetMaxWidth(infoValueWidth);
+				DWRITE_TEXT_METRICS metrics;
+				if (SUCCEEDED(m_pFileNameLayout->GetMetrics(&metrics)))
+				{
+					textWidth = metrics.width;
+				}
+				renderTarget->DrawTextLayout(D2D1::Point2F(labelRight, yPos), m_pFileNameLayout, solidBrush);
+			}
+			else
+			{
+				renderTarget->DrawTextW(m_fileName.c_str(),
+				                        static_cast<UINT32>(m_fileName.length()),
+				                        app().textFormat().pTipsFormat,
+				                        D2D1::RectF(labelRight, yPos, labelRight + textWidth, yPos + tipsTextHeight),
+				                        solidBrush);
+			}
+			const float btnXPos = labelRight + textWidth + margin;
+			m_copyFileNameBtn->setBounds(D2D1::RectF(btnXPos, yPos, btnXPos + copyBtnWidth, yPos + tipsTextHeight));
+			m_copyFileNameBtn->draw(renderCtx);
 		}
 	}
 
@@ -271,7 +443,7 @@ namespace ui
 	{
 		drawBaseContent(renderCtx);
 		drawStatusContent(renderCtx, D2D1::ColorF(0x0078d7), std::format(L"正在下载: {:.0f}%", m_progress * 100.f));
-		drawTipsContent(renderCtx, D2D1::ColorF(0x605e5c), std::format(L"下载源: https://{}/{}", m_downloadServerName, m_downloadObjName));
+		drawTipsContent(renderCtx, D2D1::ColorF(0x605e5c), std::format(L"下载源: {}", m_downloadUrl));
 		drawLoadingContent(renderCtx);
 		drawLoadingIndicator(renderCtx, m_progress);
 	}
@@ -280,7 +452,7 @@ namespace ui
 	{
 		drawBaseContent(renderCtx);
 		drawStatusContent(renderCtx, D2D1::ColorF(0x0078d7), L"下载完成，正在写入");
-		drawTipsContent(renderCtx, D2D1::ColorF(0x605e5c), std::format(L"写入位置: {}", m_pdbPath));
+		drawTipsContent(renderCtx, D2D1::ColorF(0x605e5c), std::format(L"写入位置: {}", m_filePath));
 		drawLoadingIndicator(renderCtx, 1.f);
 	}
 
@@ -346,12 +518,14 @@ namespace ui
 
 		void write_file_thread(std::wstring_view pdbFile, std::span<std::byte> bytes, const coro::GuaranteedResolver<void>& resolver)
 		{
-			namespace fs = std::filesystem;
-			std::error_code ec;
-			fs::create_directories(fs::path{pdbFile}.parent_path(), ec);
-			if (ec)
+			try
 			{
-				resolver->rejectWithRuntimeError(std::format("create_directories failed, error code: {}", ec.value()));
+				namespace fs = std::filesystem;
+				fs::create_directories(fs::path{pdbFile}.parent_path());
+			}
+			catch (const std::exception& e)
+			{
+				resolver->rejectWithRuntimeError(std::format("create_directories failed, error msg: {}", e.what()));
 				return;
 			}
 
@@ -405,8 +579,8 @@ namespace ui
 		try
 		{
 			m_painter.transferTo<EPainterType::Initial>();
-			const fs::path filePdbPath{m_pdbPath};
-			if (!fs::exists(filePdbPath))
+			const fs::path filePath{m_filePath};
+			if (!fs::exists(filePath))
 			{
 				m_connection = ms::get_default_win_http_session()->createConnection(m_downloadServerName);
 
@@ -428,8 +602,8 @@ namespace ui
 				m_painter.transferTo<EPainterType::Writing>();
 				updateWholeWnd();
 				// 将bytes写入文件...
-				co_await write_file(filePdbPath.native(), bytes);
-				if (!fs::exists(filePdbPath))
+				co_await write_file(filePath.native(), bytes);
+				if (!fs::exists(filePath))
 				{
 					throw std::runtime_error{"write file failed"};
 				}

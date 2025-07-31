@@ -72,6 +72,11 @@ namespace ui
 		virtual ~ControlBase();
 
 	public:
+		WindowBase* owner() const noexcept
+		{
+			return m_ownerWnd;
+		}
+
 		void setBounds(const D2D1_RECT_F& newBounds)
 		{
 			m_bounds = newBounds;

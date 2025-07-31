@@ -85,7 +85,7 @@ namespace ui
 		// ReSharper restore CppInconsistentNaming
 	}
 
-	class Button : public ControlBase
+	export class Button : public ControlBase
 	{
 		using EPainterType = button_detail::EPainterType;
 		using PainterContext = button_detail::PainterContext;
@@ -134,6 +134,11 @@ namespace ui
 		void setTextFormat(IDWriteTextFormat* textFormat, EState state = EState::All);
 		void setText(std::wstring_view text, EState state = EState::All);
 
+		void setOnClick(std::move_only_function<void()> func)
+		{
+			m_onClick = std::move(func);
+		}
+
 	protected:
 		virtual void onMouseEnter(const MouseEvent& e) override;
 		virtual void onMouseLeave(const MouseEvent& e) override;
@@ -176,6 +181,7 @@ namespace ui
 
 	private:
 		sm::StateMachine<button_detail::TPainterType, EPainterType, PainterContext> m_painter;
+		std::move_only_function<void()> m_onClick;
 		bool m_bIsHover{false};
 	};
 

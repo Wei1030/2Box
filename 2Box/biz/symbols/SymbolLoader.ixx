@@ -37,7 +37,7 @@ namespace symbols
 
 	export struct PdbPathInfo
 	{
-		std::wstring pdbPath;
+		std::wstring pdbDir;
 		std::wstring downloadObjName;
 	};
 
@@ -49,8 +49,8 @@ namespace symbols
 		const std::wstring strGuid = std::format(L"{:08X}{:04X}{:04X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:X}", guid.Data1, guid.Data2, guid.Data3,
 		                                         guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
 		                                         guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7], indexInfo.age);
-		const fs::path filePdbPath{fs::path{rootPath} / fs::path{indexInfo.pdbfile} / fs::path{strGuid} / fs::path{indexInfo.pdbfile}};
-		result.pdbPath = filePdbPath.native();
+		const fs::path filePdbDir{fs::path{rootPath} / fs::path{indexInfo.pdbfile} / fs::path{strGuid}};
+		result.pdbDir = filePdbDir.native();
 		result.downloadObjName = std::format(L"download/symbols/{}/{}/{}", indexInfo.pdbfile, strGuid, indexInfo.pdbfile);
 		return result;
 	}
