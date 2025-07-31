@@ -94,7 +94,7 @@ namespace ui
 	{
 		m_fileDir = fileDir;
 		m_fileName = fileName;
-		m_filePath = std::format(L"{}/{}", fileDir, fileName);
+		m_filePath = std::format(L"{}\\{}", fileDir, fileName);
 
 		create_tips_text_layout(fileDir, m_pDirLayout);
 		create_tips_text_layout(fileName, m_pFileNameLayout);
@@ -152,6 +152,18 @@ namespace ui
 	void FileStatusCtrl::initialize()
 	{
 		m_pLoadingIndicator = std::make_unique<LoadingIndicator>(this);
+
+		m_retryBtn = std::make_unique<Button>(this);
+		m_retryBtn->setBackgroundColor(D2D1::ColorF(0x4895ef));
+		m_retryBtn->setBackgroundColor(D2D1::ColorF(0x0078d7), Button::EState::Normal);
+		m_retryBtn->setTextColor(D2D1::ColorF(0xffffff));
+		m_retryBtn->setTextFormat(app().textFormat().pToolBtnFormat);
+		m_retryBtn->setText(L"重试下载");
+		m_retryBtn->setOnClick([this]
+		{
+			startAnaTask();
+		});
+
 		m_copyUrlBtn.initialize(this);
 		m_copyDirBtn.initialize(this);
 		m_copyFileNameBtn.initialize(this);
@@ -264,6 +276,7 @@ namespace ui
 		const float contentRight = drawSize.width - padding;
 
 		constexpr float xPos = padding + subAreaPadding;
+		solidBrush->SetColor(D2D1::ColorF(0xd83b01));
 		{
 			constexpr float yPos = padding + titleFileNameHeight + statusTextHeight + margin * 2 + subAreaPadding;
 			const std::wstring errorMsg = std::format(L"错误描述：{}", m_errorMsg);
@@ -284,16 +297,13 @@ namespace ui
 		}
 		{
 			constexpr float yPos = padding + titleFileNameHeight + statusTextHeight * 3 + margin * 4 + subAreaPadding;
-			constexpr std::wstring_view message = L"1、重试下载";
-			renderTarget->DrawTextW(message.data(),
-			                        static_cast<UINT32>(message.length()),
-			                        app().textFormat().pErrorMsgFormat,
-			                        D2D1::RectF(xPos, yPos, contentRight, yPos + statusTextHeight),
-			                        solidBrush);
+			m_retryBtn->setBounds(D2D1::RectF(xPos, yPos, xPos + 64.f, yPos + statusTextHeight));
+			m_retryBtn->draw(renderCtx);
 		}
+		solidBrush->SetColor(D2D1::ColorF(0xd83b01));
 		{
 			constexpr float yPos = padding + titleFileNameHeight + statusTextHeight * 4 + margin * 5 + subAreaPadding;
-			constexpr std::wstring_view message = L"2、手动下载文件并放置到指定目录";
+			constexpr std::wstring_view message = L"或者，手动下载文件并放置到指定目录";
 			renderTarget->DrawTextW(message.data(),
 			                        static_cast<UINT32>(message.length()),
 			                        app().textFormat().pErrorMsgFormat,

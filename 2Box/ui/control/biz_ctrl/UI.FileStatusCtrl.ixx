@@ -241,6 +241,7 @@ namespace ui
 		std::wstring m_errorMsg;
 		float m_progress{0.f};
 		std::unique_ptr<LoadingIndicator> m_pLoadingIndicator{nullptr};
+		std::unique_ptr<Button> m_retryBtn{nullptr};
 		fsc_detail::CopyButton m_copyUrlBtn;
 		fsc_detail::CopyButton m_copyDirBtn;
 		fsc_detail::CopyButton m_copyFileNameBtn;
