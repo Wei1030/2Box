@@ -22,6 +22,12 @@ namespace pe
 
 	export SymbolData g_symbols;
 
+	export struct OsVersionInfo
+	{
+		bool isWindows8Point1OrGreater;
+		bool isWindows8OrGreater;
+	};
+
 	constexpr size_t align_value_up(size_t value, size_t alignment)
 	{
 		return (value + alignment - 1) & ~(alignment - 1);

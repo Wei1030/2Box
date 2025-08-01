@@ -108,4 +108,9 @@
       <Filter>res</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="res\extra.manifest">
+      <Filter>res</Filter>
+    </Manifest>
+  </ItemGroup>
 </Project>

@@ -54,6 +54,9 @@
       <Project>{50fd867c-9ce7-4b59-923c-24c956e2181a}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="res\extra.manifest" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -143,6 +146,7 @@
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+      <AdditionalManifestFiles>$(ProjectDir)res\extra.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)\common\header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -173,6 +177,7 @@
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+      <AdditionalManifestFiles>$(ProjectDir)res\extra.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)\common\header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -201,6 +206,7 @@
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+      <AdditionalManifestFiles>$(ProjectDir)res\extra.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)\common\header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -232,6 +238,7 @@
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+      <AdditionalManifestFiles>$(ProjectDir)res\extra.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)\common\header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

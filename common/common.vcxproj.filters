@@ -105,5 +105,8 @@
     <ClCompile Include="pe_loader\PELoader-Parser.ixx">
       <Filter>pe_loader</Filter>
     </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Exceptions.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

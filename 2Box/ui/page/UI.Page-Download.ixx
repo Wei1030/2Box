@@ -161,8 +161,8 @@ namespace ui
 
 			{
 				m_p32FileStatusCtrl = std::make_unique<FileStatusCtrl>(m_ownerWnd);
-				m_p32FileStatusCtrl->setIs64(false);
 #ifdef _WIN64
+				m_p32FileStatusCtrl->setIs32(true);
 				const fs::path systemDir{sys_info::get_system_wow64_dir()};
 #else
 				const fs::path systemDir{sys_info::get_system_dir()};
@@ -177,7 +177,6 @@ namespace ui
 			{
 #ifdef _WIN64
 				m_p64FileStatusCtrl = std::make_unique<FileStatusCtrl>(m_ownerWnd);
-				m_p64FileStatusCtrl->setIs64(true);
 				const fs::path systemDir{sys_info::get_system_dir()};
 				const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
 				const SYMSRV_INDEX_INFOW indexInfo = symbols::file_index_info(ntdllPath.native());

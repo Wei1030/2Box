@@ -19,12 +19,12 @@ extern "C" __declspec(dllexport) unsigned long __stdcall load_self(void* lpThrea
 	auto pLoadLibraryA = reinterpret_cast<decltype(&LoadLibraryA)>(injectParams->kernel32Address + injectParams->loadLibraryARVA);
 	auto pGetProcAddress = reinterpret_cast<decltype(&GetProcAddress)>(injectParams->kernel32Address + injectParams->getProcAddressRVA);
 	auto pFlushInstructionCache = reinterpret_cast<decltype(&FlushInstructionCache)>(injectParams->kernel32Address + injectParams->flushInstructionCacheRVA);
-	char* pNewBase = reinterpret_cast<char*>(injectParams->dllFileAddress);
+	char* pNewBase = reinterpret_cast<char*>(injectParams->dllMemAddress);
 	typedef BOOL (__stdcall*PtrDllMain)(HINSTANCE, DWORD, LPVOID);
 	PtrDllMain pfnDllMain = reinterpret_cast<PtrDllMain>(pNewBase + injectParams->entryPointRVA);
 
 	// 处理重定位表
-	if (size_t baseDelta = static_cast<size_t>(injectParams->dllFileAddress - injectParams->dllImageBase))
+	if (size_t baseDelta = static_cast<size_t>(injectParams->dllMemAddress - injectParams->dllImageBase))
 	{
 		IMAGE_BASE_RELOCATION* pLoc = reinterpret_cast<IMAGE_BASE_RELOCATION*>(pNewBase + injectParams->dllRelocationRVA);
 		while (pLoc->VirtualAddress)
@@ -102,11 +102,10 @@ extern "C" __declspec(dllexport) unsigned long __stdcall load_self(void* lpThrea
 				{
 					goto fail;
 				}
-				// pINT++; // 这算UB吗?...
-				// pIAT++; // 这算UB吗?...
-				// 下面两行是否仍然UB??
-				pINT = reinterpret_cast<ThunkType*>(reinterpret_cast<char*>(pINT) + sizeof(ThunkType));
-				pIAT = reinterpret_cast<ThunkType*>(reinterpret_cast<char*>(pIAT) + sizeof(ThunkType));
+				pINT++;
+				pIAT++;
+				// pINT = reinterpret_cast<ThunkType*>(reinterpret_cast<char*>(pINT) + sizeof(ThunkType));
+				// pIAT = reinterpret_cast<ThunkType*>(reinterpret_cast<char*>(pIAT) + sizeof(ThunkType));
 				thunkData = *pINT;
 			}
 			// pImportDir++;

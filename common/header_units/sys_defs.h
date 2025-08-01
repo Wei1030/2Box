@@ -9,6 +9,7 @@
 // Windows 头文件
 #include <windows.h>
 #include <windowsx.h>
+#include <VersionHelpers.h>
 #include <tlhelp32.h>
 #include <winhttp.h>
 #include <dbghelp.h>
@@ -110,14 +111,16 @@ struct ReflectiveInjectParams
 	DWORD getProcAddressRVA;
 	DWORD flushInstructionCacheRVA;
 
-	ULONGLONG dllFileAddress;
-	DWORD dllFileSize;
+	ULONGLONG dllMemAddress;
+	DWORD dllMemSize;
 	DWORD dllRelocationRVA;
 	DWORD dllImportDirRVA;
 	ULONGLONG dllImageBase;
 	DWORD entryPointRVA;
-
-
+	
+	bool isWindows8Point1OrGreater;
+	bool isWindows8OrGreater;
+	
 	ULONGLONG rvaLdrpHandleTlsData32 = 0;
 	ULONGLONG rvaLdrpHandleTlsData64 = 0;
 	ULONGLONG rvaLdrpInvertedFunctionTable32 = 0;

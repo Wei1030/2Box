@@ -649,14 +649,19 @@ namespace ui
 		if (errMsg.empty())
 		{
 			m_painter.transferTo<EPainterType::Verified>();
-			if (m_bIs64)
-			{
-				symbols::init_all_symbols64_for_pe_loader();
-			}
-			else
+
+#ifdef _WIN64
+			if (m_bIs32)
 			{
 				symbols::init_all_symbols32_for_pe_loader();
 			}
+			else
+			{
+				symbols::init_all_symbols64_for_pe_loader();
+			}
+#else
+			symbols::init_all_symbols32_for_pe_loader();
+#endif
 
 			if (m_resolver)
 			{

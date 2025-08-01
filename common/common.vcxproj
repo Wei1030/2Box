@@ -188,6 +188,7 @@
     <ClCompile Include="coroutine\Coroutine.ixx" />
     <ClCompile Include="coroutine\Coroutine-LazyTask.ixx" />
     <ClCompile Include="dynamic_win_api\DynamicWin32Api.ixx" />
+    <ClCompile Include="pe_loader\PELoader-Exceptions.ixx" />
     <ClCompile Include="pe_loader\PELoader-Loader.ixx" />
     <ClCompile Include="pe_loader\PELoader-Parser.ixx" />
     <ClCompile Include="pe_loader\PELoader.ixx" />
