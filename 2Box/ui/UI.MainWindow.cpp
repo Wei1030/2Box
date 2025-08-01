@@ -78,7 +78,7 @@ namespace ui
 	{
 		changePageTo<DownloadPage>();
 
-		co_await getPage<DownloadPage>().joinAsync();
+		co_await getPage<DownloadPage>().untilSuccess();
 
 		if (getPage<DownloadPage>().isFileVerified())
 		{

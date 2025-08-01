@@ -137,6 +137,10 @@ namespace ui
 		virtual ~FileStatusCtrl()
 		{
 			stopAnaTask();
+			if (m_resolver)
+			{
+				m_resolver->rejectWithRuntimeError("destructed");
+			}
 		}
 
 		void setFilePath(std::wstring_view fileDir, std::wstring_view fileName);
@@ -145,6 +149,7 @@ namespace ui
 		void startAnaTask();
 		void stopAnaTask();
 		coro::LazyTask<void> joinAsync();
+		coro::LazyTask<void> untilSuccess();
 
 		bool isFileVerified() const
 		{
@@ -257,6 +262,8 @@ namespace ui
 		coro::AsyncScope m_asyncScope;
 		std::stop_source m_stopSource{std::nostopstate};
 		coro::SharedTask<void> m_task{coro::SharedTask<void>::reject("task not started")};
+		coro::SharedTask<void> m_taskUntilSuccess{coro::SharedTask<void>::reject("task not started")};
+		coro::GuaranteedResolver<void> m_resolver;
 	};
 
 	namespace fsc_detail

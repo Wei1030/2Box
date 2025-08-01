@@ -103,6 +103,16 @@ namespace ui
 			co_return;
 		}
 
+		coro::LazyTask<void> untilSuccess() const
+		{
+#ifdef _WIN64
+			co_await coro::when_all(m_p64FileStatusCtrl->untilSuccess(), m_p32FileStatusCtrl->untilSuccess());
+#else
+			co_await m_p32FileStatusCtrl->untilSuccess();
+#endif
+			co_return;
+		}
+
 		bool isFileVerified() const
 		{
 #ifdef _WIN64

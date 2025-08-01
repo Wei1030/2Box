@@ -119,6 +119,14 @@ namespace ui
 		stopAnaTask();
 		m_asyncScope.reset();
 
+		// task 可能会因为失败而多次重试，而taskUntilSuccess只有task成功时才会被resolve且置空，仅当m_resolver非空时才需要重新创建taskUntilSuccess任务
+		if (!m_resolver)
+		{
+			m_taskUntilSuccess = coro::SharedTask<void>::create([this](coro::GuaranteedResolver<void> resolver)
+			{
+				m_resolver = std::move(resolver);
+			});
+		}
 		m_stopSource = std::stop_source{};
 		m_task = coro::start_and_shared(coro::co_with_cancellation(startAnaTaskImpl(), m_stopSource.get_token()));
 	}
@@ -146,6 +154,12 @@ namespace ui
 		}
 		co_await sched::transfer_to(app().get_scheduler());
 		stopAnaTask();
+		co_return;
+	}
+
+	coro::LazyTask<void> FileStatusCtrl::untilSuccess()
+	{
+		co_await m_taskUntilSuccess;
 		co_return;
 	}
 
@@ -634,6 +648,14 @@ namespace ui
 		if (errMsg.empty())
 		{
 			m_painter.transferTo<EPainterType::Verified>();
+			if (m_resolver)
+			{
+				// 延后执行，因为resolve中外面可能要销毁此类，销毁此类又要等待此任务结束，所以如果直接resolve可能引起互相等待。
+				app().get_scheduler().addTask([resolver = std::move(m_resolver)]
+				{
+					resolver->resolve();
+				});
+			}
 		}
 		else
 		{
