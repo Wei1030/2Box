@@ -9,6 +9,7 @@ import "sys_defs.hpp";
 import std;
 import MainApp;
 import Scheduler;
+import SymbolLoader;
 
 namespace
 {
@@ -648,6 +649,15 @@ namespace ui
 		if (errMsg.empty())
 		{
 			m_painter.transferTo<EPainterType::Verified>();
+			if (m_bIs64)
+			{
+				symbols::init_all_symbols64_for_pe_loader();
+			}
+			else
+			{
+				symbols::init_all_symbols32_for_pe_loader();
+			}
+
 			if (m_resolver)
 			{
 				// 延后执行，因为resolve中外面可能要销毁此类，销毁此类又要等待此任务结束，所以如果直接resolve可能引起互相等待。

@@ -143,6 +143,7 @@ namespace ui
 			}
 		}
 
+		void setIs64(bool bIs64 = true) { m_bIs64 = bIs64; }
 		void setFilePath(std::wstring_view fileDir, std::wstring_view fileName);
 		void setDownloadUrl(std::wstring_view serverName, std::wstring_view objName);
 
@@ -235,6 +236,7 @@ namespace ui
 		coro::LazyTask<void> startAnaTaskImpl();
 
 	private:
+		bool m_bIs64{false};
 		std::wstring m_fileName;
 		std::wstring m_fileDir;
 		std::wstring m_filePath;

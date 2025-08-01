@@ -2,7 +2,7 @@ export module Utility.InjectLib;
 
 import std;
 import "sys_defs.h";
-import Utility.PEParser;
+import PELoader;
 import Utility.Toolhelp;
 
 namespace utils
@@ -40,38 +40,38 @@ namespace utils
 		}
 	};
 
-	// struct MyStruct
-	// {
-	// 	MyStruct()
-	// 	{
-	// 		GetSystemWow64DirectoryW(szSysWow64Dir, MAX_PATH);
-	// 		std::wstring wow64Kernel32Dir = szSysWow64Dir;
-	// 		wow64Kernel32Dir += L"\\kernel32.dll";
-	// 		hFile = CreateFileW(wow64Kernel32Dir.c_str(),
-	// 			GENERIC_READ,
-	// 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-	// 			NULL,
-	// 			OPEN_EXISTING,
-	// 			FILE_ATTRIBUTE_NORMAL,
-	// 			NULL);
-	// 		m_hFileMapping = CreateFileMappingW(hFile,
-	// 			NULL,
-	// 			PAGE_READONLY | SEC_IMAGE,
-	// 			0, 0, NULL);
-	// 		m_pMemory = MapViewOfFile(m_hFileMapping, FILE_MAP_READ, 0, 0, 0);
-	// 	}
-	// 	void* m_pMemory;
-	// 	HANDLE m_hFileMapping{ nullptr };
-	// 	HANDLE hFile{ nullptr };
-	// 	wchar_t szSysWow64Dir[MAX_PATH]{ 0 };
-	// };
+// 	 struct MyStruct
+// 	 {
+// 	 	MyStruct()
+// 	 	{
+// 	 		GetSystemWow64DirectoryW(szSysWow64Dir, MAX_PATH);
+// 	 		std::wstring wow64Kernel32Dir = szSysWow64Dir;
+// 	 		wow64Kernel32Dir += L"\\kernel32.dll";
+// 	 		hFile = CreateFileW(wow64Kernel32Dir.c_str(),
+// 	 			GENERIC_READ,
+// 	 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+// 	 			NULL,
+// 	 			OPEN_EXISTING,
+// 	 			FILE_ATTRIBUTE_NORMAL,
+// 	 			NULL);
+// 	 		m_hFileMapping = CreateFileMappingW(hFile,
+// 	 			NULL,
+// 	 			PAGE_READONLY | SEC_IMAGE,
+// 	 			0, 0, NULL);
+// 	 		m_pMemory = MapViewOfFile(m_hFileMapping, FILE_MAP_READ, 0, 0, 0);
+// 	 	}
+// 	 	void* m_pMemory;
+// 	 	HANDLE m_hFileMapping{ nullptr };
+// 	 	HANDLE hFile{ nullptr };
+// 	 	wchar_t szSysWow64Dir[MAX_PATH]{ 0 };
+// 	 };
 
-	export inline void inject_memory_dll_to_process(std::uint32_t dwProcessId, const PEAlignedImage& alignedImage)
+	export inline void inject_memory_dll_to_process(std::uint32_t dwProcessId, const pe::MemoryModule& memoryModule)
 	{
-		// static MyStruct ss;
-		// static const PEParser<pe_parser_flag::HasSectionAligned> kernel32Parser{reinterpret_cast<const char*>(ss.m_pMemory)};
-		static const PEParser<pe_parser_flag::HasSectionAligned> kernel32Parser{reinterpret_cast<const char*>(GetModuleHandleW(L"kernel32.dll"))};
-
+// 		static MyStruct ss;
+// 		static const pe::Parser<pe::parser_flag::HasSectionAligned> kernel32Parser{ reinterpret_cast<const char*>(ss.m_pMemory) };
+		static const pe::Parser<pe::parser_flag::HasSectionAligned> kernel32Parser{reinterpret_cast<const char*>(GetModuleHandleW(L"kernel32.dll"))};
+		
 		InjectResourceGuard resGuard;
 		resGuard.hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | // Required by Alpha
 		                                PROCESS_CREATE_THREAD | // For CreateRemoteThread
@@ -84,20 +84,20 @@ namespace utils
 			throw std::runtime_error(std::format("OpenProcess fail, error:{}", GetLastError()));
 		}
 
-		resGuard.pRemoteAddress = static_cast<char*>(VirtualAllocEx(resGuard.hProcess, nullptr, alignedImage.size() + sizeof(ReflectiveInjectParams),
+		resGuard.pRemoteAddress = static_cast<char*>(VirtualAllocEx(resGuard.hProcess, nullptr, memoryModule.getSizeOfImage() + sizeof(ReflectiveInjectParams),
 		                                                            MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN,
 		                                                            PAGE_EXECUTE_READWRITE));
 		if (resGuard.pRemoteAddress == nullptr)
 		{
 			throw std::runtime_error(std::format("VirtualAllocEx fail, error:{}", GetLastError()));
 		}
-		if (!WriteProcessMemory(resGuard.hProcess, resGuard.pRemoteAddress, alignedImage.data(), alignedImage.size(), nullptr))
+		if (!WriteProcessMemory(resGuard.hProcess, resGuard.pRemoteAddress, memoryModule.getBaseAddr(), memoryModule.getSizeOfImage(), nullptr))
 		{
 			throw std::runtime_error(std::format("WriteProcessMemory fail, error:{}", GetLastError()));
 		}
 		FlushInstructionCache(resGuard.hProcess, nullptr, 0);
 
-		const PEParser<pe_parser_flag::HasSectionAligned>& parser = alignedImage.getParser();
+		const pe::Parser<pe::parser_flag::HasSectionAligned>& parser = memoryModule.getParser();
 		PTHREAD_START_ROUTINE loadSelfFuncAddress = reinterpret_cast<PTHREAD_START_ROUTINE>(resGuard.pRemoteAddress + parser.getProcRVA("load_self"));
 		// 先以null为参数创建远程线程，目的是让目标进程加载kernel32.dll
 		resGuard.hThread = CreateRemoteThread(resGuard.hProcess, nullptr, 0, loadSelfFuncAddress, nullptr, 0, nullptr);
@@ -117,25 +117,25 @@ namespace utils
 		{
 			throw std::runtime_error(std::format("Module find fail, error:{}", GetLastError()));
 		}
-
+		
 		ReflectiveInjectParams injectParams;
 		injectParams.kernel32Address = reinterpret_cast<ULONGLONG>(me.modBaseAddr);
 		injectParams.loadLibraryARVA = kernel32Parser.getProcRVA("LoadLibraryA");
 		injectParams.getProcAddressRVA = kernel32Parser.getProcRVA("GetProcAddress");
 		injectParams.flushInstructionCacheRVA = kernel32Parser.getProcRVA("FlushInstructionCache");
 
-		resGuard.dllFileAddress = static_cast<char*>(VirtualAllocEx(resGuard.hProcess, nullptr, alignedImage.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
+		resGuard.dllFileAddress = static_cast<char*>(VirtualAllocEx(resGuard.hProcess, nullptr, memoryModule.getSizeOfImage(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
 		if (resGuard.dllFileAddress == nullptr)
 		{
 			throw std::runtime_error(std::format("VirtualAllocEx fail, error:{}", GetLastError()));
 		}
-		if (!WriteProcessMemory(resGuard.hProcess, resGuard.dllFileAddress, alignedImage.data(), alignedImage.size(), nullptr))
+		if (!WriteProcessMemory(resGuard.hProcess, resGuard.dllFileAddress, memoryModule.getBaseAddr(), memoryModule.getSizeOfImage(), nullptr))
 		{
 			throw std::runtime_error(std::format("WriteProcessMemory fail, error:{}", GetLastError()));
 		}
 
 		injectParams.dllFileAddress = reinterpret_cast<ULONGLONG>(resGuard.dllFileAddress);
-		injectParams.dllFileSize = alignedImage.size();
+		injectParams.dllFileSize = memoryModule.getSizeOfImage();
 		parser.processOnOpHeader([&injectParams](const auto& opHeader)
 		{
 			injectParams.dllRelocationRVA = opHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress;
@@ -143,11 +143,12 @@ namespace utils
 			injectParams.dllImageBase = opHeader.ImageBase;
 			injectParams.entryPointRVA = opHeader.AddressOfEntryPoint;
 		});
-		void* injectParamsInRemote = resGuard.pRemoteAddress + alignedImage.size();
+		void* injectParamsInRemote = resGuard.pRemoteAddress + memoryModule.getSizeOfImage();
 		if (!WriteProcessMemory(resGuard.hProcess, injectParamsInRemote, &injectParams, sizeof(ReflectiveInjectParams), nullptr))
 		{
 			throw std::runtime_error(std::format("WriteProcessMemory fail, error:{}", GetLastError()));
 		}
+
 		// 再次创建远程线程，这次将injectParams作为线程参数
 		resGuard.hThread = CreateRemoteThread(resGuard.hProcess, nullptr, 0, loadSelfFuncAddress, injectParamsInRemote, 0, nullptr);
 		if (resGuard.hThread == nullptr)

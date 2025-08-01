@@ -116,6 +116,16 @@ struct ReflectiveInjectParams
 	DWORD dllImportDirRVA;
 	ULONGLONG dllImageBase;
 	DWORD entryPointRVA;
+
+
+	ULONGLONG rvaLdrpHandleTlsData32 = 0;
+	ULONGLONG rvaLdrpHandleTlsData64 = 0;
+	ULONGLONG rvaLdrpInvertedFunctionTable32 = 0;
+	ULONGLONG rvaLdrpInvertedFunctionTable64 = 0;
+	ULONGLONG rvaRtlInsertInvertedFunctionTable32 = 0;
+	ULONGLONG rvaRtlInsertInvertedFunctionTable64 = 0;
+	ULONGLONG rvaLdrpReleaseTlsEntry32 = 0;
+	ULONGLONG rvaLdrpReleaseTlsEntry64 = 0;
 };
 
 

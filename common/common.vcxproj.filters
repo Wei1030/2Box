@@ -19,6 +19,9 @@
     <Filter Include="state_machine">
       <UniqueIdentifier>{d7d8dc34-a218-45de-ad04-ec016ab45be3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="pe_loader">
+      <UniqueIdentifier>{d9d94734-7b34-47f9-a211-c5080f712bc0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="header_units\sys_defs.h">
@@ -43,9 +46,6 @@
       <Filter>utility</Filter>
     </ClCompile>
     <ClCompile Include="utility\Utility.Toolhelp.ixx">
-      <Filter>utility</Filter>
-    </ClCompile>
-    <ClCompile Include="utility\Utility.PEParser.ixx">
       <Filter>utility</Filter>
     </ClCompile>
     <ClCompile Include="coroutine\Coroutine-LazyTask.ixx">
@@ -95,6 +95,15 @@
     </ClCompile>
     <ClCompile Include="coroutine\Coroutine-AsyncScope.ixx">
       <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Loader.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Parser.ixx">
+      <Filter>pe_loader</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
