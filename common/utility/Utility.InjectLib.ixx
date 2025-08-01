@@ -40,36 +40,36 @@ namespace utils
 		}
 	};
 
-// 	 struct MyStruct
-// 	 {
-// 	 	MyStruct()
-// 	 	{
-// 	 		GetSystemWow64DirectoryW(szSysWow64Dir, MAX_PATH);
-// 	 		std::wstring wow64Kernel32Dir = szSysWow64Dir;
-// 	 		wow64Kernel32Dir += L"\\kernel32.dll";
-// 	 		hFile = CreateFileW(wow64Kernel32Dir.c_str(),
-// 	 			GENERIC_READ,
-// 	 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-// 	 			NULL,
-// 	 			OPEN_EXISTING,
-// 	 			FILE_ATTRIBUTE_NORMAL,
-// 	 			NULL);
-// 	 		m_hFileMapping = CreateFileMappingW(hFile,
-// 	 			NULL,
-// 	 			PAGE_READONLY | SEC_IMAGE,
-// 	 			0, 0, NULL);
-// 	 		m_pMemory = MapViewOfFile(m_hFileMapping, FILE_MAP_READ, 0, 0, 0);
-// 	 	}
-// 	 	void* m_pMemory;
-// 	 	HANDLE m_hFileMapping{ nullptr };
-// 	 	HANDLE hFile{ nullptr };
-// 	 	wchar_t szSysWow64Dir[MAX_PATH]{ 0 };
-// 	 };
+	// struct MyStruct
+	// {
+	// 	MyStruct()
+	// 	{
+	// 		GetSystemWow64DirectoryW(szSysWow64Dir, MAX_PATH);
+	// 		std::wstring wow64Kernel32Dir = szSysWow64Dir;
+	// 		wow64Kernel32Dir += L"\\kernel32.dll";
+	// 		hFile = CreateFileW(wow64Kernel32Dir.c_str(),
+	// 			GENERIC_READ,
+	// 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+	// 			NULL,
+	// 			OPEN_EXISTING,
+	// 			FILE_ATTRIBUTE_NORMAL,
+	// 			NULL);
+	// 		m_hFileMapping = CreateFileMappingW(hFile,
+	// 			NULL,
+	// 			PAGE_READONLY | SEC_IMAGE,
+	// 			0, 0, NULL);
+	// 		m_pMemory = MapViewOfFile(m_hFileMapping, FILE_MAP_READ, 0, 0, 0);
+	// 	}
+	// 	void* m_pMemory;
+	// 	HANDLE m_hFileMapping{ nullptr };
+	// 	HANDLE hFile{ nullptr };
+	// 	wchar_t szSysWow64Dir[MAX_PATH]{ 0 };
+	// };
 
 	export inline void inject_memory_dll_to_process(std::uint32_t dwProcessId, const pe::MemoryModule& memoryModule)
 	{
-// 		static MyStruct ss;
-// 		static const pe::Parser<pe::parser_flag::HasSectionAligned> kernel32Parser{ reinterpret_cast<const char*>(ss.m_pMemory) };
+		// static MyStruct ss;
+		// static const pe::Parser<pe::parser_flag::HasSectionAligned> kernel32Parser{ reinterpret_cast<const char*>(ss.m_pMemory) };
 		static const pe::Parser<pe::parser_flag::HasSectionAligned> kernel32Parser{reinterpret_cast<const char*>(GetModuleHandleW(L"kernel32.dll"))};
 
 		InjectResourceGuard resGuard;

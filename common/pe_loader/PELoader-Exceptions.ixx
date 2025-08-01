@@ -24,20 +24,20 @@ namespace pe
 		if (info.isWindows8Point1OrGreater)
 		{
 			
-			using RtlInsertInvertedFunctionTableWin81 = int (__fastcall *)(std::uint64_t, std::uint32_t);
-			reinterpret_cast<RtlInsertInvertedFunctionTableWin81>(rtlInsertInvertedFunctionTable)(reinterpret_cast<std::uint64_t>(memoryModule.getBaseAddr()), memoryModule.getSizeOfImage());
+			using RtlInsertInvertedFunctionTableWin81 = int (__fastcall *)(PVOID, ULONG);
+			reinterpret_cast<RtlInsertInvertedFunctionTableWin81>(rtlInsertInvertedFunctionTable)(const_cast<char*>(memoryModule.getBaseAddr()), memoryModule.getSizeOfImage());
 			
 		}
 		else if (info.isWindows8OrGreater)
 		{
-			using RtlInsertInvertedFunctionTableWin8 = int (__stdcall *)(std::uint64_t, std::uint32_t);
-			reinterpret_cast<RtlInsertInvertedFunctionTableWin8>(rtlInsertInvertedFunctionTable)(reinterpret_cast<std::uint64_t>(memoryModule.getBaseAddr()), memoryModule.getSizeOfImage());
+			using RtlInsertInvertedFunctionTableWin8 = int (__stdcall *)(PVOID, ULONG);
+			reinterpret_cast<RtlInsertInvertedFunctionTableWin8>(rtlInsertInvertedFunctionTable)(const_cast<char*>(memoryModule.getBaseAddr()), memoryModule.getSizeOfImage());
 		}
 		else
 		{
-			using RtlInsertInvertedFunctionTable = int(__stdcall *)(std::uint64_t, std::uint64_t, std::uint32_t);
-			reinterpret_cast<RtlInsertInvertedFunctionTable>(rtlInsertInvertedFunctionTable)(ldrpInvertedFunctionTable,
-			                                                                                 reinterpret_cast<std::uint64_t>(memoryModule.getBaseAddr()), memoryModule.getSizeOfImage());
+			using RtlInsertInvertedFunctionTable = int(__stdcall *)(PVOID, PVOID, ULONG);
+			reinterpret_cast<RtlInsertInvertedFunctionTable>(rtlInsertInvertedFunctionTable)(reinterpret_cast<void*>(ldrpInvertedFunctionTable),
+			                                                                                 const_cast<char*>(memoryModule.getBaseAddr()), memoryModule.getSizeOfImage());
 		}
 		return true;
 	}
