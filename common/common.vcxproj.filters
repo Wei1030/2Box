@@ -108,5 +108,14 @@
     <ClCompile Include="pe_loader\PELoader-Exceptions.ixx">
       <Filter>pe_loader</Filter>
     </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-StaticTLS.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Symbol.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-SystemInfo.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

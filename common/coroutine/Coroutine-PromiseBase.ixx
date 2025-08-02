@@ -73,7 +73,7 @@ namespace coro
 
 		void set_exception(std::exception_ptr ep) noexcept
 		{
-			except = ep;
+			std::construct_at(std::addressof(except), ep);
 			m_disc = Discriminator::Exception;
 		}
 
@@ -183,7 +183,7 @@ namespace coro
 
 		void set_exception(std::exception_ptr ep) noexcept
 		{
-			except = ep;
+			std::construct_at(std::addressof(except), ep);
 			m_disc = Discriminator::Exception;
 		}
 

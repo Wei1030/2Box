@@ -191,6 +191,9 @@
     <ClCompile Include="pe_loader\PELoader-Exceptions.ixx" />
     <ClCompile Include="pe_loader\PELoader-Loader.ixx" />
     <ClCompile Include="pe_loader\PELoader-Parser.ixx" />
+    <ClCompile Include="pe_loader\PELoader-StaticTLS.ixx" />
+    <ClCompile Include="pe_loader\PELoader-Symbol.ixx" />
+    <ClCompile Include="pe_loader\PELoader-SystemInfo.ixx" />
     <ClCompile Include="pe_loader\PELoader.ixx" />
     <ClCompile Include="scheduler\Scheduler-EventLoop.ixx" />
     <ClCompile Include="scheduler\Scheduler-ExecutionContext.ixx" />

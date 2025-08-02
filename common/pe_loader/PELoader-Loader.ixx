@@ -5,29 +5,6 @@ import :Parser;
 
 namespace pe
 {
-	export struct SymbolData
-	{
-		std::uint64_t rvaLdrpHandleTlsData32 = 0; // LdrpHandleTlsData rva
-		std::uint64_t rvaLdrpHandleTlsData64 = 0; // LdrpHandleTlsData rva
-		std::uint64_t rvaLdrpInvertedFunctionTable32 = 0; // LdrpInvertedFunctionTable rva
-		std::uint64_t rvaLdrpInvertedFunctionTable64 = 0; // LdrpInvertedFunctionTable rva
-		std::uint64_t rvaRtlInsertInvertedFunctionTable32 = 0; // RtlInsertInvertedFunctionTable rva
-		std::uint64_t rvaRtlInsertInvertedFunctionTable64 = 0; // RtlInsertInvertedFunctionTable rva
-		std::uint64_t rvaLdrpReleaseTlsEntry32 = 0; // LdrpReleaseTlsEntry rva
-		std::uint64_t rvaLdrpReleaseTlsEntry64 = 0; // LdrpReleaseTlsEntry rva
-		// 32位未开启safeSEH,如果需要VEH时,可能需要LdrProtectMrdata函数的地址.
-		// 暂时没这个需求
-		// std::uint64_t rvaLdrProtectMrdata = 0; // LdrProtectMrdata rva
-	};
-
-	export SymbolData g_symbols;
-
-	export struct OsVersionInfo
-	{
-		bool isWindows8Point1OrGreater;
-		bool isWindows8OrGreater;
-	};
-
 	constexpr size_t align_value_up(size_t value, size_t alignment)
 	{
 		return (value + alignment - 1) & ~(alignment - 1);
@@ -75,59 +52,6 @@ namespace pe
 
 		const Parser<parser_flag::HasSectionAligned>& getParser() const { return m_dataParser; }
 
-	public:
-		void setSectionProtection() const
-		{
-			char* pBase = const_cast<char*>(m_dataParser.getBaseAddr());
-			PIMAGE_NT_HEADERS pNTHeader = m_dataParser.getNtHeader<PIMAGE_NT_HEADERS>();
-			IMAGE_SECTION_HEADER* pSectionHeader = IMAGE_FIRST_SECTION(pNTHeader);
-			// 设置各个节的可读、可写、可执行属性
-			for (DWORD i = 0; i < pNTHeader->FileHeader.NumberOfSections; ++i, ++pSectionHeader)
-			{
-				const LPVOID address = pBase + pSectionHeader->VirtualAddress;
-				const SIZE_T size = align_value_up(pSectionHeader->Misc.VirtualSize, pNTHeader->OptionalHeader.SectionAlignment);
-				DWORD dwOldProtect = 0;
-				DWORD dwNewProtect = PAGE_NOACCESS;
-				// executable
-				if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0)
-				{
-					// writeable
-					if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_WRITE) != 0)
-					{
-						dwNewProtect = PAGE_EXECUTE_READWRITE;
-					}
-					// readable
-					else if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_READ) != 0)
-					{
-						dwNewProtect = PAGE_EXECUTE_READ;
-					}
-					else
-					{
-						dwNewProtect = PAGE_EXECUTE;
-					}
-				}
-				else
-				{
-					// writeable
-					if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_WRITE) != 0)
-					{
-						dwNewProtect = PAGE_READWRITE;
-					}
-					// readable
-					else if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_READ) != 0)
-					{
-						dwNewProtect = PAGE_READONLY;
-					}
-				}
-				if (pSectionHeader->Characteristics & IMAGE_SCN_MEM_NOT_CACHED)
-				{
-					dwNewProtect |= PAGE_NOCACHE;
-				}
-
-				VirtualProtect(address, size, dwNewProtect, &dwOldProtect);
-			}
-		}
-
 	private:
 		class DataGuard
 		{
@@ -166,6 +90,58 @@ namespace pe
 	export std::unique_ptr<MemoryModule> create_module_from_mapped_memory(const void* mappedMemory)
 	{
 		return std::make_unique<MemoryModule>(Parser<parser_flag::HasSectionAligned>{static_cast<const char*>(mappedMemory)});
+	}
+
+	export void set_section_protection(const MemoryModule& module)
+	{
+		char* pBase = const_cast<char*>(module.getBaseAddr());
+		PIMAGE_NT_HEADERS pNTHeader = module.getParser().getNtHeader<PIMAGE_NT_HEADERS>();
+		IMAGE_SECTION_HEADER* pSectionHeader = IMAGE_FIRST_SECTION(pNTHeader);
+		// 设置各个节的可读、可写、可执行属性
+		for (DWORD i = 0; i < pNTHeader->FileHeader.NumberOfSections; ++i, ++pSectionHeader)
+		{
+			const LPVOID address = pBase + pSectionHeader->VirtualAddress;
+			const SIZE_T size = align_value_up(pSectionHeader->Misc.VirtualSize, pNTHeader->OptionalHeader.SectionAlignment);
+			DWORD dwOldProtect = 0;
+			DWORD dwNewProtect = PAGE_NOACCESS;
+			// executable
+			if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0)
+			{
+				// writeable
+				if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_WRITE) != 0)
+				{
+					dwNewProtect = PAGE_EXECUTE_READWRITE;
+				}
+				// readable
+				else if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_READ) != 0)
+				{
+					dwNewProtect = PAGE_EXECUTE_READ;
+				}
+				else
+				{
+					dwNewProtect = PAGE_EXECUTE;
+				}
+			}
+			else
+			{
+				// writeable
+				if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_WRITE) != 0)
+				{
+					dwNewProtect = PAGE_READWRITE;
+				}
+				// readable
+				else if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_READ) != 0)
+				{
+					dwNewProtect = PAGE_READONLY;
+				}
+			}
+			if (pSectionHeader->Characteristics & IMAGE_SCN_MEM_NOT_CACHED)
+			{
+				dwNewProtect |= PAGE_NOCACHE;
+			}
+
+			VirtualProtect(address, size, dwNewProtect, &dwOldProtect);
+		}
 	}
 
 	export BOOL flush_instruction_cache()

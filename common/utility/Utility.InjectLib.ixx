@@ -143,15 +143,8 @@ namespace utils
 			injectParams.dllImageBase = opHeader.ImageBase;
 			injectParams.entryPointRVA = opHeader.AddressOfEntryPoint;
 		});
-		injectParams.isWindows8OrGreater = IsWindows8OrGreater();
-		injectParams.isWindows8Point1OrGreater = IsWindows8Point1OrGreater();
-
-		injectParams.rvaLdrpHandleTlsData32 = pe::g_symbols.rvaLdrpHandleTlsData32;
-		injectParams.rvaLdrpHandleTlsData64 = pe::g_symbols.rvaLdrpHandleTlsData64;
-		injectParams.rvaLdrpInvertedFunctionTable32 = pe::g_symbols.rvaLdrpInvertedFunctionTable32;
-		injectParams.rvaLdrpInvertedFunctionTable64 = pe::g_symbols.rvaLdrpInvertedFunctionTable64;
-		injectParams.rvaRtlInsertInvertedFunctionTable32 = pe::g_symbols.rvaRtlInsertInvertedFunctionTable32;
-		injectParams.rvaRtlInsertInvertedFunctionTable64 = pe::g_symbols.rvaRtlInsertInvertedFunctionTable64;
+		injectParams.version = pe::g_os_version;
+		injectParams.symRva = pe::g_sym_rva;		
 
 		void* injectParamsInRemote = resGuard.pFileAddress + memoryModule.getSizeOfImage();
 		if (!WriteProcessMemory(resGuard.hProcess, injectParamsInRemote, &injectParams, sizeof(ReflectiveInjectParams), nullptr))

@@ -4,11 +4,18 @@ import std;
 import "sys_defs.h";
 
 import MainApp;
-import Utility.SystemInfo;
 import PELoader;
+import Utility.SystemInfo;
 
 namespace symbols
 {
+	export struct PdbInfo
+	{
+		std::wstring pdbDir;
+		std::wstring pdbName;
+		std::wstring downloadObjName;
+	};
+
 	export SYMSRV_INDEX_INFOW file_index_info(std::wstring_view filePath)
 	{
 		SYMSRV_INDEX_INFOW indexInfo{sizeof(SYMSRV_INDEX_INFOW)};
@@ -19,24 +26,43 @@ namespace symbols
 		return indexInfo;
 	}
 
-	export struct PdbPathInfo
-	{
-		std::wstring pdbDir;
-		std::wstring downloadObjName;
-	};
-
-	export PdbPathInfo parse_pdb_path(const SYMSRV_INDEX_INFOW& indexInfo, std::wstring_view rootPath = {})
+	export PdbInfo parse_pdb_path(const SYMSRV_INDEX_INFOW& indexInfo, std::wstring_view rootPath = {})
 	{
 		namespace fs = std::filesystem;
-		PdbPathInfo result;
+		PdbInfo result;
 		const GUID& guid = indexInfo.guid;
 		const std::wstring strGuid = std::format(L"{:08X}{:04X}{:04X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:X}", guid.Data1, guid.Data2, guid.Data3,
 		                                         guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
 		                                         guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7], indexInfo.age);
 		const fs::path filePdbDir{fs::path{rootPath} / fs::path{indexInfo.pdbfile} / fs::path{strGuid}};
 		result.pdbDir = filePdbDir.native();
+		result.pdbName = indexInfo.pdbfile;
 		result.downloadObjName = std::format(L"download/symbols/{}/{}/{}", indexInfo.pdbfile, strGuid, indexInfo.pdbfile);
 		return result;
+	}
+
+#ifdef _WIN64
+	export PdbInfo get_ntdll64_pdb_info(std::wstring_view rootPath = {})
+	{
+		namespace fs = std::filesystem;
+		const fs::path systemDir{sys_info::get_system_dir()};
+		const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
+		const SYMSRV_INDEX_INFOW indexInfo = file_index_info(ntdllPath.native());
+		return parse_pdb_path(indexInfo, rootPath);
+	}
+#endif
+
+	export PdbInfo get_ntdll32_pdb_info(std::wstring_view rootPath = {})
+	{
+		namespace fs = std::filesystem;
+#ifdef _WIN64
+		const fs::path systemDir{sys_info::get_system_wow64_dir()};
+#else
+		const fs::path systemDir{sys_info::get_system_dir()};
+#endif
+		const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
+		const SYMSRV_INDEX_INFOW indexInfo = file_index_info(ntdllPath.native());
+		return parse_pdb_path(indexInfo, rootPath);
 	}
 
 	export class Loader;
@@ -152,31 +178,31 @@ namespace symbols
 			static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
 			const Loader loader{searchPath};
 			Symbol symbol32 = loader.loadNtdllSymbol32();
-			pe::g_symbols.rvaLdrpHandleTlsData32 = symbol32.symRvaFromName(L"LdrpHandleTlsData");
-			if (!pe::g_symbols.rvaLdrpHandleTlsData32)
+			pe::g_sym_rva.LdrpHandleTlsData32 = symbol32.symRvaFromName(L"LdrpHandleTlsData");
+			if (!pe::g_sym_rva.LdrpHandleTlsData32)
 			{
 				throw std::runtime_error{"32: LdrpHandleTlsData not found"};
 			}
 
-			pe::g_symbols.rvaRtlInsertInvertedFunctionTable32 = symbol32.symRvaFromName(L"RtlInsertInvertedFunctionTable");
-			if (!pe::g_symbols.rvaRtlInsertInvertedFunctionTable32)
+			pe::g_sym_rva.RtlInsertInvertedFunctionTable32 = symbol32.symRvaFromName(L"RtlInsertInvertedFunctionTable");
+			if (!pe::g_sym_rva.RtlInsertInvertedFunctionTable32)
 			{
 				throw std::runtime_error{"32: RtlInsertInvertedFunctionTable not found"};
 			}
 
 			// ReSharper disable once GrammarMistakeInComment
-			// pe::g_symbols.rvaLdrpReleaseTlsEntry32 = symbol32.symRvaFromName(L"LdrpReleaseTlsEntry");
-			// if (!pe::g_symbols.rvaLdrpReleaseTlsEntry32)
+			// pe::g_sym_rva.LdrpReleaseTlsEntry32 = symbol32.symRvaFromName(L"LdrpReleaseTlsEntry");
+			// if (!pe::g_sym_rva.LdrpReleaseTlsEntry32)
 			// {
 			// 	throw std::runtime_error{"32: LdrpReleaseTlsEntry not found"};
 			// }
 
-			pe::g_symbols.rvaLdrpInvertedFunctionTable32 = symbol32.symRvaFromName(L"LdrpInvertedFunctionTable");
-			if (!pe::g_symbols.rvaLdrpInvertedFunctionTable32)
+			pe::g_sym_rva.LdrpInvertedFunctionTable32 = symbol32.symRvaFromName(L"LdrpInvertedFunctionTable");
+			if (!pe::g_sym_rva.LdrpInvertedFunctionTable32)
 			{
 				// win11
-				pe::g_symbols.rvaLdrpInvertedFunctionTable32 = symbol32.symRvaFromName(L"LdrpInvertedFunctionTables");
-				if (!pe::g_symbols.rvaLdrpInvertedFunctionTable32)
+				pe::g_sym_rva.LdrpInvertedFunctionTable32 = symbol32.symRvaFromName(L"LdrpInvertedFunctionTables");
+				if (!pe::g_sym_rva.LdrpInvertedFunctionTable32)
 				{
 					throw std::runtime_error{"32: LdrpInvertedFunctionTables not found"};
 				}
@@ -208,31 +234,31 @@ namespace symbols
 			static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
 			const Loader loader{searchPath};
 			Symbol symbol64 = loader.loadNtdllSymbol64();
-			pe::g_symbols.rvaLdrpHandleTlsData64 = symbol64.symRvaFromName(L"LdrpHandleTlsData");
-			if (!pe::g_symbols.rvaLdrpHandleTlsData64)
+			pe::g_sym_rva.LdrpHandleTlsData64 = symbol64.symRvaFromName(L"LdrpHandleTlsData");
+			if (!pe::g_sym_rva.LdrpHandleTlsData64)
 			{
 				throw std::runtime_error{"64: LdrpHandleTlsData not found"};
 			}
 
-			pe::g_symbols.rvaRtlInsertInvertedFunctionTable64 = symbol64.symRvaFromName(L"RtlInsertInvertedFunctionTable");
-			if (!pe::g_symbols.rvaRtlInsertInvertedFunctionTable64)
+			pe::g_sym_rva.RtlInsertInvertedFunctionTable64 = symbol64.symRvaFromName(L"RtlInsertInvertedFunctionTable");
+			if (!pe::g_sym_rva.RtlInsertInvertedFunctionTable64)
 			{
 				throw std::runtime_error{"64: RtlInsertInvertedFunctionTable not found"};
 			}
 
 			// ReSharper disable once GrammarMistakeInComment
-			// pe::g_symbols.rvaLdrpReleaseTlsEntry64 = symbol64.symRvaFromName(L"LdrpReleaseTlsEntry");
-			// if (!pe::g_symbols.rvaLdrpReleaseTlsEntry64)
+			// pe::g_sym_rva.LdrpReleaseTlsEntry64 = symbol64.symRvaFromName(L"LdrpReleaseTlsEntry");
+			// if (!pe::g_sym_rva.LdrpReleaseTlsEntry64)
 			// {
 			// 	throw std::runtime_error{"64: LdrpReleaseTlsEntry not found"};
 			// }
 
-			pe::g_symbols.rvaLdrpInvertedFunctionTable64 = symbol64.symRvaFromName(L"LdrpInvertedFunctionTable");
-			if (!pe::g_symbols.rvaLdrpInvertedFunctionTable64)
+			pe::g_sym_rva.LdrpInvertedFunctionTable64 = symbol64.symRvaFromName(L"LdrpInvertedFunctionTable");
+			if (!pe::g_sym_rva.LdrpInvertedFunctionTable64)
 			{
 				// win11
-				pe::g_symbols.rvaLdrpInvertedFunctionTable64 = symbol64.symRvaFromName(L"LdrpInvertedFunctionTables");
-				if (!pe::g_symbols.rvaLdrpInvertedFunctionTable64)
+				pe::g_sym_rva.LdrpInvertedFunctionTable64 = symbol64.symRvaFromName(L"LdrpInvertedFunctionTables");
+				if (!pe::g_sym_rva.LdrpInvertedFunctionTable64)
 				{
 					throw std::runtime_error{"64: LdrpInvertedFunctionTables not found"};
 				}
