@@ -6,6 +6,8 @@ import "sys_defs.h";
 import std;
 import PELoader;
 
+#include "biz_initializer.h"
+
 std::unique_ptr<pe::MemoryModule> g_this_module;
 ReflectiveInjectParams* g_inject_params{nullptr};
 
@@ -98,6 +100,8 @@ extern "C" __declspec(dllexport) unsigned long __stdcall initialize(void* lpThre
 	test_throw();
 	make_exception1();
 	make_exception2();
+
+	biz_initialize();
 	return 0;
 }
 

@@ -160,8 +160,6 @@ namespace utils
 		}
 		// Wait for the remote thread to terminate
 		WaitForSingleObject(resGuard.hThread, INFINITE);
-		// Wait for the remote thread to terminate
-		WaitForSingleObject(resGuard.hThread, INFINITE);
 		CloseHandle(resGuard.hThread);
 		resGuard.hThread = nullptr;
 

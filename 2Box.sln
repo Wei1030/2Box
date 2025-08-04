@@ -23,6 +23,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "3rdparty", "3rdparty", "{7A21D300-6FC3-4311-ADF5-AD1CD8D7A3A4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Detours", "3rdparty\Detours\vc\Detours.vcxproj", "{37489709-8054-4903-9C49-A79846049FC9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -61,9 +65,20 @@ Global
 		{50FD867C-9CE7-4B59-923C-24C956E2181A}.Release|x64.Build.0 = Release|x64
 		{50FD867C-9CE7-4B59-923C-24C956E2181A}.Release|x86.ActiveCfg = Release|Win32
 		{50FD867C-9CE7-4B59-923C-24C956E2181A}.Release|x86.Build.0 = Release|Win32
+		{37489709-8054-4903-9C49-A79846049FC9}.Debug|x64.ActiveCfg = Debug|x64
+		{37489709-8054-4903-9C49-A79846049FC9}.Debug|x64.Build.0 = Debug|x64
+		{37489709-8054-4903-9C49-A79846049FC9}.Debug|x86.ActiveCfg = Debug|Win32
+		{37489709-8054-4903-9C49-A79846049FC9}.Debug|x86.Build.0 = Debug|Win32
+		{37489709-8054-4903-9C49-A79846049FC9}.Release|x64.ActiveCfg = Release|x64
+		{37489709-8054-4903-9C49-A79846049FC9}.Release|x64.Build.0 = Release|x64
+		{37489709-8054-4903-9C49-A79846049FC9}.Release|x86.ActiveCfg = Release|Win32
+		{37489709-8054-4903-9C49-A79846049FC9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{37489709-8054-4903-9C49-A79846049FC9} = {7A21D300-6FC3-4311-ADF5-AD1CD8D7A3A4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {43E0B4A6-E1D7-4F5C-9B8D-1508E29715B5}

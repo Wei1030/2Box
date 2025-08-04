@@ -12,5 +12,13 @@
     <ClCompile Include="LoadSelf.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="biz_initializer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="biz_initializer.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
