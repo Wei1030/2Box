@@ -95,53 +95,6 @@ namespace sched
 		}
 	};
 
-	namespace detail
-	{
-		// 由于resolver只能在coro::LazyTask::create的回调里才能拿到,在回调里构造std::stop_callback的话,无法保持其生命周期,它又不能移动出来
-		// 因此引入这个类用一个union包装一下std::stop_callback，相当于延迟构造一下std::stop_callback
-		struct CancellationHandler
-		{
-		private:
-			struct StopNotify
-			{
-				coro::GuaranteedResolver<void> resolver;
-
-				void operator()() const noexcept
-				{
-					resolver->cancel();
-				}
-			};
-
-			union
-			{
-				std::stop_callback<StopNotify> callback;
-			};
-
-			bool m_bSetup{false};
-
-		public:
-			void setupHandler(const std::stop_token& token, const coro::GuaranteedResolver<void>& resolver)
-			{
-				std::construct_at(&callback, token, StopNotify{resolver});
-				m_bSetup = true;
-			}
-
-			// 不初始化std::stop_callback
-			// ReSharper disable once CppPossiblyUninitializedMember
-			CancellationHandler() noexcept
-			{
-			}
-
-			~CancellationHandler()
-			{
-				if (m_bSetup)
-				{
-					std::destroy_at(&callback);
-				}
-			}
-		};
-	}
-
 	export
 	template <typename T>
 	concept scheduler_can_transfer_to = requires(T sch)
@@ -157,14 +110,10 @@ namespace sched
 		std::stop_token token = co_await coro::get_current_cancellation_token();
 		if (token.stop_possible())
 		{
-			detail::CancellationHandler handler;
-			// std::stop_callback有可能已经stop而在构造中直接调用callback,
-			// 即reject直接在setupHandler中被调用导致这个coro::LazyTask<void>::create出来的task直接结束,如果直接co_await它,相当于本协程直接被恢复执行而结束,从而析构掉std::stop_callback
-			// 这就相当于std::stop_callback构造都还未结束而析构了...
-			// 要解决这个问题必须用SharedTask::create,让其直接启动,这样一来,如果真的立马同步式的结束了,这意味着还没有人正在co_await,就不会恢复本协程,从而有机会让std::stop_callback从构造中先返回出来
-			co_await coro::SharedTask<void>::create([&](const coro::GuaranteedResolver<void>& resolver)
+			coro::GuaranteedResolver<void> resolver;
+			coro::SharedTask<void> transferring = coro::SharedTask<void>::create([&](const coro::GuaranteedResolver<void>& res)
 			{
-				handler.setupHandler(token, resolver);
+				resolver = res;
 				if (!token.stop_requested())
 				{
 					scheduler.addTask([resolver]
@@ -172,11 +121,9 @@ namespace sched
 						resolver->resolve();
 					});
 				}
-				else
-				{
-					resolver->cancel();
-				}
 			});
+			std::stop_callback cb{token, [resolver] { resolver->cancel(); }};
+			co_await transferring;
 		}
 		else
 		{
@@ -225,14 +172,10 @@ namespace sched
 		std::stop_token token = co_await coro::get_current_cancellation_token();
 		if (token.stop_possible())
 		{
-			detail::CancellationHandler handler;
-			// std::stop_callback有可能已经stop而在构造中直接调用callback,
-			// 即reject直接在setupHandler中被调用导致这个coro::LazyTask<void>::create出来的task直接结束,如果直接co_await它,相当于本协程直接被恢复执行而结束,从而析构掉std::stop_callback
-			// 这就相当于std::stop_callback构造都还未结束而析构了...
-			// 要解决这个问题必须用SharedTask::create,让其直接启动,这样一来,如果真的立马同步式的结束了,这意味着还没有人正在co_await,就不会恢复本协程,从而有机会让std::stop_callback从构造中先返回出来
-			co_await coro::SharedTask<void>::create([&](const coro::GuaranteedResolver<void>& resolver)
+			coro::GuaranteedResolver<void> resolver;
+			coro::SharedTask<void> transferring = coro::SharedTask<void>::create([&](const coro::GuaranteedResolver<void>& res)
 			{
-				handler.setupHandler(token, resolver);
+				resolver = res;
 				if (!token.stop_requested())
 				{
 					scheduler.addTimer(duration, [resolver]()
@@ -240,11 +183,9 @@ namespace sched
 						resolver->resolve();
 					}, token);
 				}
-				else
-				{
-					resolver->cancel();
-				}
 			});
+			std::stop_callback cb{token, [resolver] { resolver->cancel(); }};
+			co_await transferring;
 		}
 		else
 		{
