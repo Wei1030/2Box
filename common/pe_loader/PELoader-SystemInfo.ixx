@@ -13,6 +13,7 @@ namespace pe
 	{
 		g_os_version.isWindows8Point1OrGreater = IsWindows8Point1OrGreater();
 		g_os_version.isWindows8OrGreater = IsWindows8OrGreater();
+		g_os_version.isWindowsVistaOrGreater = IsWindowsVistaOrGreater();
 	}
 
 	export void fill_os_version(const SystemVersionInfo& version)

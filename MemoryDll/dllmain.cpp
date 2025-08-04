@@ -1,29 +1,116 @@
-import std;
+#ifndef _WIN64
+#pragma comment(linker, "/EXPORT:initialize=_initialize@4")
+#endif
+
 import "sys_defs.h";
+import std;
+import PELoader;
+
+std::unique_ptr<pe::MemoryModule> g_this_module;
+ReflectiveInjectParams* g_inject_params{nullptr};
+
+void make_exception1()
+{
+	std::cout << __FUNCTION__ << ": Throwing exception:" << std::endl;
+	__try
+	{
+		RaiseException(STATUS_BREAKPOINT, 0, 0, 0);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		std::cout << "Exception handled: STATUS_BREAKPOINT" << std::endl;
+	}
+}
+
+void make_exception2()
+{
+	std::cout << __FUNCTION__ << ": Throwing exception:" << std::endl;
+	try
+	{
+		RaiseException(STATUS_INTEGER_DIVIDE_BY_ZERO, 0, 0, 0);
+	}
+	catch (...)
+	{
+		std::cout << "Exception handled: STATUS_INTEGER_DIVIDE_BY_ZERO" << std::endl;
+	}
+}
 
 void test_throw()
 {
-// 	try
-// 	{
-// 		throw std::runtime_error("test throw");
-// 	}
-// 	catch (const std::exception& e)
-// 	{
-// 		std::cout << e.what() << "\n";
-// 	}
+	try
+	{
+		throw std::runtime_error("test throw!");
+	}
+	catch (const std::exception& e)
+	{
+		std::cout << e.what() << "\n";
+	}
+	catch (...)
+	{
+		std::cout << "catch ..." << "\n";
+	}
 }
+
+int test_static_init()
+{
+	struct MyStruct
+	{
+		MyStruct()
+		{
+			std::cout << "static_init!!!!!\n";
+			i = 42;
+		}
+
+		int i = 0;
+	};
+	static MyStruct s;
+	return s.i;
+}
+
+extern "C" __declspec(dllexport) unsigned long __stdcall initialize(void* lpThreadParameter)
+{
+	if (!lpThreadParameter)
+	{
+		TerminateProcess(GetCurrentProcess(), 0);
+	}
+	g_inject_params = static_cast<ReflectiveInjectParams*>(lpThreadParameter);
+	const pe::MemoryModule& thisModule = *g_this_module;
+
+	pe::fill_os_version(g_inject_params->version);
+	pe::fill_all_symbols(g_inject_params->symRva);
+
+	pe::set_section_protection(thisModule);
+	pe::enable_exceptions(thisModule);
+	if (!pe::init_static_tls(thisModule))
+	{
+		TerminateProcess(GetCurrentProcess(), 0);
+	}
+	pe::flush_instruction_cache();
+
+	std::cout << test_static_init() << "\n";
+	std::thread{
+		[]()
+		{
+			std::cout << test_static_init() << "\n";
+		}
+	}.detach();
+
+	test_throw();
+	make_exception1();
+	make_exception2();
+	return 0;
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
-	std::cout << "Injected!" << "\n";
-	test_throw();
-	
-	switch (ul_reason_for_call)
+	std::cout << "entry DllMain,reason: " << ul_reason_for_call << "\n";
+	if (ul_reason_for_call == DLL_PROCESS_ATTACH)
 	{
-	case DLL_PROCESS_ATTACH:
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-		break;
+		std::cout << "Injected!" << "\n";
+
+		g_this_module = pe::create_module_from_mapped_memory(hModule);
+
+		std::cout << "create!" << "\n";
 	}
 	return TRUE;
 }

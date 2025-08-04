@@ -9,6 +9,7 @@
 // Windows 头文件
 #include <windows.h>
 #include <windowsx.h>
+#include <winternl.h>
 #include <VersionHelpers.h>
 #include <tlhelp32.h>
 #include <winhttp.h>
@@ -108,6 +109,7 @@ struct SystemVersionInfo
 {
 	bool isWindows8Point1OrGreater;
 	bool isWindows8OrGreater;
+	bool isWindowsVistaOrGreater;
 };
 
 struct NtdllSymbolRvaInfo

@@ -5,9 +5,12 @@ import :Parser;
 
 namespace pe
 {
-	constexpr size_t align_value_up(size_t value, size_t alignment)
+	namespace detail
 	{
-		return (value + alignment - 1) & ~(alignment - 1);
+		constexpr size_t align_value_up(size_t value, size_t alignment)
+		{
+			return (value + alignment - 1) & ~(alignment - 1);
+		}
 	}
 
 	export class MemoryModule
@@ -101,7 +104,7 @@ namespace pe
 		for (DWORD i = 0; i < pNTHeader->FileHeader.NumberOfSections; ++i, ++pSectionHeader)
 		{
 			const LPVOID address = pBase + pSectionHeader->VirtualAddress;
-			const SIZE_T size = align_value_up(pSectionHeader->Misc.VirtualSize, pNTHeader->OptionalHeader.SectionAlignment);
+			const SIZE_T size = detail::align_value_up(pSectionHeader->Misc.VirtualSize, pNTHeader->OptionalHeader.SectionAlignment);
 			DWORD dwOldProtect = 0;
 			DWORD dwNewProtect = PAGE_NOACCESS;
 			// executable

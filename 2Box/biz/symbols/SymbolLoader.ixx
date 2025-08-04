@@ -204,7 +204,10 @@ namespace symbols
 				pe::g_sym_rva.LdrpInvertedFunctionTable32 = symbol32.symRvaFromName(L"LdrpInvertedFunctionTables");
 				if (!pe::g_sym_rva.LdrpInvertedFunctionTable32)
 				{
-					throw std::runtime_error{"32: LdrpInvertedFunctionTables not found"};
+					if (!IsWindows8OrGreater())
+					{
+						throw std::runtime_error{"32: LdrpInvertedFunctionTables not found"};
+					}
 				}
 			}
 		}
@@ -260,7 +263,10 @@ namespace symbols
 				pe::g_sym_rva.LdrpInvertedFunctionTable64 = symbol64.symRvaFromName(L"LdrpInvertedFunctionTables");
 				if (!pe::g_sym_rva.LdrpInvertedFunctionTable64)
 				{
-					throw std::runtime_error{"64: LdrpInvertedFunctionTables not found"};
+					if (!IsWindows8OrGreater())
+					{
+						throw std::runtime_error{"64: LdrpInvertedFunctionTables not found"};
+					}
 				}
 			}
 		}
