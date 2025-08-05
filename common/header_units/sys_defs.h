@@ -110,36 +110,52 @@ struct SystemVersionInfo
 	bool isWindows8Point1OrGreater;
 	bool isWindows8OrGreater;
 	bool isWindowsVistaOrGreater;
+	bool is32BitSystem;
 };
 
 struct NtdllSymbolRvaInfo
 {
-	ULONGLONG LdrpHandleTlsData32;
-	ULONGLONG LdrpHandleTlsData64;
-	ULONGLONG LdrpInvertedFunctionTable32;
-	ULONGLONG LdrpInvertedFunctionTable64;
-	ULONGLONG RtlInsertInvertedFunctionTable32;
-	ULONGLONG RtlInsertInvertedFunctionTable64;
-	ULONGLONG LdrpReleaseTlsEntry32;
-	ULONGLONG LdrpReleaseTlsEntry64;
+	ULONGLONG LdrpHandleTlsData;
+	ULONGLONG LdrpInvertedFunctionTable;
+	ULONGLONG RtlInsertInvertedFunctionTable;
+	ULONGLONG LdrpReleaseTlsEntry;
+};
+
+struct Kernel32DllInfo
+{
+	DWORD rvaLoadLibraryA;
+	DWORD rvaGetProcAddress;
+	DWORD rvaFlushInstructionCache;
+};
+
+struct EssentialData
+{
+	SystemVersionInfo version;
+
+	NtdllSymbolRvaInfo symRva32;
+	NtdllSymbolRvaInfo symRva64;
+
+	Kernel32DllInfo kernelInfo32;
+	Kernel32DllInfo kernelInfo64;
+};
+
+struct DllInjectionInfo
+{
+	ULONGLONG kernelDllAddress;
+	ULONGLONG fileAddress;
+	DWORD fileSize;
+	ULONGLONG dllAddress;
+	DWORD dllSize;
+	DWORD rvaRelocation;
+	DWORD rvaImportDir;
+	ULONGLONG desiredImageBase;
+	DWORD rvaEntryPoint;
 };
 
 struct ReflectiveInjectParams
 {
-	ULONGLONG kernel32Address;
-	DWORD loadLibraryARVA;
-	DWORD getProcAddressRVA;
-	DWORD flushInstructionCacheRVA;
-
-	ULONGLONG dllMemAddress;
-	DWORD dllMemSize;
-	DWORD dllRelocationRVA;
-	DWORD dllImportDirRVA;
-	ULONGLONG dllImageBase;
-	DWORD entryPointRVA;
-	
-	SystemVersionInfo version;
-	NtdllSymbolRvaInfo symRva;
+	EssentialData essentialData;
+	DllInjectionInfo injectionInfo;
 };
 
 

@@ -12,7 +12,7 @@ namespace win32_api
 {
 	template <typename CharType, CharType... C>
 	using LiteralName = utils::LiteralName<CharType, C...>;
-	
+
 	template <LiteralName LibName>
 	class LibLoader
 	{
@@ -85,18 +85,21 @@ namespace win32_api
 
 	inline constexpr auto KERNEL32_LIB_NAME = utils::make_literal_name<L"kernel32">();
 	inline constexpr auto USER32_LIB_NAME = utils::make_literal_name<L"user32">();
-	
+
 	// 微软文档化的,头文件中直接有函数定义的, 用这个宏
 #define DECL_WIN32_API(libName, apiName) \
 	inline ApiProxy<libName, utils::make_literal_name<#apiName>(), decltype(::apiName)> apiName
-	
+
 	// 微软未文档化的,头文件中找不到函数定义的, 用这个宏,但需要自己额外定义一下api形状传入
 #define DECL_WIN32_API_BY_API_SHAPE(libName, apiName, apiShape) \
 	inline ApiProxy<libName, utils::make_literal_name<#apiName>(), apiShape> apiName
-	
-	
+
+
 	export
 	{
+		DECL_WIN32_API(KERNEL32_LIB_NAME, IsWow64Process);
+		DECL_WIN32_API(KERNEL32_LIB_NAME, IsWow64Process2);
+
 		DECL_WIN32_API(USER32_LIB_NAME, GetDpiForWindow);
 		DECL_WIN32_API(USER32_LIB_NAME, EnableNonClientDpiScaling);
 	}

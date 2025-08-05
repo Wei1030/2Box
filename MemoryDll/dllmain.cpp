@@ -9,7 +9,7 @@ import PELoader;
 #include "biz_initializer.h"
 
 std::unique_ptr<pe::MemoryModule> g_this_module;
-ReflectiveInjectParams* g_inject_params{nullptr};
+const EssentialData* g_essential_data{nullptr};
 
 void make_exception1()
 {
@@ -75,11 +75,12 @@ extern "C" __declspec(dllexport) unsigned long __stdcall initialize(void* lpThre
 	{
 		TerminateProcess(GetCurrentProcess(), 0);
 	}
-	g_inject_params = static_cast<ReflectiveInjectParams*>(lpThreadParameter);
+	const ReflectiveInjectParams& injectParams = *static_cast<ReflectiveInjectParams*>(lpThreadParameter);
+	g_essential_data = &injectParams.essentialData;
 	const pe::MemoryModule& thisModule = *g_this_module;
 
-	pe::fill_os_version(g_inject_params->version);
-	pe::fill_all_symbols(g_inject_params->symRva);
+	pe::fill_os_version(g_essential_data->version);
+	pe::fill_all_symbols(g_essential_data->symRva32, g_essential_data->symRva64);
 
 	pe::set_section_protection(thisModule);
 	pe::enable_exceptions(thisModule);

@@ -9,7 +9,7 @@ import "sys_defs.hpp";
 import std;
 import MainApp;
 import Scheduler;
-import SymbolLoader;
+import EssentialData;
 
 namespace
 {
@@ -653,14 +653,14 @@ namespace ui
 #ifdef _WIN64
 			if (m_bIs32)
 			{
-				symbols::init_all_symbols32_for_pe_loader();
+				biz::init_symbols32();
 			}
 			else
 			{
-				symbols::init_all_symbols64_for_pe_loader();
+				biz::init_symbols64();
 			}
 #else
-			symbols::init_all_symbols32_for_pe_loader();
+			biz::init_symbols32();
 #endif
 
 			if (m_resolver)

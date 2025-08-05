@@ -4,11 +4,16 @@ import std;
 import "sys_defs.h";
 
 import MainApp;
-import PELoader;
 import Utility.SystemInfo;
 
 namespace symbols
 {
+	export std::wstring_view default_symbols_path()
+	{
+		static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
+		return searchPath;
+	}
+	
 	export struct PdbInfo
 	{
 		std::wstring pdbDir;
@@ -92,7 +97,7 @@ namespace symbols
 		}
 
 		// ReSharper disable CppMemberFunctionMayBeStatic
-		std::uint64_t symRvaFromName(std::wstring_view name) noexcept
+		std::uint64_t symRvaFromName(std::wstring_view name) const noexcept
 		{
 			SYMBOL_INFOW si{sizeof(SYMBOL_INFOW)};
 			if (SymFromNameW(GetCurrentProcess(), name.data(), &si))
@@ -170,122 +175,4 @@ namespace symbols
 	private:
 		std::wstring m_searchPath;
 	};
-
-	export void init_all_symbols32_for_pe_loader()
-	{
-		try
-		{
-			static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
-			const Loader loader{searchPath};
-			Symbol symbol32 = loader.loadNtdllSymbol32();
-			pe::g_sym_rva.LdrpHandleTlsData32 = symbol32.symRvaFromName(L"LdrpHandleTlsData");
-			if (!pe::g_sym_rva.LdrpHandleTlsData32)
-			{
-				throw std::runtime_error{"32: LdrpHandleTlsData not found"};
-			}
-
-			pe::g_sym_rva.RtlInsertInvertedFunctionTable32 = symbol32.symRvaFromName(L"RtlInsertInvertedFunctionTable");
-			if (!pe::g_sym_rva.RtlInsertInvertedFunctionTable32)
-			{
-				throw std::runtime_error{"32: RtlInsertInvertedFunctionTable not found"};
-			}
-
-			// ReSharper disable once GrammarMistakeInComment
-			// pe::g_sym_rva.LdrpReleaseTlsEntry32 = symbol32.symRvaFromName(L"LdrpReleaseTlsEntry");
-			// if (!pe::g_sym_rva.LdrpReleaseTlsEntry32)
-			// {
-			// 	throw std::runtime_error{"32: LdrpReleaseTlsEntry not found"};
-			// }
-
-			pe::g_sym_rva.LdrpInvertedFunctionTable32 = symbol32.symRvaFromName(L"LdrpInvertedFunctionTable");
-			if (!pe::g_sym_rva.LdrpInvertedFunctionTable32)
-			{
-				// win11
-				pe::g_sym_rva.LdrpInvertedFunctionTable32 = symbol32.symRvaFromName(L"LdrpInvertedFunctionTables");
-				if (!pe::g_sym_rva.LdrpInvertedFunctionTable32)
-				{
-					if (!IsWindows8OrGreater())
-					{
-						throw std::runtime_error{"32: LdrpInvertedFunctionTables not found"};
-					}
-				}
-			}
-		}
-		catch (const std::exception& e)
-		{
-			app().get_scheduler().addTask([errorMsg = std::string{e.what()}]
-			{
-				// ReSharper disable once StringLiteralTypo
-				throw std::runtime_error{std::format("The current system file analysis has failed, 2Box cannot run properly\nerror msg: {}", errorMsg)};
-			});
-		}
-		catch (...)
-		{
-			app().get_scheduler().addTask([]
-			{
-				// ReSharper disable once StringLiteralTypo
-				throw std::runtime_error("The current system file analysis has failed, 2Box cannot run properly\nerror msg: Unknown error");
-			});
-		}
-	}
-
-#ifdef _WIN64
-	export void init_all_symbols64_for_pe_loader()
-	{
-		try
-		{
-			static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
-			const Loader loader{searchPath};
-			Symbol symbol64 = loader.loadNtdllSymbol64();
-			pe::g_sym_rva.LdrpHandleTlsData64 = symbol64.symRvaFromName(L"LdrpHandleTlsData");
-			if (!pe::g_sym_rva.LdrpHandleTlsData64)
-			{
-				throw std::runtime_error{"64: LdrpHandleTlsData not found"};
-			}
-
-			pe::g_sym_rva.RtlInsertInvertedFunctionTable64 = symbol64.symRvaFromName(L"RtlInsertInvertedFunctionTable");
-			if (!pe::g_sym_rva.RtlInsertInvertedFunctionTable64)
-			{
-				throw std::runtime_error{"64: RtlInsertInvertedFunctionTable not found"};
-			}
-
-			// ReSharper disable once GrammarMistakeInComment
-			// pe::g_sym_rva.LdrpReleaseTlsEntry64 = symbol64.symRvaFromName(L"LdrpReleaseTlsEntry");
-			// if (!pe::g_sym_rva.LdrpReleaseTlsEntry64)
-			// {
-			// 	throw std::runtime_error{"64: LdrpReleaseTlsEntry not found"};
-			// }
-
-			pe::g_sym_rva.LdrpInvertedFunctionTable64 = symbol64.symRvaFromName(L"LdrpInvertedFunctionTable");
-			if (!pe::g_sym_rva.LdrpInvertedFunctionTable64)
-			{
-				// win11
-				pe::g_sym_rva.LdrpInvertedFunctionTable64 = symbol64.symRvaFromName(L"LdrpInvertedFunctionTables");
-				if (!pe::g_sym_rva.LdrpInvertedFunctionTable64)
-				{
-					if (!IsWindows8OrGreater())
-					{
-						throw std::runtime_error{"64: LdrpInvertedFunctionTables not found"};
-					}
-				}
-			}
-		}
-		catch (const std::exception& e)
-		{
-			app().get_scheduler().addTask([errorMsg = std::string{e.what()}]
-			{
-				// ReSharper disable once StringLiteralTypo
-				throw std::runtime_error{std::format("The current system file analysis has failed, 2Box cannot run properly\nerror msg: {}", errorMsg)};
-			});
-		}
-		catch (...)
-		{
-			app().get_scheduler().addTask([]
-			{
-				// ReSharper disable once StringLiteralTypo
-				throw std::runtime_error("The current system file analysis has failed, 2Box cannot run properly\nerror msg: Unknown error");
-			});
-		}
-	}
-#endif
 }

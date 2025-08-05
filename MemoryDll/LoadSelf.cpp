@@ -1,3 +1,5 @@
+// ReSharper disable CppClangTidyPerformanceNoIntToPtr
+// ReSharper disable CppClangTidyCppcoreguidelinesAvoidGoto
 #ifndef _WIN64
 #pragma comment(linker, "/EXPORT:load_self=_load_self@4")
 #endif
@@ -15,18 +17,26 @@ extern "C" __declspec(dllexport) unsigned long __stdcall load_self(void* lpThrea
 	}
 
 	int result = 0;
-	ReflectiveInjectParams* injectParams = static_cast<ReflectiveInjectParams*>(lpThreadParameter);
-	auto pLoadLibraryA = reinterpret_cast<decltype(&LoadLibraryA)>(injectParams->kernel32Address + injectParams->loadLibraryARVA);
-	auto pGetProcAddress = reinterpret_cast<decltype(&GetProcAddress)>(injectParams->kernel32Address + injectParams->getProcAddressRVA);
-	auto pFlushInstructionCache = reinterpret_cast<decltype(&FlushInstructionCache)>(injectParams->kernel32Address + injectParams->flushInstructionCacheRVA);
-	char* pNewBase = reinterpret_cast<char*>(injectParams->dllMemAddress);
+	const ReflectiveInjectParams& injectParams = *static_cast<ReflectiveInjectParams*>(lpThreadParameter);
+	const EssentialData& essentialData = injectParams.essentialData;
+	const DllInjectionInfo& injectionCtx = injectParams.injectionInfo;
+#ifdef _WIN64
+	const Kernel32DllInfo& kernel32DllInfo = essentialData.kernelInfo64;
+#else
+	const Kernel32DllInfo& kernel32DllInfo = essentialData.kernelInfo32;
+#endif
+	
+	auto pLoadLibraryA = reinterpret_cast<decltype(&LoadLibraryA)>(injectionCtx.kernelDllAddress + kernel32DllInfo.rvaLoadLibraryA);
+	auto pGetProcAddress = reinterpret_cast<decltype(&GetProcAddress)>(injectionCtx.kernelDllAddress + kernel32DllInfo.rvaGetProcAddress);
+	auto pFlushInstructionCache = reinterpret_cast<decltype(&FlushInstructionCache)>(injectionCtx.kernelDllAddress + kernel32DllInfo.rvaFlushInstructionCache);
+	char* pNewBase = reinterpret_cast<char*>(injectionCtx.dllAddress);
 	typedef BOOL (__stdcall*PtrDllMain)(HINSTANCE, DWORD, LPVOID);
-	PtrDllMain pfnDllMain = reinterpret_cast<PtrDllMain>(pNewBase + injectParams->entryPointRVA);
+	PtrDllMain pfnDllMain = reinterpret_cast<PtrDllMain>(pNewBase + injectionCtx.rvaEntryPoint);
 
 	// 处理重定位表
-	if (size_t baseDelta = static_cast<size_t>(injectParams->dllMemAddress - injectParams->dllImageBase))
+	if (size_t baseDelta = static_cast<size_t>(injectionCtx.dllAddress - injectionCtx.desiredImageBase))
 	{
-		IMAGE_BASE_RELOCATION* pLoc = reinterpret_cast<IMAGE_BASE_RELOCATION*>(pNewBase + injectParams->dllRelocationRVA);
+		IMAGE_BASE_RELOCATION* pLoc = reinterpret_cast<IMAGE_BASE_RELOCATION*>(pNewBase + injectionCtx.rvaRelocation);
 		while (pLoc->VirtualAddress)
 		{
 			char* pCurrentLoc = reinterpret_cast<char*>(pLoc);
@@ -63,11 +73,11 @@ extern "C" __declspec(dllexport) unsigned long __stdcall load_self(void* lpThrea
 	}
 
 	// 处理导入表
-	if (injectParams->dllImportDirRVA)
+	if (injectionCtx.rvaImportDir)
 	{
 		using ThunkType = decltype(IMAGE_ORDINAL_FLAG);
 
-		IMAGE_IMPORT_DESCRIPTOR* pImportDir = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(pNewBase + injectParams->dllImportDirRVA);
+		IMAGE_IMPORT_DESCRIPTOR* pImportDir = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(pNewBase + injectionCtx.rvaImportDir);
 		while (pImportDir->FirstThunk)
 		{
 			const char* dllName = pNewBase + pImportDir->Name;
@@ -113,8 +123,7 @@ extern "C" __declspec(dllexport) unsigned long __stdcall load_self(void* lpThrea
 		}
 	}
 
-	pFlushInstructionCache(reinterpret_cast<HANDLE>(-1), nullptr, 0);
-
+	pFlushInstructionCache(reinterpret_cast<HANDLE>(-1), pNewBase, injectionCtx.dllSize);
 
 	if (!pfnDllMain(reinterpret_cast<HINSTANCE>(pNewBase), DLL_PROCESS_ATTACH, nullptr))
 	{

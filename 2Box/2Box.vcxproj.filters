@@ -34,6 +34,9 @@
     <Filter Include="src\ui\core">
       <UniqueIdentifier>{e00ae490-4214-47ff-b69c-49b80ac2f25d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\biz\essential_data">
+      <UniqueIdentifier>{6ef5c558-8456-4fbb-ae6b-32929649643a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -101,6 +104,9 @@
     </ClCompile>
     <ClCompile Include="ui\control\UI.Button.cpp">
       <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\essential_data\EssentialData.ixx">
+      <Filter>src\biz\essential_data</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

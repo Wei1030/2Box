@@ -67,17 +67,17 @@ namespace pe
 				return false;
 			}
 #ifdef _WIN64
-			if (!g_sym_rva.LdrpHandleTlsData64)
+			if (!g_sym_rva64.LdrpHandleTlsData)
 			{
 				return false;
 			}
-			std::uint64_t ldrpHandleTlsData = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva.LdrpHandleTlsData64;
+			std::uint64_t ldrpHandleTlsData = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.LdrpHandleTlsData;
 #else
-			if (!g_sym_rva.LdrpHandleTlsData32)
+			if (!g_sym_rva32.LdrpHandleTlsData)
 			{
 				return false;
 			}
-			std::uint64_t ldrpHandleTlsData = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva.LdrpHandleTlsData32;
+			std::uint64_t ldrpHandleTlsData = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.LdrpHandleTlsData;
 #endif
 
 #ifdef _WIN64

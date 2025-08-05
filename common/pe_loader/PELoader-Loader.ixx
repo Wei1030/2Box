@@ -50,6 +50,7 @@ namespace pe
 		MemoryModule& operator=(const MemoryModule&) = delete;
 		MemoryModule& operator=(MemoryModule&&) = delete;
 
+		char* getRawPtr() const { return const_cast<char*>(m_dataParser.getBaseAddr()); }
 		const char* getBaseAddr() const { return m_dataParser.getBaseAddr(); }
 		std::uint32_t getSizeOfImage() const { return m_dataParser.getSizeOfImage(); }
 

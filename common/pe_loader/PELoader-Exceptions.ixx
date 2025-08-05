@@ -18,17 +18,17 @@ namespace pe
 				return false;
 			}
 #ifdef _WIN64
-			if (g_sym_rva.RtlInsertInvertedFunctionTable64 == 0)
+			if (g_sym_rva64.RtlInsertInvertedFunctionTable == 0)
 			{
 				return false;
 			}
-			const std::uint64_t pfnRtlInsertInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva.RtlInsertInvertedFunctionTable64;
+			const std::uint64_t pfnRtlInsertInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.RtlInsertInvertedFunctionTable;
 #else
-			if (g_sym_rva.RtlInsertInvertedFunctionTable32 == 0)
+			if (g_sym_rva32.RtlInsertInvertedFunctionTable == 0)
 			{
 				return false;
 			}
-			const std::uint64_t pfnRtlInsertInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva.RtlInsertInvertedFunctionTable32;
+			const std::uint64_t pfnRtlInsertInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.RtlInsertInvertedFunctionTable;
 #endif
 
 			if (g_os_version.isWindows8Point1OrGreater)
@@ -44,17 +44,17 @@ namespace pe
 			else
 			{
 #ifdef _WIN64
-				if (g_sym_rva.LdrpInvertedFunctionTable64 == 0)
+				if (g_sym_rva64.LdrpInvertedFunctionTable == 0)
 				{
 					return false;
 				}
-				const std::uint64_t pfnLdrpInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva.LdrpInvertedFunctionTable64;
+				const std::uint64_t pfnLdrpInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.LdrpInvertedFunctionTable;
 #else
-				if (g_sym_rva.LdrpInvertedFunctionTable32 == 0)
+				if (g_sym_rva32.LdrpInvertedFunctionTable == 0)
 				{
 					return false;
 				}
-				const std::uint64_t pfnLdrpInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva.LdrpInvertedFunctionTable32;
+				const std::uint64_t pfnLdrpInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.LdrpInvertedFunctionTable;
 #endif
 
 				using RtlInsertInvertedFunctionTablePtr = NTSTATUS(__stdcall *)(PVOID, PVOID, ULONG);
