@@ -205,7 +205,7 @@ namespace injector
 		}
 	}
 
-	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, const pe::MemoryModule& module, const EssentialData& essentialData)
+	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, const pe::MemoryModule& memModule, const EssentialData& essentialData)
 	{
 		const detail::ProcessHandleWrapper process{dwProcessId};
 #ifndef _WIN64
@@ -216,24 +216,24 @@ namespace injector
 		}
 #endif
 		// 1.先将dll文件整个拷贝到目标进程, 主要用于当目标进程启动子进程时注入子进程。注入就需要知道dll所在
-		detail::VirtualMemWrapper fileMemory{process.allocMemory(module.getSizeOfImage() + sizeof(ReflectiveInjectParams), MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE)};
-		fileMemory.write(0, module.getBaseAddr(), module.getSizeOfImage());
+		detail::VirtualMemWrapper fileMemory{process.allocMemory(memModule.getSizeOfImage() + sizeof(ReflectiveInjectParams), MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE)};
+		fileMemory.write(0, memModule.getBaseAddr(), memModule.getSizeOfImage());
 		fileMemory.flushInstructionCache();
 
 		// 2.开始准备ReflectiveInjectParams
 		ReflectiveInjectParams injectParams;
 		// 先初始化injectionInfo
 		DllInjectionInfo& injectionCtx = injectParams.injectionInfo;
-		const pe::Parser<pe::parser_flag::HasSectionAligned>& parser = module.getParser();
+		const pe::Parser<pe::parser_flag::HasSectionAligned>& parser = memModule.getParser();
 		PTHREAD_START_ROUTINE loadSelfFuncAddress = reinterpret_cast<PTHREAD_START_ROUTINE>(fileMemory.getPtr() + parser.getProcRVA("load_self"));
 		injectionCtx.kernelDllAddress = detail::get_kernel32_address_by_create_thread(process, loadSelfFuncAddress, nullptr);
 		injectionCtx.fileAddress = reinterpret_cast<ULONGLONG>(fileMemory.getPtr());
-		injectionCtx.fileSize = module.getSizeOfImage();
+		injectionCtx.fileSize = memModule.getSizeOfImage();
 		// 再次将dll拷贝到目标进程，这次才是真正作为内存dll
-		detail::VirtualMemWrapper dllMemory{process.allocMemory(module.getSizeOfImage(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)};
-		dllMemory.write(0, module.getBaseAddr(), module.getSizeOfImage());
+		detail::VirtualMemWrapper dllMemory{process.allocMemory(memModule.getSizeOfImage(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)};
+		dllMemory.write(0, memModule.getBaseAddr(), memModule.getSizeOfImage());
 		injectionCtx.dllAddress = reinterpret_cast<ULONGLONG>(dllMemory.getPtr());
-		injectionCtx.dllSize = module.getSizeOfImage();
+		injectionCtx.dllSize = memModule.getSizeOfImage();
 		parser.processOnOpHeader([&injectionCtx](const auto& opHeader)
 		{
 			injectionCtx.rvaRelocation = opHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress;
@@ -244,9 +244,9 @@ namespace injector
 		// 然后初始化essentialData， 直接copy过去就行
 		memcpy(&injectParams.essentialData, &essentialData, sizeof(EssentialData));
 		// 准备完ReflectiveInjectParams之后将其写入目标进程
-		fileMemory.write(module.getSizeOfImage(), &injectParams, sizeof(ReflectiveInjectParams));
-		void* injectParamsInRemote = fileMemory.getPtr() + module.getSizeOfImage();
-		
+		fileMemory.write(memModule.getSizeOfImage(), &injectParams, sizeof(ReflectiveInjectParams));
+		void* injectParamsInRemote = fileMemory.getPtr() + memModule.getSizeOfImage();
+
 		// 3.创建远程线程，这次将injectParams作为线程参数
 		process.createThread(loadSelfFuncAddress, injectParamsInRemote);
 		// 远程线程执行结束后可以把fileMemory的保护属性设置为 READONLY 了
