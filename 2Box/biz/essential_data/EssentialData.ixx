@@ -1,3 +1,5 @@
+module;
+#include "res/resource.h"
 export module EssentialData;
 
 import "sys_defs.h";
@@ -12,6 +14,31 @@ namespace biz
 {
 	namespace detail
 	{
+		template<bool Is32Bit>
+		const char* get_dll_resource()
+		{
+			HRSRC hRes;
+			if constexpr (Is32Bit)
+			{
+				hRes = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_MEM_DLL_32), RT_RCDATA);
+			}
+			else
+			{
+				hRes = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_MEM_DLL_64), RT_RCDATA);
+			}
+			if (!hRes)
+			{
+				throw std::runtime_error("failed to find resource");
+			}
+
+			const HGLOBAL hResourceLoaded = LoadResource(nullptr, hRes);
+			if (!hResourceLoaded)
+			{
+				throw std::runtime_error("failed to load resource");
+			}
+			return static_cast<const char*>(LockResource(hResourceLoaded));
+		}
+		
 		void init_os_version(SystemVersionInfo& version)
 		{
 			version.isWindows8Point1OrGreater = IsWindows8Point1OrGreater();
@@ -43,6 +70,14 @@ namespace biz
 			info.rvaFlushInstructionCache = parser.getProcRVA("FlushInstructionCache");
 		}
 #endif
+	}
+
+	export
+	template<bool Is32Bit>
+	pe::MemoryModule& get_memory_module()
+	{
+		static pe::MemoryModule memModule{pe::Parser<>{detail::get_dll_resource<Is32Bit>()}};
+		return memModule;
 	}
 
 	export EssentialData& get_essential_data()

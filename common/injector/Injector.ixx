@@ -105,10 +105,10 @@ namespace injector
 			HANDLE m_hThread;
 		};
 
-		class ProcessHandleWrapper : public NonCopyOrMovable
+		class ProcessWrapper : public NonCopyOrMovable
 		{
 		public:
-			explicit ProcessHandleWrapper(DWORD pid)
+			explicit ProcessWrapper(DWORD pid)
 				: m_dwProcessId(pid)
 			{
 				m_hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | // Required by Alpha
@@ -123,7 +123,7 @@ namespace injector
 				}
 			}
 
-			~ProcessHandleWrapper()
+			~ProcessWrapper()
 			{
 				if (m_hProcess)
 				{
@@ -187,7 +187,7 @@ namespace injector
 		};
 
 
-		ULONGLONG get_kernel32_address_by_create_thread(const ProcessHandleWrapper& process, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter)
+		ULONGLONG get_kernel32_address_by_create_thread(const ProcessWrapper& process, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter)
 		{
 			// step 1:
 			// 创建远程线程，只是为了让目标进程加载kernel32.dll
@@ -205,17 +205,29 @@ namespace injector
 		}
 	}
 
-	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, const pe::MemoryModule& memModule, const EssentialData& essentialData)
+	export struct InjectionDlls
 	{
-		const detail::ProcessHandleWrapper process{dwProcessId};
-#ifndef _WIN64
+		pe::MemoryModule& memModule32;
+#ifdef _WIN64
+		pe::MemoryModule& memModule64;
+#endif
+	};
+
+	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, InjectionDlls dlls, const EssentialData& essentialData)
+	{
+		const detail::ProcessWrapper process{dwProcessId};
+
+#ifdef _WIN64
+		pe::MemoryModule& memModule = process.is32Bit() ? dlls.memModule32 : dlls.memModule64;
+#else
 		if (!process.is32Bit())
 		{
-			// TODO: 32位进程无法为64位进程创建远程线程，这种情况则 rpc 到主进程帮忙注入
-			return;
+			throw std::runtime_error{"32bit process can't inject dll to 64bit process"};
 		}
+		pe::MemoryModule& memModule = dlls.memModule32;
 #endif
-		// 1.先将dll文件整个拷贝到目标进程, 主要用于当目标进程启动子进程时注入子进程。注入就需要知道dll所在
+		const auto& memModuleParser = memModule.getParser();
+		// 1.先将 dll文件+ ReflectiveInjectParams 整个拷贝到目标进程
 		detail::VirtualMemWrapper fileMemory{process.allocMemory(memModule.getSizeOfImage() + sizeof(ReflectiveInjectParams), MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE)};
 		fileMemory.write(0, memModule.getBaseAddr(), memModule.getSizeOfImage());
 		fileMemory.flushInstructionCache();
@@ -224,17 +236,15 @@ namespace injector
 		ReflectiveInjectParams injectParams;
 		// 先初始化injectionInfo
 		DllInjectionInfo& injectionCtx = injectParams.injectionInfo;
-		const pe::Parser<pe::parser_flag::HasSectionAligned>& parser = memModule.getParser();
-		PTHREAD_START_ROUTINE loadSelfFuncAddress = reinterpret_cast<PTHREAD_START_ROUTINE>(fileMemory.getPtr() + parser.getProcRVA("load_self"));
+		
+		PTHREAD_START_ROUTINE loadSelfFuncAddress = reinterpret_cast<PTHREAD_START_ROUTINE>(fileMemory.getPtr() + memModuleParser.getProcRVA("load_self"));
 		injectionCtx.kernelDllAddress = detail::get_kernel32_address_by_create_thread(process, loadSelfFuncAddress, nullptr);
-		injectionCtx.fileAddress = reinterpret_cast<ULONGLONG>(fileMemory.getPtr());
-		injectionCtx.fileSize = memModule.getSizeOfImage();
 		// 再次将dll拷贝到目标进程，这次才是真正作为内存dll
 		detail::VirtualMemWrapper dllMemory{process.allocMemory(memModule.getSizeOfImage(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)};
 		dllMemory.write(0, memModule.getBaseAddr(), memModule.getSizeOfImage());
 		injectionCtx.dllAddress = reinterpret_cast<ULONGLONG>(dllMemory.getPtr());
 		injectionCtx.dllSize = memModule.getSizeOfImage();
-		parser.processOnOpHeader([&injectionCtx](const auto& opHeader)
+		memModuleParser.processOnOpHeader([&injectionCtx](const auto& opHeader)
 		{
 			injectionCtx.rvaRelocation = opHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress;
 			injectionCtx.rvaImportDir = opHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
@@ -249,15 +259,12 @@ namespace injector
 
 		// 3.创建远程线程，这次将injectParams作为线程参数
 		process.createThread(loadSelfFuncAddress, injectParamsInRemote);
-		// 远程线程执行结束后可以把fileMemory的保护属性设置为 READONLY 了
-		[[maybe_unused]] DWORD oldProtect = fileMemory.protect(PAGE_READONLY);
 
 		// 4.再次创建远程线程，初始化业务
-		PTHREAD_START_ROUTINE initializeFuncAddress = reinterpret_cast<PTHREAD_START_ROUTINE>(dllMemory.getPtr() + parser.getProcRVA("initialize"));
+		PTHREAD_START_ROUTINE initializeFuncAddress = reinterpret_cast<PTHREAD_START_ROUTINE>(dllMemory.getPtr() + memModuleParser.getProcRVA("initialize"));
 		process.createThread(initializeFuncAddress, injectParamsInRemote);
 
-		// 全部成功完成，则不需要释放远程内存
-		fileMemory.detach();
+		// 全部成功完成，远程内存dllMemory不能释放
 		dllMemory.detach();
 	}
 }

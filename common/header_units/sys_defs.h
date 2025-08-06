@@ -142,14 +142,12 @@ struct EssentialData
 struct DllInjectionInfo
 {
 	ULONGLONG kernelDllAddress;
-	ULONGLONG fileAddress;
-	DWORD fileSize;
 	ULONGLONG dllAddress;
 	DWORD dllSize;
 	DWORD rvaRelocation;
 	DWORD rvaImportDir;
-	ULONGLONG desiredImageBase;
 	DWORD rvaEntryPoint;
+	ULONGLONG desiredImageBase;
 };
 
 struct ReflectiveInjectParams
