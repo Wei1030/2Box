@@ -50,6 +50,7 @@ namespace pe
 
 		using _LDR_DATA_TABLE_ENTRY_BASE32 = _LDR_DATA_TABLE_ENTRY_BASE_T<std::uint32_t>;
 		using _LDR_DATA_TABLE_ENTRY_BASE64 = _LDR_DATA_TABLE_ENTRY_BASE_T<std::uint64_t>;
+		using _LDR_DATA_TABLE_ENTRY_BASE = std::conditional_t<IS_CURRENT_ARCH_64_BIT, _LDR_DATA_TABLE_ENTRY_BASE64, _LDR_DATA_TABLE_ENTRY_BASE32>;
 
 		// ReSharper restore CppInconsistentNaming
 
@@ -66,25 +67,26 @@ namespace pe
 			{
 				return false;
 			}
-#ifdef _WIN64
-			if (!g_sym_rva64.LdrpHandleTlsData)
-			{
-				return false;
-			}
-			std::uint64_t ldrpHandleTlsData = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.LdrpHandleTlsData;
-#else
-			if (!g_sym_rva32.LdrpHandleTlsData)
-			{
-				return false;
-			}
-			std::uint64_t ldrpHandleTlsData = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.LdrpHandleTlsData;
-#endif
 
-#ifdef _WIN64
-			_LDR_DATA_TABLE_ENTRY_BASE64* pAddr = static_cast<_LDR_DATA_TABLE_ENTRY_BASE64*>(VirtualAlloc(nullptr, sizeof(_LDR_DATA_TABLE_ENTRY_BASE64), MEM_COMMIT | MEM_RESERVE,PAGE_READWRITE));
-#else
-			_LDR_DATA_TABLE_ENTRY_BASE32* pAddr = static_cast<_LDR_DATA_TABLE_ENTRY_BASE32*>(VirtualAlloc(nullptr, sizeof(_LDR_DATA_TABLE_ENTRY_BASE32), MEM_COMMIT | MEM_RESERVE,PAGE_READWRITE));
-#endif
+			std::uint64_t ldrpHandleTlsData;
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				if (!g_sym_rva64.LdrpHandleTlsData)
+				{
+					return false;
+				}
+				ldrpHandleTlsData = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.LdrpHandleTlsData;
+			}
+			else
+			{
+				if (!g_sym_rva32.LdrpHandleTlsData)
+				{
+					return false;
+				}
+				ldrpHandleTlsData = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.LdrpHandleTlsData;
+			}
+			
+			_LDR_DATA_TABLE_ENTRY_BASE* pAddr = static_cast<_LDR_DATA_TABLE_ENTRY_BASE*>(VirtualAlloc(nullptr, sizeof(_LDR_DATA_TABLE_ENTRY_BASE), MEM_COMMIT | MEM_RESERVE,PAGE_READWRITE));
 			if (!pAddr)
 			{
 				return false;

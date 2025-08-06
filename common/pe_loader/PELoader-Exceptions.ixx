@@ -17,19 +17,24 @@ namespace pe
 			{
 				return false;
 			}
-#ifdef _WIN64
-			if (g_sym_rva64.RtlInsertInvertedFunctionTable == 0)
+
+			std::uint64_t pfnRtlInsertInvertedFunctionTable;
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
 			{
-				return false;
+				if (g_sym_rva64.RtlInsertInvertedFunctionTable == 0)
+				{
+					return false;
+				}
+				pfnRtlInsertInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.RtlInsertInvertedFunctionTable;
 			}
-			const std::uint64_t pfnRtlInsertInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.RtlInsertInvertedFunctionTable;
-#else
-			if (g_sym_rva32.RtlInsertInvertedFunctionTable == 0)
+			else
 			{
-				return false;
+				if (g_sym_rva32.RtlInsertInvertedFunctionTable == 0)
+				{
+					return false;
+				}
+				pfnRtlInsertInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.RtlInsertInvertedFunctionTable;
 			}
-			const std::uint64_t pfnRtlInsertInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.RtlInsertInvertedFunctionTable;
-#endif
 
 			if (g_os_version.isWindows8Point1OrGreater)
 			{
@@ -43,20 +48,23 @@ namespace pe
 			}
 			else
 			{
-#ifdef _WIN64
-				if (g_sym_rva64.LdrpInvertedFunctionTable == 0)
+				std::uint64_t pfnLdrpInvertedFunctionTable;
+				if constexpr (IS_CURRENT_ARCH_64_BIT)
 				{
-					return false;
+					if (g_sym_rva64.LdrpInvertedFunctionTable == 0)
+					{
+						return false;
+					}
+					pfnLdrpInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.LdrpInvertedFunctionTable;
 				}
-				const std::uint64_t pfnLdrpInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva64.LdrpInvertedFunctionTable;
-#else
-				if (g_sym_rva32.LdrpInvertedFunctionTable == 0)
+				else
 				{
-					return false;
+					if (g_sym_rva32.LdrpInvertedFunctionTable == 0)
+					{
+						return false;
+					}
+					pfnLdrpInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.LdrpInvertedFunctionTable;
 				}
-				const std::uint64_t pfnLdrpInvertedFunctionTable = reinterpret_cast<std::uint64_t>(ntdllAddress) + g_sym_rva32.LdrpInvertedFunctionTable;
-#endif
-
 				using RtlInsertInvertedFunctionTablePtr = NTSTATUS(__stdcall *)(PVOID, PVOID, ULONG);
 				reinterpret_cast<RtlInsertInvertedFunctionTablePtr>(pfnRtlInsertInvertedFunctionTable)(reinterpret_cast<void*>(pfnLdrpInvertedFunctionTable),
 				                                                                                       const_cast<char*>(memoryModule.getBaseAddr()), memoryModule.getSizeOfImage());

@@ -23,6 +23,18 @@
 #include <d2d1.h>
 #include <dwrite.h>
 
+enum class ArchBit
+{
+	Bit32,
+	Bit64
+};
+
+inline constexpr bool IS_CURRENT_ARCH_32_BIT = sizeof(void*) == 4;
+inline constexpr bool IS_CURRENT_ARCH_64_BIT = sizeof(void*) == 8;
+static_assert(IS_CURRENT_ARCH_64_BIT == !IS_CURRENT_ARCH_32_BIT);
+
+inline constexpr ArchBit CURRENT_ARCH_BIT = IS_CURRENT_ARCH_32_BIT ? ArchBit::Bit32 : ArchBit::Bit64;
+
 template <class Interface>
 class UniqueComPtr
 {

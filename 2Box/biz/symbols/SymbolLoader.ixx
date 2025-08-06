@@ -46,25 +46,12 @@ namespace symbols
 		return result;
 	}
 
-#ifdef _WIN64
-	export PdbInfo get_ntdll64_pdb_info(std::wstring_view rootPath = {})
+	export
+	template<ArchBit BitType = CURRENT_ARCH_BIT>
+	PdbInfo get_ntdll_pdb_info(std::wstring_view rootPath = {})
 	{
 		namespace fs = std::filesystem;
-		const fs::path systemDir{sys_info::get_system_dir()};
-		const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
-		const SYMSRV_INDEX_INFOW indexInfo = file_index_info(ntdllPath.native());
-		return parse_pdb_path(indexInfo, rootPath);
-	}
-#endif
-
-	export PdbInfo get_ntdll32_pdb_info(std::wstring_view rootPath = {})
-	{
-		namespace fs = std::filesystem;
-#ifdef _WIN64
-		const fs::path systemDir{sys_info::get_system_wow64_dir()};
-#else
-		const fs::path systemDir{sys_info::get_system_dir()};
-#endif
+		const fs::path systemDir{sys_info::get_system_dir<BitType>()};
 		const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
 		const SYMSRV_INDEX_INFOW indexInfo = file_index_info(ntdllPath.native());
 		return parse_pdb_path(indexInfo, rootPath);
@@ -146,30 +133,18 @@ namespace symbols
 		Loader& operator=(const Loader&) = delete;
 		Loader(Loader&&) = delete;
 		Loader& operator=(Loader&&) = delete;
-
+		
 		// ReSharper disable CppMemberFunctionMayBeStatic
-#ifdef _WIN64
-		Symbol loadNtdllSymbol64() const
+		
+		template<ArchBit BitType = CURRENT_ARCH_BIT>
+		Symbol loadNtdllSymbol() const
 		{
 			namespace fs = std::filesystem;
-			const fs::path systemDir{sys_info::get_system_dir()};
+			const fs::path systemDir{sys_info::get_system_dir<BitType>()};
 			const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
 			return Symbol{ntdllPath.native()};
 		}
-#endif
-
-		Symbol loadNtdllSymbol32() const
-		{
-			namespace fs = std::filesystem;
-#ifdef _WIN64
-			const fs::path systemDir{sys_info::get_system_wow64_dir()};
-#else
-			const fs::path systemDir{sys_info::get_system_dir()};
-#endif
-			const fs::path ntdllPath{fs::weakly_canonical(systemDir / fs::path{L"ntdll.dll"})};
-			return Symbol{ntdllPath.native()};
-		}
-
+		
 		// ReSharper restore CppMemberFunctionMayBeStatic
 
 	private:

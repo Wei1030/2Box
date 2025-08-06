@@ -14,11 +14,11 @@ namespace biz
 {
 	namespace detail
 	{
-		template<bool Is32Bit>
+		template <ArchBit BitType = CURRENT_ARCH_BIT>
 		const char* get_dll_resource()
 		{
 			HRSRC hRes;
-			if constexpr (Is32Bit)
+			if constexpr (BitType == ArchBit::Bit32)
 			{
 				hRes = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_MEM_DLL_32), RT_RCDATA);
 			}
@@ -38,7 +38,7 @@ namespace biz
 			}
 			return static_cast<const char*>(LockResource(hResourceLoaded));
 		}
-		
+
 		void init_os_version(SystemVersionInfo& version)
 		{
 			version.isWindows8Point1OrGreater = IsWindows8Point1OrGreater();
@@ -50,33 +50,23 @@ namespace biz
 			version.is32BitSystem = sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL || sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM;
 			pe::g_os_version = version;
 		}
-		
-		void init_kernel32_info32(Kernel32DllInfo& info)
+
+		template <ArchBit BitType = CURRENT_ARCH_BIT>
+		void init_kernel32_info(Kernel32DllInfo& info)
 		{
-			const sys_info::SysDllMapHelper mapped = sys_info::get_kernel32_mapped32();
+			const sys_info::SysDllMapHelper mapped = sys_info::get_kernel32_mapped<BitType>();
 			pe::Parser<pe::parser_flag::HasSectionAligned> parser{static_cast<const char*>(mapped.memAddress())};
 			info.rvaLoadLibraryA = parser.getProcRVA("LoadLibraryA");
 			info.rvaGetProcAddress = parser.getProcRVA("GetProcAddress");
 			info.rvaFlushInstructionCache = parser.getProcRVA("FlushInstructionCache");
 		}
-		
-#ifdef _WIN64
-		void init_kernel32_info64(Kernel32DllInfo& info)
-		{
-			const sys_info::SysDllMapHelper mapped = sys_info::get_kernel32_mapped64();
-			pe::Parser<pe::parser_flag::HasSectionAligned> parser{static_cast<const char*>(mapped.memAddress())};
-			info.rvaLoadLibraryA = parser.getProcRVA("LoadLibraryA");
-			info.rvaGetProcAddress = parser.getProcRVA("GetProcAddress");
-			info.rvaFlushInstructionCache = parser.getProcRVA("FlushInstructionCache");
-		}
-#endif
 	}
 
 	export
-	template<bool Is32Bit>
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
 	pe::MemoryModule& get_memory_module()
 	{
-		static pe::MemoryModule memModule{pe::Parser<>{detail::get_dll_resource<Is32Bit>()}};
+		static pe::MemoryModule memModule{pe::Parser<>{detail::get_dll_resource<BitType>()}};
 		return memModule;
 	}
 
@@ -87,10 +77,11 @@ namespace biz
 			EssentialDataWrapper()
 			{
 				detail::init_os_version(data.version);
-				detail::init_kernel32_info32(data.kernelInfo32);
-#ifdef _WIN64
-				detail::init_kernel32_info64(data.kernelInfo64);
-#endif
+				detail::init_kernel32_info<ArchBit::Bit32>(data.kernelInfo32);
+				if constexpr (IS_CURRENT_ARCH_64_BIT)
+				{
+					detail::init_kernel32_info<ArchBit::Bit64>(data.kernelInfo64);
+				}
 			}
 
 			EssentialData data;
@@ -140,14 +131,25 @@ namespace biz
 		}
 	}
 
-	export void init_symbols32()
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	void init_symbols()
 	{
 		try
 		{
 			const symbols::Loader loader{symbols::default_symbols_path()};
 			EssentialData& data = get_essential_data();
-			data.symRva32 = detail::init_symbols(loader.loadNtdllSymbol32());
-			pe::g_sym_rva32 = data.symRva32;
+			const NtdllSymbolRvaInfo rvaInfo = detail::init_symbols(loader.loadNtdllSymbol<BitType>());
+			if constexpr (BitType == ArchBit::Bit32)
+			{
+				data.symRva32 = rvaInfo;
+				pe::g_sym_rva32 = rvaInfo;
+			}
+			else
+			{
+				data.symRva64 = rvaInfo;
+				pe::g_sym_rva64 = rvaInfo;
+			}
 		}
 		catch (const std::exception& e)
 		{
@@ -166,33 +168,4 @@ namespace biz
 			});
 		}
 	}
-
-#ifdef _WIN64
-	export void init_symbols64()
-	{
-		try
-		{
-			const symbols::Loader loader{symbols::default_symbols_path()};
-			EssentialData& data = get_essential_data();
-			data.symRva64 = detail::init_symbols(loader.loadNtdllSymbol64());
-			pe::g_sym_rva64 = data.symRva64;
-		}
-		catch (const std::exception& e)
-		{
-			app().get_scheduler().addTask([errorMsg = std::string{e.what()}]
-			{
-				// ReSharper disable once StringLiteralTypo
-				throw std::runtime_error{std::format("The current system file analysis has failed, 2Box cannot run properly\nerror msg: {}", errorMsg)};
-			});
-		}
-		catch (...)
-		{
-			app().get_scheduler().addTask([]
-			{
-				// ReSharper disable once StringLiteralTypo
-				throw std::runtime_error("The current system file analysis has failed, 2Box cannot run properly\nerror msg: Unknown error");
-			});
-		}
-	}
-#endif
 }

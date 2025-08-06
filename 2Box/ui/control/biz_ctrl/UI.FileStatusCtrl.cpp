@@ -593,6 +593,25 @@ namespace ui
 			});
 			co_return;
 		}
+
+		void init_symbols(ArchBit bitType)
+		{
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				if (bitType == ArchBit::Bit32)
+				{
+					biz::init_symbols<ArchBit::Bit32>();
+				}
+				else
+				{
+					biz::init_symbols<ArchBit::Bit64>();
+				}
+			}
+			else
+			{
+				biz::init_symbols<ArchBit::Bit32>();
+			}
+		}
 	}
 
 	coro::LazyTask<void> FileStatusCtrl::startAnaTaskImpl()
@@ -649,19 +668,7 @@ namespace ui
 		if (errMsg.empty())
 		{
 			m_painter.transferTo<EPainterType::Verified>();
-
-#ifdef _WIN64
-			if (m_bIs32)
-			{
-				biz::init_symbols32();
-			}
-			else
-			{
-				biz::init_symbols64();
-			}
-#else
-			biz::init_symbols32();
-#endif
+			init_symbols(m_archBit);
 
 			if (m_resolver)
 			{

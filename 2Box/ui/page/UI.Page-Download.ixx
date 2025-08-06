@@ -11,6 +11,23 @@ import UI.FileStatusCtrl;
 
 namespace ui
 {
+	namespace page_dl_detail
+	{
+		template <ArchBit BitType = CURRENT_ARCH_BIT>
+		void initialize_file_status_ctrl(std::unique_ptr<FileStatusCtrl>& ctrl, WindowBase* owner)
+		{
+			static constexpr std::wstring_view downloadServerName = L"msdl.microsoft.com";
+			static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
+
+			ctrl = std::make_unique<FileStatusCtrl>(owner);
+			ctrl->setArchBit(BitType);
+			const auto [pdbDir, pdbName, objName] = symbols::get_ntdll_pdb_info<BitType>(searchPath);
+			ctrl->setFilePath(pdbDir, pdbName);
+			ctrl->setDownloadUrl(downloadServerName, objName);
+			ctrl->startAnaTask();
+		}
+	}
+
 	export class DownloadPage final : public RendererInterface
 	{
 	public:
@@ -24,32 +41,26 @@ namespace ui
 			initFileStatusCtrl();
 		}
 
-		virtual ~DownloadPage()
-		{
-			m_p32FileStatusCtrl.reset();
-#ifdef _WIN64
-			m_p64FileStatusCtrl.reset();
-#endif
-			m_pTextLayout.reset();
-		}
-
 		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
 		{
-			HResult hr;
-			(hr = m_p32FileStatusCtrl->onCreateDeviceResources(renderTarget), FAILED(hr))
-#ifdef _WIN64
-				|| (hr = m_p64FileStatusCtrl->onCreateDeviceResources(renderTarget), FAILED(hr))
-#endif
-				;
+			HResult hr = m_p32FileStatusCtrl->onCreateDeviceResources(renderTarget);
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				if (SUCCEEDED(hr))
+				{
+					hr = m_p64FileStatusCtrl->onCreateDeviceResources(renderTarget);
+				}
+			}
 			return hr;
 		}
 
 		virtual void onDiscardDeviceResources() override
 		{
 			m_p32FileStatusCtrl->onDiscardDeviceResources();
-#ifdef _WIN64
-			m_p64FileStatusCtrl->onDiscardDeviceResources();
-#endif
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				m_p64FileStatusCtrl->onDiscardDeviceResources();
+			}
 		}
 
 		virtual void draw(const RenderContext& renderCtx) override
@@ -84,58 +95,73 @@ namespace ui
 			const float fileCtrl32Height = m_p32FileStatusCtrl->preferredHeight();
 			m_p32FileStatusCtrl->setBounds(D2D1::RectF(contentXPos, contentYPos, contentXPos + contentWidth, contentYPos + fileCtrl32Height));
 			m_p32FileStatusCtrl->draw(renderCtx);
-			contentYPos += fileCtrl32Height + bottomMargin;
-#ifdef _WIN64
-			const float fileCtrl64Height = m_p64FileStatusCtrl->preferredHeight();
-			m_p64FileStatusCtrl->setBounds(D2D1::RectF(contentXPos, contentYPos, contentXPos + contentWidth, contentYPos + fileCtrl64Height));
-			m_p64FileStatusCtrl->draw(renderCtx);
-#endif
+
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				contentYPos += fileCtrl32Height + bottomMargin;
+				const float fileCtrl64Height = m_p64FileStatusCtrl->preferredHeight();
+				m_p64FileStatusCtrl->setBounds(D2D1::RectF(contentXPos, contentYPos, contentXPos + contentWidth, contentYPos + fileCtrl64Height));
+				m_p64FileStatusCtrl->draw(renderCtx);
+			}
 		}
 
 		coro::LazyTask<void> joinAsync() const
 		{
-#ifdef _WIN64
-			co_await coro::when_all(m_p64FileStatusCtrl->joinAsync(), m_p32FileStatusCtrl->joinAsync());
-#else
-			co_await m_p32FileStatusCtrl->joinAsync();
-#endif
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				co_await coro::when_all(m_p64FileStatusCtrl->joinAsync(), m_p32FileStatusCtrl->joinAsync());
+			}
+			else
+			{
+				co_await m_p32FileStatusCtrl->joinAsync();
+			}
 			co_return;
 		}
 
 		coro::LazyTask<void> untilSuccess() const
 		{
-#ifdef _WIN64
-			co_await coro::when_all(m_p64FileStatusCtrl->untilSuccess(), m_p32FileStatusCtrl->untilSuccess());
-#else
-			co_await m_p32FileStatusCtrl->untilSuccess();
-#endif
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				co_await coro::when_all(m_p64FileStatusCtrl->untilSuccess(), m_p32FileStatusCtrl->untilSuccess());
+			}
+			else
+			{
+				co_await m_p32FileStatusCtrl->untilSuccess();
+			}
 			co_return;
 		}
 
 		bool isFileVerified() const
 		{
-#ifdef _WIN64
-			return m_p64FileStatusCtrl->isFileVerified() && m_p32FileStatusCtrl->isFileVerified();
-#else
-			return m_p32FileStatusCtrl->isFileVerified();
-#endif
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				return m_p64FileStatusCtrl->isFileVerified() && m_p32FileStatusCtrl->isFileVerified();
+			}
+			else
+			{
+				return m_p32FileStatusCtrl->isFileVerified();
+			}
 		}
 
 		void cancelTask() const
 		{
-#ifdef _WIN64
-			m_p64FileStatusCtrl->cancelTask();
-#endif
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				m_p64FileStatusCtrl->cancelTask();
+			}
 			m_p32FileStatusCtrl->cancelTask();
 		}
 
 		bool isCancelled() const
 		{
-#ifdef _WIN64
-			return m_p64FileStatusCtrl->isCancelled() && m_p32FileStatusCtrl->isCancelled();
-#else
-			return m_p32FileStatusCtrl->isCancelled();
-#endif
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				return m_p64FileStatusCtrl->isCancelled() && m_p32FileStatusCtrl->isCancelled();
+			}
+			else
+			{
+				return m_p32FileStatusCtrl->isCancelled();
+			}
 		}
 
 	private:
@@ -151,32 +177,13 @@ namespace ui
 			}
 		}
 
-		static constexpr std::wstring_view downloadServerName = L"msdl.microsoft.com";
 
 		void initFileStatusCtrl()
 		{
-			namespace fs = std::filesystem;
-			static std::wstring searchPath{std::format(L"{}\\Symbols", app().exeDir())};
-
+			page_dl_detail::initialize_file_status_ctrl<ArchBit::Bit32>(m_p32FileStatusCtrl, m_ownerWnd);
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
 			{
-				m_p32FileStatusCtrl = std::make_unique<FileStatusCtrl>(m_ownerWnd);
-#ifdef _WIN64
-				m_p32FileStatusCtrl->setIs32(true);
-#endif
-				const auto [pdbDir, pdbName, objName] = symbols::get_ntdll32_pdb_info(searchPath);
-				m_p32FileStatusCtrl->setFilePath(pdbDir, pdbName);
-				m_p32FileStatusCtrl->setDownloadUrl(downloadServerName, objName);
-				m_p32FileStatusCtrl->startAnaTask();
-			}
-			{
-#ifdef _WIN64
-				m_p64FileStatusCtrl = std::make_unique<FileStatusCtrl>(m_ownerWnd);
-
-				const auto [pdbDir, pdbName, objName] = symbols::get_ntdll64_pdb_info(searchPath);
-				m_p64FileStatusCtrl->setFilePath(pdbDir, pdbName);
-				m_p64FileStatusCtrl->setDownloadUrl(downloadServerName, objName);
-				m_p64FileStatusCtrl->startAnaTask();
-#endif
+				page_dl_detail::initialize_file_status_ctrl<ArchBit::Bit64>(m_p64FileStatusCtrl, m_ownerWnd);
 			}
 		}
 
@@ -184,8 +191,6 @@ namespace ui
 		WindowBase* m_ownerWnd{nullptr};
 		UniqueComPtr<IDWriteTextLayout> m_pTextLayout;
 		std::unique_ptr<FileStatusCtrl> m_p32FileStatusCtrl{nullptr};
-#ifdef _WIN64
 		std::unique_ptr<FileStatusCtrl> m_p64FileStatusCtrl{nullptr};
-#endif
 	};
 }

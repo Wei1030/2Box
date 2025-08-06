@@ -205,27 +205,49 @@ namespace injector
 		}
 	}
 
-	export struct InjectionDlls
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	struct InjectionDllsT
 	{
 		pe::MemoryModule& memModule32;
-#ifdef _WIN64
-		pe::MemoryModule& memModule64;
-#endif
 	};
+
+	export
+	template <>
+	struct InjectionDllsT<ArchBit::Bit64>
+	{
+		pe::MemoryModule& memModule32;
+		pe::MemoryModule& memModule64;
+	};
+
+	export
+	using InjectionDlls = InjectionDllsT<CURRENT_ARCH_BIT>;
+
+	namespace detail
+	{
+		template <ArchBit BitType = CURRENT_ARCH_BIT>
+		pe::MemoryModule& select_memory_module(bool bIs32BitProcess, InjectionDllsT<BitType> dlls)
+		{
+			if constexpr (BitType == ArchBit::Bit64)
+			{
+				return bIs32BitProcess ? dlls.memModule32 : dlls.memModule64;
+			}
+			else
+			{
+				if (!bIs32BitProcess)
+				{
+					throw std::runtime_error{"32bit process can't inject dll to 64bit process"};
+				}
+				return dlls.memModule32;
+			}
+		}
+	}
 
 	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, InjectionDlls dlls, const EssentialData& essentialData)
 	{
 		const detail::ProcessWrapper process{dwProcessId};
 
-#ifdef _WIN64
-		pe::MemoryModule& memModule = process.is32Bit() ? dlls.memModule32 : dlls.memModule64;
-#else
-		if (!process.is32Bit())
-		{
-			throw std::runtime_error{"32bit process can't inject dll to 64bit process"};
-		}
-		pe::MemoryModule& memModule = dlls.memModule32;
-#endif
+		const pe::MemoryModule& memModule = detail::select_memory_module(process.is32Bit(), dlls);
 		const auto& memModuleParser = memModule.getParser();
 		// 1.先将 dll文件+ ReflectiveInjectParams 整个拷贝到目标进程
 		detail::VirtualMemWrapper fileMemory{process.allocMemory(memModule.getSizeOfImage() + sizeof(ReflectiveInjectParams), MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE)};
@@ -236,7 +258,7 @@ namespace injector
 		ReflectiveInjectParams injectParams;
 		// 先初始化injectionInfo
 		DllInjectionInfo& injectionCtx = injectParams.injectionInfo;
-		
+
 		PTHREAD_START_ROUTINE loadSelfFuncAddress = reinterpret_cast<PTHREAD_START_ROUTINE>(fileMemory.getPtr() + memModuleParser.getProcRVA("load_self"));
 		injectionCtx.kernelDllAddress = detail::get_kernel32_address_by_create_thread(process, loadSelfFuncAddress, nullptr);
 		// 再次将dll拷贝到目标进程，这次才是真正作为内存dll

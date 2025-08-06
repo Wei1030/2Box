@@ -142,9 +142,8 @@ namespace ui
 				m_resolver->rejectWithRuntimeError("destructed");
 			}
 		}
-#ifdef _WIN64
-		void setIs32(bool bIs32 = true) { m_bIs32 = bIs32; }
-#endif
+
+		void setArchBit(ArchBit archBit) { m_archBit = archBit; }
 		void setFilePath(std::wstring_view fileDir, std::wstring_view fileName);
 		void setDownloadUrl(std::wstring_view serverName, std::wstring_view objName);
 
@@ -237,9 +236,8 @@ namespace ui
 		coro::LazyTask<void> startAnaTaskImpl();
 
 	private:
-#ifdef _WIN64
-		bool m_bIs32{false};
-#endif
+		ArchBit m_archBit{CURRENT_ARCH_BIT};
+
 		std::wstring m_fileName;
 		std::wstring m_fileDir;
 		std::wstring m_filePath;

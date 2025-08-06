@@ -5,40 +5,65 @@ import "sys_defs.h";
 
 namespace sys_info
 {
-	export std::wstring get_system_dir()
+	namespace detail
 	{
-		UINT systemDirLength = GetSystemDirectoryW(nullptr, 0);
-		if (systemDirLength == 0)
+		std::wstring get_system_dir()
 		{
-			throw std::runtime_error(std::format("GetSystemDirectoryW failed, error code: {}", GetLastError()));
+			UINT systemDirLength = GetSystemDirectoryW(nullptr, 0);
+			if (systemDirLength == 0)
+			{
+				throw std::runtime_error(std::format("GetSystemDirectoryW failed, error code: {}", GetLastError()));
+			}
+			std::wstring systemDir;
+			systemDir.resize(systemDirLength);
+			systemDirLength = GetSystemDirectoryW(systemDir.data(), systemDirLength);
+			if (systemDirLength == 0)
+			{
+				throw std::runtime_error(std::format("GetSystemDirectoryW failed, error code: {}", GetLastError()));
+			}
+			systemDir.resize(systemDirLength);
+			return systemDir;
 		}
-		std::wstring systemDir;
-		systemDir.resize(systemDirLength);
-		systemDirLength = GetSystemDirectoryW(systemDir.data(), systemDirLength);
-		if (systemDirLength == 0)
+
+		std::wstring get_system_wow64_dir()
 		{
-			throw std::runtime_error(std::format("GetSystemDirectoryW failed, error code: {}", GetLastError()));
+			UINT systemDirLength = GetSystemWow64DirectoryW(nullptr, 0);
+			if (systemDirLength == 0)
+			{
+				throw std::runtime_error(std::format("GetSystemWow64DirectoryW failed, error code: {}", GetLastError()));
+			}
+			std::wstring systemDir;
+			systemDir.resize(systemDirLength);
+			systemDirLength = GetSystemWow64DirectoryW(systemDir.data(), systemDirLength);
+			if (systemDirLength == 0)
+			{
+				throw std::runtime_error(std::format("GetSystemWow64DirectoryW failed, error code: {}", GetLastError()));
+			}
+			systemDir.resize(systemDirLength);
+			return systemDir;
 		}
-		systemDir.resize(systemDirLength);
-		return systemDir;
 	}
 
-	export std::wstring get_system_wow64_dir()
+	// 暂不支持32位进程拿64位系统目录，没这个需求。
+	// 有需求再说。TODO: 如果要拿，则需要用到 Wow64DisableWow64FsRedirection / Wow64RevertWow64FsRedirection
+	export template <ArchBit BitType = CURRENT_ARCH_BIT>
+	std::wstring get_system_dir()
 	{
-		UINT systemDirLength = GetSystemWow64DirectoryW(nullptr, 0);
-		if (systemDirLength == 0)
+		if constexpr (BitType == ArchBit::Bit32)
 		{
-			throw std::runtime_error(std::format("GetSystemWow64DirectoryW failed, error code: {}", GetLastError()));
+			if constexpr (IS_CURRENT_ARCH_64_BIT)
+			{
+				return detail::get_system_wow64_dir();
+			}
+			else
+			{
+				return detail::get_system_dir();
+			}
 		}
-		std::wstring systemDir;
-		systemDir.resize(systemDirLength);
-		systemDirLength = GetSystemWow64DirectoryW(systemDir.data(), systemDirLength);
-		if (systemDirLength == 0)
+		else
 		{
-			throw std::runtime_error(std::format("GetSystemWow64DirectoryW failed, error code: {}", GetLastError()));
+			return detail::get_system_dir();
 		}
-		systemDir.resize(systemDirLength);
-		return systemDir;
 	}
 
 	namespace detail
@@ -145,45 +170,26 @@ namespace sys_info
 		void* m_pMemory;
 	};
 
-	export SysDllMapHelper get_sys_dll_mapped32(std::wstring_view dllName)
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	SysDllMapHelper get_sys_dll_mapped(std::wstring_view dllName)
 	{
 		namespace fs = std::filesystem;
-#ifdef _WIN64
-		const fs::path systemDir{get_system_wow64_dir()};
-#else
-		const fs::path systemDir{get_system_dir()};
-#endif
-		const fs::path dllPath{fs::weakly_canonical(systemDir / fs::path{dllName})};
+		const fs::path dllPath{fs::weakly_canonical(fs::path{get_system_dir<BitType>()} / fs::path{dllName})};
 		return SysDllMapHelper{dllPath.native()};
 	}
 
-	export SysDllMapHelper get_ntdll_mapped32()
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	SysDllMapHelper get_ntdll_mapped()
 	{
-		return get_sys_dll_mapped32(L"ntdll.dll");
+		return get_sys_dll_mapped<BitType>(L"ntdll.dll");
 	}
 
-	export SysDllMapHelper get_kernel32_mapped32()
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	SysDllMapHelper get_kernel32_mapped()
 	{
-		return get_sys_dll_mapped32(L"kernel32.dll");
+		return get_sys_dll_mapped<BitType>(L"kernel32.dll");
 	}
-
-#ifdef _WIN64
-	export SysDllMapHelper get_sys_dll_mapped64(std::wstring_view dllName)
-	{
-		namespace fs = std::filesystem;
-		const fs::path systemDir{get_system_dir()};
-		const fs::path dllPath{fs::weakly_canonical(systemDir / fs::path{dllName})};
-		return SysDllMapHelper{dllPath.native()};
-	}
-
-	export SysDllMapHelper get_ntdll_mapped64()
-	{
-		return get_sys_dll_mapped64(L"ntdll.dll");
-	}
-
-	export SysDllMapHelper get_kernel32_mapped64()
-	{
-		return get_sys_dll_mapped64(L"kernel32.dll");
-	}
-#endif
 }
