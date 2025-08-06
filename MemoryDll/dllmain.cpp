@@ -87,7 +87,7 @@ extern "C" __declspec(dllexport) unsigned long __stdcall initialize(void* lpThre
 	{
 		TerminateProcess(GetCurrentProcess(), 0);
 	}
-	pe::flush_instruction_cache();
+	pe::wipe_header_memory(thisModule);
 
 	std::cout << test_static_init() << "\n";
 	std::thread{

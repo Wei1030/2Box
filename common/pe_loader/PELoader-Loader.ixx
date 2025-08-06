@@ -7,9 +7,11 @@ namespace pe
 {
 	namespace detail
 	{
-		constexpr size_t align_value_up(size_t value, size_t alignment)
+		template <size_t Alignment>
+			requires (std::has_single_bit(Alignment))
+		constexpr size_t align_value_up(size_t value)
 		{
-			return (value + alignment - 1) & ~(alignment - 1);
+			return (value + Alignment - 1) & ~(Alignment - 1);
 		}
 	}
 
@@ -50,9 +52,10 @@ namespace pe
 		MemoryModule& operator=(const MemoryModule&) = delete;
 		MemoryModule& operator=(MemoryModule&&) = delete;
 
-		char* getRawPtr() const { return const_cast<char*>(m_dataParser.getBaseAddr()); }
-		const char* getBaseAddr() const { return m_dataParser.getBaseAddr(); }
-		std::uint32_t getSizeOfImage() const { return m_dataParser.getSizeOfImage(); }
+		char* getRawPtr() const noexcept { return const_cast<char*>(m_dataParser.getBaseAddr()); }
+		const char* getBaseAddr() const noexcept { return m_dataParser.getBaseAddr(); }
+		std::uint32_t getSizeOfImage() const noexcept { return m_dataParser.getSizeOfImage(); }
+		std::uint32_t getSizeOfHeaders() const noexcept { return m_dataParser.getSizeOfHeaders(); }
 
 		const Parser<parser_flag::HasSectionAligned>& getParser() const { return m_dataParser; }
 
@@ -105,7 +108,7 @@ namespace pe
 		for (DWORD i = 0; i < pNTHeader->FileHeader.NumberOfSections; ++i, ++pSectionHeader)
 		{
 			const LPVOID address = pBase + pSectionHeader->VirtualAddress;
-			const SIZE_T size = detail::align_value_up(pSectionHeader->Misc.VirtualSize, pNTHeader->OptionalHeader.SectionAlignment);
+			const SIZE_T size = pSectionHeader->Misc.VirtualSize;
 			DWORD dwOldProtect = 0;
 			DWORD dwNewProtect = PAGE_NOACCESS;
 			// executable
@@ -151,5 +154,14 @@ namespace pe
 	export BOOL flush_instruction_cache()
 	{
 		return FlushInstructionCache(reinterpret_cast<HANDLE>(-1), nullptr, 0);
+	}
+
+	export void wipe_header_memory(const MemoryModule& module)
+	{
+		const std::size_t size = detail::align_value_up<0x1000>(module.getSizeOfHeaders());
+		memset(module.getRawPtr(), 0, size);
+		DWORD dwOldProtect = 0;
+		VirtualProtect(module.getRawPtr(), size, PAGE_NOACCESS, &dwOldProtect);
+		VirtualFree(module.getRawPtr(), size, MEM_DECOMMIT);
 	}
 }
