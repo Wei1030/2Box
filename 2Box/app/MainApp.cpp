@@ -1,3 +1,5 @@
+module;
+#include "biz/rpc/RpcServer.h"
 module MainApp;
 
 import "sys_defs.h";
@@ -38,6 +40,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 
 		ui::MainWindow mainWnd;
 		ui::g_main_wnd = &mainWnd;
+
+		rpc::Server server;
 
 		mainWnd.show(app.cmdShow());
 

@@ -37,6 +37,9 @@
     <Filter Include="src\biz\essential_data">
       <UniqueIdentifier>{6ef5c558-8456-4fbb-ae6b-32929649643a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\biz\rpc">
+      <UniqueIdentifier>{c9cee27b-da84-45a0-bda2-1843c12fb83f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -51,6 +54,9 @@
   <ItemGroup>
     <ClInclude Include="res\resource.h">
       <Filter>res</Filter>
+    </ClInclude>
+    <ClInclude Include="biz\rpc\RpcServer.h">
+      <Filter>src\biz\rpc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -107,6 +113,9 @@
     </ClCompile>
     <ClCompile Include="biz\essential_data\EssentialData.ixx">
       <Filter>src\biz\essential_data</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\rpc\RpcServer.cpp">
+      <Filter>src\biz\rpc</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

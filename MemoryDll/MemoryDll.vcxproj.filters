@@ -4,6 +4,9 @@
     <Filter Include="src">
       <UniqueIdentifier>{c5b78b12-1845-4a0c-ab4c-3d6ac84bb07a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\rpc">
+      <UniqueIdentifier>{32744e25-02a0-44e8-bd86-41febf18d2c3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -15,10 +18,16 @@
     <ClCompile Include="biz_initializer.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="rpc\RpcClient.cpp">
+      <Filter>src\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="biz_initializer.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="rpc\RpcClient.h">
+      <Filter>src\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

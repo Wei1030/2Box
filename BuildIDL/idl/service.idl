@@ -1,0 +1,8 @@
+[
+uuid(3bf6b421-2a74-4556-9fa3-bb1098f07abd),
+version(1.0)
+]
+interface service
+{
+    void inject_to_process([in] unsigned int pid);
+}
