@@ -1,25 +1,31 @@
 // ReSharper disable CppFunctionalStyleCast
 #include "service_h.h"
 #include "RpcServer.h"
+
 import std;
 
 namespace rpc
 {
 	Server::Server()
 	{
-		RPC_STATUS status = RpcServerUseProtseqEpA(RPC_CSTR("ncalrpc"), RPC_C_LISTEN_MAX_CALLS_DEFAULT, RPC_CSTR("Rpc2BoxServer"), nullptr);
+		RPC_STATUS status = RpcServerUseProtseqEpA(RPC_CSTR("ncalrpc"), RPC_C_LISTEN_MAX_CALLS_DEFAULT, RPC_CSTR("{63B40BDA-A2D1-4516-BDBB-E1E2A960D31E}2BoxServer"), nullptr);
 		if (status != RPC_S_OK)
 		{
+			if (status == RPC_S_DUPLICATE_ENDPOINT)
+			{
+				MessageBoxW(nullptr, L"2Box已经运行", L"2Box", MB_OK);
+				throw std::runtime_error{""};
+			}
 			// ReSharper disable once StringLiteralTypo
 			throw std::runtime_error(std::format("RpcServerUseProtseqEp failed, return status:{}", status));
 		}
-	
+
 		status = RpcServerRegisterIf(service_v1_0_s_ifspec, nullptr, nullptr);
 		if (status != RPC_S_OK)
 		{
 			throw std::runtime_error(std::format("RpcServerRegisterIf failed, return status:{}", status));
 		}
-	
+
 		status = RpcServerListen(1, RPC_C_LISTEN_MAX_CALLS_DEFAULT, TRUE);
 		if (status != RPC_S_OK)
 		{
@@ -35,7 +41,7 @@ namespace rpc
 			RpcMgmtWaitServerListen();
 			RpcServerUnregisterIf(nullptr, nullptr, FALSE);
 		}
-	}	
+	}
 }
 
 

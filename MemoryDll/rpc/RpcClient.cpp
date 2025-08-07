@@ -10,7 +10,7 @@ namespace rpc
 
 	Client::Client()
 	{
-		RPC_STATUS status = RpcStringBindingComposeA(nullptr, RPC_CSTR("ncalrpc"), nullptr, RPC_CSTR("Rpc2BoxServer"), nullptr, &pszStringBinding);
+		RPC_STATUS status = RpcStringBindingComposeA(nullptr, RPC_CSTR("ncalrpc"), nullptr, RPC_CSTR("{63B40BDA-A2D1-4516-BDBB-E1E2A960D31E}2BoxServer"), nullptr, &pszStringBinding);
 		if (status != RPC_S_OK)
 		{
 			throw std::runtime_error(std::format("RpcStringBindingComposeA failed, return status: {}", status));
