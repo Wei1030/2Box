@@ -202,20 +202,23 @@ namespace ui
 
 	void WindowBase::updateDpi()
 	{
+		unsigned int dpi;
 		if (win32_api::GetDpiForWindow)
 		{
-			if (const unsigned int dpi = win32_api::GetDpiForWindow(m_hWnd))
-			{
-				m_dpiInfo.dpi = static_cast<float>(dpi);
-				m_dpiInfo.physicalToDevice = 96.f / dpi;
-				m_dpiInfo.deviceToPhysical = dpi / 96.f;
-			}
-			else
-			{
-				m_dpiInfo.dpi = 96.f;
-				m_dpiInfo.physicalToDevice = 1.f;
-				m_dpiInfo.deviceToPhysical = 1.f;
-			}
+			dpi = win32_api::GetDpiForWindow(m_hWnd);
+		}
+		else
+		{
+			HDC hdc = GetDC(nullptr);
+			dpi = GetDeviceCaps(hdc, LOGPIXELSX);
+			ReleaseDC(nullptr, hdc);
+		}
+
+		if (dpi)
+		{
+			m_dpiInfo.dpi = static_cast<float>(dpi);
+			m_dpiInfo.physicalToDevice = 96.f / dpi;
+			m_dpiInfo.deviceToPhysical = dpi / 96.f;
 		}
 		else
 		{
