@@ -166,6 +166,7 @@ struct ReflectiveInjectParams
 {
 	EssentialData essentialData;
 	DllInjectionInfo injectionInfo;
+	ULONGLONG envFlag;
 };
 
 

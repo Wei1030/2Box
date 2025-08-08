@@ -24,6 +24,9 @@
     <ClCompile Include="rpc\RpcImplRequirement.cpp">
       <Filter>src\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="GlobalData.ixx">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="biz_initializer.h">

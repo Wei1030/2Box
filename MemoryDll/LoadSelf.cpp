@@ -125,6 +125,8 @@ extern "C" __declspec(dllexport) unsigned long __stdcall load_self(void* lpThrea
 
 	pFlushInstructionCache(reinterpret_cast<HANDLE>(-1), pNewBase, injectionCtx.dllSize);
 
+	// 调用 dllmain 前还应该先进行tls回调，但是在这个函数里处理太难看了，因此暂不处理
+	// 可能影响win7中的全局thread_local变量，反正用不到，用全局函数的局部thread_local变量代替就行
 	if (!pfnDllMain(reinterpret_cast<HINSTANCE>(pNewBase), DLL_PROCESS_ATTACH, nullptr))
 	{
 		goto fail;

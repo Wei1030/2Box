@@ -8,6 +8,7 @@ import Scheduler;
 import MainApp;
 import PELoader;
 import SymbolLoader;
+import Injector;
 import Utility.SystemInfo;
 
 namespace biz
@@ -68,6 +69,27 @@ namespace biz
 	{
 		static pe::MemoryModule memModule{pe::Parser<>{detail::get_dll_resource<BitType>()}};
 		return memModule;
+	}
+
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	injector::InjectionDllsT<BitType> get_injection_dlls()
+	{
+		if constexpr (BitType == ArchBit::Bit64)
+		{
+			return {biz::get_memory_module<ArchBit::Bit32>(), biz::get_memory_module<ArchBit::Bit64>()};
+		}
+		else
+		{
+			return {biz::get_memory_module<ArchBit::Bit32>()};
+		}
+	}
+
+	export std::uint64_t get_random_number()
+	{
+		thread_local std::mt19937_64 rng{std::random_device{}()};
+		std::uniform_int_distribution<std::uint64_t> dis;
+		return dis(rng);
 	}
 
 	export EssentialData& get_essential_data()

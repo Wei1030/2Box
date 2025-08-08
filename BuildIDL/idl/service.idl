@@ -4,5 +4,5 @@ version(1.0)
 ]
 interface service
 {
-    void inject_to_process([in] unsigned int pid);
+    void inject_to_process([in] unsigned int pid, [in] unsigned long long envFlag);
 }

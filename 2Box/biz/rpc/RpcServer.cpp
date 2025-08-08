@@ -46,7 +46,7 @@ namespace rpc
 
 
 extern "C" {
-void inject_to_process(handle_t IDL_handle, unsigned int pid)
+void inject_to_process(handle_t IDL_handle, unsigned int pid, unsigned long long envFlag)
 {
 	// throw std::runtime_error("inject_to_process: not implemented");
 	RpcRaiseException(ERROR_CALL_NOT_IMPLEMENTED);

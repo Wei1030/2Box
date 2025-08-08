@@ -243,7 +243,7 @@ namespace injector
 		}
 	}
 
-	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, InjectionDlls dlls, const EssentialData& essentialData)
+	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, std::uint64_t envFlag, InjectionDlls dlls, const EssentialData& essentialData)
 	{
 		const detail::ProcessWrapper process{dwProcessId};
 
@@ -256,6 +256,7 @@ namespace injector
 
 		// 2.开始准备ReflectiveInjectParams
 		ReflectiveInjectParams injectParams;
+		injectParams.envFlag = envFlag;
 		// 先初始化injectionInfo
 		DllInjectionInfo& injectionCtx = injectParams.injectionInfo;
 

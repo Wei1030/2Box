@@ -146,8 +146,8 @@ namespace rpc
 		}
 		__except (EXCEPTION_EXECUTE_HANDLER)
 		{
-			TerminateProcess(GetCurrentProcess(), RpcExceptionCode());
-			// std::cout << RpcExceptionCode()  <<"\n";
+			// TerminateProcess(GetCurrentProcess(), RpcExceptionCode());
+			std::cout << RpcExceptionCode()  <<"\n";
 		}
 	}
 
@@ -161,9 +161,9 @@ namespace rpc
 			return static_cast<const DerivedT*>(this)->getHandle();
 		}
 
-		auto injectToProcess(unsigned int pid) const
+		auto injectToProcess(unsigned int pid, unsigned long long envFlag) const
 		{
-			return rpc_call_wrapper(&inject_to_process, handle(), pid);
+			return rpc_call_wrapper(&inject_to_process, handle(), pid, envFlag);
 		}
 	};
 

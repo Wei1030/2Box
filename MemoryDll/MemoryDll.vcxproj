@@ -192,6 +192,7 @@
   <ItemGroup>
     <ClCompile Include="biz_initializer.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="GlobalData.ixx" />
     <ClCompile Include="LoadSelf.cpp" />
     <ClCompile Include="rpc\RpcClient.ixx" />
     <ClCompile Include="rpc\RpcImplRequirement.cpp" />
