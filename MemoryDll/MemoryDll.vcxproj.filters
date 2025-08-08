@@ -18,16 +18,16 @@
     <ClCompile Include="biz_initializer.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="rpc\RpcClient.cpp">
+    <ClCompile Include="rpc\RpcClient.ixx">
+      <Filter>src\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="rpc\RpcImplRequirement.cpp">
       <Filter>src\rpc</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="biz_initializer.h">
       <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="rpc\RpcClient.h">
-      <Filter>src\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

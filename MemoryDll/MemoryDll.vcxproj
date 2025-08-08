@@ -193,7 +193,8 @@
     <ClCompile Include="biz_initializer.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="LoadSelf.cpp" />
-    <ClCompile Include="rpc\RpcClient.cpp" />
+    <ClCompile Include="rpc\RpcClient.ixx" />
+    <ClCompile Include="rpc\RpcImplRequirement.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\3rdparty\Detours\vc\Detours.vcxproj">
@@ -208,7 +209,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="biz_initializer.h" />
-    <ClInclude Include="rpc\RpcClient.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
