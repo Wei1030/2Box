@@ -3,6 +3,8 @@
 #include "RpcServer.h"
 
 import std;
+import Injector;
+import EssentialData;
 
 namespace rpc
 {
@@ -48,11 +50,17 @@ namespace rpc
 extern "C" {
 void inject_to_process(handle_t IDL_handle, unsigned int pid, unsigned long long envFlag)
 {
-	// throw std::runtime_error("inject_to_process: not implemented");
-	RpcRaiseException(ERROR_CALL_NOT_IMPLEMENTED);
+	try
+	{
+		injector::inject_memory_dll_to_process(pid, envFlag, biz::get_injection_dlls(), biz::get_essential_data());
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
 }
 
-void get_all_process_id_in_env(handle_t IDL_handle, unsigned long long envFlag, unsigned long long pids[], unsigned int *count)
+void get_all_process_id_in_env(handle_t IDL_handle, unsigned long long envFlag, unsigned long long pids[], unsigned int* count)
 {
 	*count = 0;
 }

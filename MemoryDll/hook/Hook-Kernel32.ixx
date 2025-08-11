@@ -36,6 +36,26 @@ namespace hook
 	}
 
 	template <auto Trampoline>
+	HANDLE APIENTRY CreateBoundaryDescriptorA(_In_ LPCSTR Name, _In_ ULONG Flags)
+	{
+		if (Name)
+		{
+			return Trampoline(std::format("{}{}", Name, global::Data::get().envFlagNameA()).c_str(), Flags);
+		}
+		return Trampoline(Name, Flags);
+	}
+
+	template <auto Trampoline>
+	HANDLE WINAPI CreateBoundaryDescriptorW(_In_ LPCWSTR Name, _In_ ULONG Flags)
+	{
+		if (Name)
+		{
+			return Trampoline(std::format(L"{}{}", Name, global::Data::get().envFlagName()).c_str(), Flags);
+		}
+		return Trampoline(Name, Flags);
+	}
+
+	template <auto Trampoline>
 	BOOL WINAPI CreateProcessA(__in_opt LPCSTR lpApplicationName, __inout_opt LPSTR lpCommandLine,
 	                           __in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes, __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
 	                           __in BOOL bInheritHandles, __in DWORD dwCreationFlags, __in_opt LPVOID lpEnvironment, __in_opt LPCSTR lpCurrentDirectory,
@@ -390,9 +410,11 @@ namespace hook
 
 		CREATE_HOOK_BY_NAME(WaitNamedPipeA);
 		CREATE_HOOK_BY_NAME(WaitNamedPipeW);
- 		CREATE_HOOK_BY_NAME(CreateProcessA);
- 		CREATE_HOOK_BY_NAME(CreateProcessW);
+		CREATE_HOOK_BY_NAME(CreateBoundaryDescriptorA);
+		CREATE_HOOK_BY_NAME(CreateBoundaryDescriptorW);
+		CREATE_HOOK_BY_NAME(CreateProcessA);
+		CREATE_HOOK_BY_NAME(CreateProcessW);
 		CREATE_HOOK_BY_NAME(WinExec);
- 		CREATE_HOOK_BY_NAME(DeviceIoControl);
+		CREATE_HOOK_BY_NAME(DeviceIoControl);
 	}
 }
