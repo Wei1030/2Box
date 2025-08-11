@@ -13,6 +13,7 @@ namespace win32_api
 	template <typename CharType, CharType... C>
 	using LiteralName = utils::LiteralName<CharType, C...>;
 
+	export 
 	template <LiteralName LibName>
 	class LibLoader
 	{
@@ -46,6 +47,7 @@ namespace win32_api
 		HMODULE m_lib{nullptr};
 	};
 
+	export 
 	template <LiteralName LibName, LiteralName ApiName, typename ApiType>
 		requires std::is_function_v<ApiType>
 	struct ApiProxy

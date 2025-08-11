@@ -192,8 +192,12 @@
   <ItemGroup>
     <ClCompile Include="biz_initializer.cpp" />
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="GlobalData.ixx" />
-    <ClCompile Include="LoadSelf.cpp" />
+    <ClCompile Include="global_data\GlobalData.ixx" />
+    <ClCompile Include="hook\Hook-All.ixx" />
+    <ClCompile Include="hook\Hook-Core.ixx" />
+    <ClCompile Include="hook\Hook-Ntdll.ixx" />
+    <ClCompile Include="hook\Hook.ixx" />
+    <ClCompile Include="load_self\LoadSelf.cpp" />
     <ClCompile Include="rpc\RpcClient.ixx" />
     <ClCompile Include="rpc\RpcImplRequirement.cpp" />
   </ItemGroup>

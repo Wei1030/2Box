@@ -138,7 +138,7 @@ namespace rpc
 	}
 
 	template <typename Func, typename... Args>
-	auto rpc_call_wrapper(Func&& func, Args&&... args)
+	decltype(auto) rpc_call_wrapper(Func&& func, Args&&... args)
 	{
 		__try
 		{
@@ -161,7 +161,7 @@ namespace rpc
 			return static_cast<const DerivedT*>(this)->getHandle();
 		}
 
-		auto injectToProcess(unsigned int pid, unsigned long long envFlag) const
+		decltype(auto) injectToProcess(unsigned int pid, unsigned long long envFlag) const
 		{
 			return rpc_call_wrapper(&inject_to_process, handle(), pid, envFlag);
 		}
