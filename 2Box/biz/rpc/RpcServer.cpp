@@ -51,6 +51,11 @@ void inject_to_process(handle_t IDL_handle, unsigned int pid, unsigned long long
 	// throw std::runtime_error("inject_to_process: not implemented");
 	RpcRaiseException(ERROR_CALL_NOT_IMPLEMENTED);
 }
+
+void get_all_process_id_in_env(handle_t IDL_handle, unsigned long long envFlag, unsigned long long pids[], unsigned int *count)
+{
+	*count = 0;
+}
 }
 
 extern "C" {

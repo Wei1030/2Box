@@ -3,9 +3,10 @@ export module Hook:Ntdll;
 
 import "sys_defs.h";
 import :Core;
+import std;
 import GlobalData;
 import Utility.SystemInfo;
-
+import RpcClient;
 
 namespace hook
 {
@@ -16,13 +17,13 @@ namespace hook
 	};
 
 	template <auto trampoline, ChangePolicy Policy, typename... Args>
-	NTSTATUS NTAPI ChangeObjNameAndTrampoline(POBJECT_ATTRIBUTES ObjectAttributes, Args&&... args)
+	NTSTATUS NTAPI ChangeObjNameThenTrampoline(POBJECT_ATTRIBUTES ObjectAttributes, Args&&... args)
 	{
 		if (ObjectAttributes && ObjectAttributes->ObjectName && ObjectAttributes->ObjectName->Buffer && ObjectAttributes->ObjectName->Length)
 		{
 			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
-			UNICODE_STRING newObjName;
 			std::wstring strNewName = std::format(L"{}{}", std::wstring_view{pOldName->Buffer, pOldName->Length / sizeof(wchar_t)}, global::Data::get().envFlagName());
+			UNICODE_STRING newObjName;
 			newObjName.Buffer = strNewName.data();
 			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(strNewName.length() * sizeof(wchar_t));
 			ObjectAttributes->ObjectName = &newObjName;
@@ -49,16 +50,220 @@ namespace hook
 		return trampoline(std::forward<Args>(args)...);
 	}
 
+	//////////////////////////////////////////////////////////////////////////
+	//event
 	template <auto trampoline>
 	NTSTATUS NTAPI NtCreateEvent(OUT PHANDLE EventHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes, IN int EventType, IN BOOLEAN InitialState)
 	{
-		return ChangeObjNameAndTrampoline<trampoline, ChangePolicy::ForceChange>(ObjectAttributes, EventHandle, DesiredAccess, ObjectAttributes, EventType, InitialState);
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::ForceChange>(ObjectAttributes, EventHandle, DesiredAccess, ObjectAttributes, EventType, InitialState);
 	}
 
 	template <auto trampoline>
 	NTSTATUS NTAPI NtOpenEvent(OUT PHANDLE EventHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes)
 	{
-		return ChangeObjNameAndTrampoline<trampoline, ChangePolicy::TryToChange>(ObjectAttributes, EventHandle, DesiredAccess, ObjectAttributes);
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::TryToChange>(ObjectAttributes, EventHandle, DesiredAccess, ObjectAttributes);
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+	//mutant
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateMutant(OUT PHANDLE MutantHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes, IN BOOLEAN InitialOwner)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::ForceChange>(ObjectAttributes, MutantHandle, DesiredAccess, ObjectAttributes, InitialOwner);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtOpenMutant(OUT PHANDLE MutantHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::TryToChange>(ObjectAttributes, MutantHandle, DesiredAccess, ObjectAttributes);
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+	//section
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateSection(OUT PHANDLE SectionHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes,
+	                               IN PLARGE_INTEGER SectionSize OPTIONAL, IN ULONG Protect, IN ULONG Attributes, IN HANDLE FileHandle)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::ForceChange>(ObjectAttributes, SectionHandle, DesiredAccess, ObjectAttributes, SectionSize, Protect, Attributes, FileHandle);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtOpenSection(OUT PHANDLE SectionHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::TryToChange>(ObjectAttributes, SectionHandle, DesiredAccess, ObjectAttributes);
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+	//semaphore
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateSemaphore(OUT PHANDLE SemaphoreHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes, IN LONG InitialCount, IN LONG MaximumCount)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::ForceChange>(ObjectAttributes, SemaphoreHandle, DesiredAccess, ObjectAttributes, InitialCount, MaximumCount);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtOpenSemaphore(OUT PHANDLE SemaphoreHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::TryToChange>(ObjectAttributes, SemaphoreHandle, DesiredAccess, ObjectAttributes);
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+	//timer
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateTimer(OUT PHANDLE TimerHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes, IN int TimerType)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::ForceChange>(ObjectAttributes, TimerHandle, DesiredAccess, ObjectAttributes, TimerType);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtOpenTimer(OUT PHANDLE TimerHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::TryToChange>(ObjectAttributes, TimerHandle, DesiredAccess, ObjectAttributes);
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+	//job
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateJobObject(OUT PHANDLE JobHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::ForceChange>(ObjectAttributes, JobHandle, DesiredAccess, ObjectAttributes);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtOpenJobObject(OUT PHANDLE JobHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::TryToChange>(ObjectAttributes, JobHandle, DesiredAccess, ObjectAttributes);
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+	//named pipe
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateNamedPipeFile(_Out_ PHANDLE FileHandle, _In_ ULONG DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+	                                     _Out_ PIO_STATUS_BLOCK IoStatusBlock, _In_ ULONG ShareAccess, _In_ ULONG CreateDisposition,
+	                                     _In_ ULONG CreateOptions, _In_ ULONG NamedPipeType, _In_ ULONG ReadMode,
+	                                     _In_ ULONG CompletionMode, _In_ ULONG MaximumInstances, _In_ ULONG InboundQuota,
+	                                     _In_ ULONG OutboundQuota, _In_opt_ PLARGE_INTEGER DefaultTimeout)
+	{
+		return ChangeObjNameThenTrampoline<trampoline, ChangePolicy::ForceChange>(ObjectAttributes, FileHandle, DesiredAccess, ObjectAttributes,
+		                                                                          IoStatusBlock, ShareAccess, CreateDisposition,
+		                                                                          CreateOptions, NamedPipeType, ReadMode,
+		                                                                          CompletionMode, MaximumInstances, InboundQuota,
+		                                                                          OutboundQuota, DefaultTimeout);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateFile(OUT PHANDLE FileHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes,
+	                            OUT PIO_STATUS_BLOCK IoStatusBlock, IN PLARGE_INTEGER AllocationSize OPTIONAL, IN ULONG FileAttributes,
+	                            IN ULONG ShareAccess, IN ULONG CreateDisposition, IN ULONG CreateOptions,
+	                            IN PVOID EaBuffer OPTIONAL, IN ULONG EaLength)
+	{
+		NTSTATUS ret = -1;
+
+		do
+		{
+			if (!ObjectAttributes
+				|| !ObjectAttributes->ObjectName
+				|| !ObjectAttributes->ObjectName->Buffer
+				|| !ObjectAttributes->ObjectName->Length)
+			{
+				break;
+			}
+
+			std::wstring_view strCmpName(ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t));
+
+			//管道;
+			if (strCmpName.find(L"\\??\\pipe\\") != std::wstring::npos)
+			{
+				/* \??\pipe\ */
+				std::wstring strNewName = std::format(L"{}{}", strCmpName, global::Data::get().envFlagName());
+				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
+				UNICODE_STRING newObjName;
+				newObjName.Buffer = strNewName.data();
+				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(strCmpName.length() * sizeof(wchar_t));
+				ObjectAttributes->ObjectName = &newObjName;
+				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
+				                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+				ObjectAttributes->ObjectName = pOldName;
+				break;
+			}
+		}
+		while (false);
+
+		if (ret < 0)
+		{
+			ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
+			                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+		}
+		return ret;
+	}
+
+	std::unordered_set<std::uint64_t> GetAllProcessInEnv()
+	{
+		std::unordered_set<std::uint64_t> allProc;
+		try
+		{
+			const rpc::ClientDefault c;
+			std::uint64_t pids[rpc::MAX_PID_COUNT]{};
+			std::uint32_t count = 0;
+			c.getAllProcessIdInEnv(global::Data::get().envFlag(), pids, &count);
+			allProc.reserve(count);
+			for (std::uint32_t i = 0; i < count; ++i)
+			{
+				allProc.insert(pids[i]);
+			}
+		}
+		catch (...)
+		{
+		}
+		allProc.insert(GetCurrentProcessId());
+		return allProc;
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtQuerySystemInformation(IN SYSTEM_INFORMATION_CLASS SystemInformationClass, IN OUT PVOID SystemInformation, IN ULONG SystemInformationLength, OUT PULONG ReturnLength OPTIONAL)
+	{
+		const NTSTATUS ret = trampoline(SystemInformationClass, SystemInformation, SystemInformationLength, ReturnLength);
+		if (ret < 0 || !SystemInformation)
+		{
+			return ret;
+		}
+
+		if (SystemInformationClass == SystemProcessInformation)
+		{
+			const std::unordered_set<std::uint64_t> allProc = GetAllProcessInEnv();
+			PSYSTEM_PROCESS_INFORMATION pIndex = static_cast<PSYSTEM_PROCESS_INFORMATION>(SystemInformation);
+			PSYSTEM_PROCESS_INFORMATION pShow = pIndex;
+
+			do
+			{
+				if (pIndex->UniqueProcessId && !allProc.contains(reinterpret_cast<ULONG_PTR>(pIndex->UniqueProcessId)))
+				{
+					if (pIndex->NextEntryOffset)
+					{
+						pShow->NextEntryOffset += pIndex->NextEntryOffset;
+					}
+					else
+					{
+						pShow->NextEntryOffset = 0;
+					}
+				}
+				else
+				{
+					pShow = pIndex;
+				}
+
+				if (pIndex->NextEntryOffset)
+				{
+					pIndex = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(reinterpret_cast<char*>(pIndex) + pIndex->NextEntryOffset);
+				}
+				else
+				{
+					pIndex = nullptr;
+				}
+			}
+			while (pIndex);
+		}
+		return ret;
 	}
 
 	void hook_ntdll()
@@ -72,8 +277,21 @@ namespace hook
 		{ \
 			return HookInfo{&name<trampolineConst.value>, ntdllMappedAddress}; \
 		})
-		
+
 		CREATE_HOOK_BY_NAME(NtCreateEvent);
 		CREATE_HOOK_BY_NAME(NtOpenEvent);
+		CREATE_HOOK_BY_NAME(NtCreateMutant);
+		CREATE_HOOK_BY_NAME(NtOpenMutant);
+		CREATE_HOOK_BY_NAME(NtCreateSection);
+		CREATE_HOOK_BY_NAME(NtOpenSection);
+		CREATE_HOOK_BY_NAME(NtCreateSemaphore);
+		CREATE_HOOK_BY_NAME(NtOpenSemaphore);
+		CREATE_HOOK_BY_NAME(NtCreateTimer);
+		CREATE_HOOK_BY_NAME(NtOpenTimer);
+		CREATE_HOOK_BY_NAME(NtCreateJobObject);
+		CREATE_HOOK_BY_NAME(NtOpenJobObject);
+		CREATE_HOOK_BY_NAME(NtCreateNamedPipeFile);
+		CREATE_HOOK_BY_NAME(NtCreateFile);
+		CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
 	}
 }
