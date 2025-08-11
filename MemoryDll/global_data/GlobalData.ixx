@@ -18,6 +18,7 @@ namespace global
 		{
 			m_envFlag = envFlag;
 			m_envFlagName = std::format(L"{:016X}", envFlag);
+			m_envFlagNameA = std::format("{:016X}", envFlag);
 		}
 
 	public:
@@ -31,11 +32,17 @@ namespace global
 			return m_envFlagName;
 		}
 
+		std::string_view envFlagNameA() const
+		{
+			return m_envFlagNameA;
+		}
+
 	private:
 		Data() = default;
 
 	private:
 		std::uint64_t m_envFlag{0};
 		std::wstring m_envFlagName;
+		std::string m_envFlagNameA;
 	};
 }

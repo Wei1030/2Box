@@ -195,6 +195,7 @@
     <ClCompile Include="global_data\GlobalData.ixx" />
     <ClCompile Include="hook\Hook-All.ixx" />
     <ClCompile Include="hook\Hook-Core.ixx" />
+    <ClCompile Include="hook\Hook-Kernel32.ixx" />
     <ClCompile Include="hook\Hook-Ntdll.ixx" />
     <ClCompile Include="hook\Hook.ixx" />
     <ClCompile Include="load_self\LoadSelf.cpp" />

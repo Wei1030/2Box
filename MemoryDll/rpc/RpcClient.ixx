@@ -8,7 +8,7 @@ import std;
 namespace rpc
 {
 	export constexpr unsigned int MAX_PID_COUNT = MAX_PIDS;
-	
+
 	class ClientBindingString
 	{
 	public:
@@ -139,18 +139,18 @@ namespace rpc
 		return defaultBindingInfo;
 	}
 
-	template <typename Func, typename... Args>
-	decltype(auto) rpc_call_wrapper(Func&& func, Args&&... args)
-	{
-		__try
-		{
-			return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
-		}
-		__except (EXCEPTION_EXECUTE_HANDLER)
-		{
-			TerminateProcess(GetCurrentProcess(), RpcExceptionCode());
-		}
-	}
+	// template <typename Func, typename... Args>
+	// decltype(auto) rpc_call_wrapper(Func&& func, Args&&... args)
+	// {
+	// 	__try
+	// 	{
+	// 		return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
+	// 	}
+	// 	__except (EXCEPTION_EXECUTE_HANDLER)
+	// 	{
+	// 		TerminateProcess(GetCurrentProcess(), RpcExceptionCode());
+	// 	}
+	// }
 
 	export
 	template <typename DerivedT>
@@ -164,12 +164,12 @@ namespace rpc
 
 		decltype(auto) injectToProcess(unsigned int pid, unsigned long long envFlag) const
 		{
-			return rpc_call_wrapper(&inject_to_process, handle(), pid, envFlag);
+			return inject_to_process(handle(), pid, envFlag);
 		}
 
-		decltype(auto) getAllProcessIdInEnv(unsigned long long envFlag, unsigned long long pids[], unsigned int *count) const
+		decltype(auto) getAllProcessIdInEnv(unsigned long long envFlag, unsigned long long pids[], unsigned int* count) const
 		{
-			return rpc_call_wrapper(&get_all_process_id_in_env, handle(), envFlag, pids, count);
+			return get_all_process_id_in_env(handle(), envFlag, pids, count);
 		}
 	};
 

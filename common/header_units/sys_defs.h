@@ -10,6 +10,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <winternl.h>
+#include <WinIoCtl.h>
 #include <VersionHelpers.h>
 #include <tlhelp32.h>
 #include <winhttp.h>
