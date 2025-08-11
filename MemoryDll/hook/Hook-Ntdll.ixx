@@ -270,7 +270,7 @@ namespace hook
 	{
 		constexpr auto NTDLL_LIB_NAME = utils::make_literal_name<L"ntdll.dll">();
 		sys_info::SysDllMapHelper ntdllMapped = sys_info::get_ntdll_mapped();
-		void* ntdllMappedAddress;
+		void* ntdllMappedAddress = ntdllMapped.memAddress();
 
 #define CREATE_HOOK_BY_NAME(name) \
 		create_hook_by_func_type<NTDLL_LIB_NAME, utils::make_literal_name<#name>(), decltype(name<nullptr>)>().setHookFromGetter([&](auto trampolineConst) \

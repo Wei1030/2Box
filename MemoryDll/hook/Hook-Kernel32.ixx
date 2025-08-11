@@ -380,7 +380,7 @@ namespace hook
 	{
 		constexpr auto KERNEL32_LIB_NAME = utils::make_literal_name<L"kernel32.dll">();
 		sys_info::SysDllMapHelper kernel32Mapped = sys_info::get_kernel32_mapped();
-		void* kernel32MappedAddress;
+		void* kernel32MappedAddress = kernel32Mapped.memAddress();
 
 #define CREATE_HOOK_BY_NAME(name) \
 	create_hook_by_func_type<KERNEL32_LIB_NAME, utils::make_literal_name<#name>(), decltype(name<nullptr>)>().setHookFromGetter([&](auto trampolineConst) \
@@ -390,9 +390,9 @@ namespace hook
 
 		CREATE_HOOK_BY_NAME(WaitNamedPipeA);
 		CREATE_HOOK_BY_NAME(WaitNamedPipeW);
-		CREATE_HOOK_BY_NAME(CreateProcessA);
-		CREATE_HOOK_BY_NAME(CreateProcessW);
+ 		CREATE_HOOK_BY_NAME(CreateProcessA);
+ 		CREATE_HOOK_BY_NAME(CreateProcessW);
 		CREATE_HOOK_BY_NAME(WinExec);
-		CREATE_HOOK_BY_NAME(DeviceIoControl);
+ 		CREATE_HOOK_BY_NAME(DeviceIoControl);
 	}
 }
