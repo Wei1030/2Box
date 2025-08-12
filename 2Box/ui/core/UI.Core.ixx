@@ -351,7 +351,7 @@ namespace ui
 		void requestCreateDeviceResources();
 
 	protected:
-		virtual void onResize(std::uint32_t width, std::uint32_t height)
+		virtual void onResize(float width, float height)
 		{
 		}
 

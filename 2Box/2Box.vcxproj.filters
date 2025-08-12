@@ -117,6 +117,18 @@
     <ClCompile Include="biz\rpc\RpcServer.cpp">
       <Filter>src\biz\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\embed_dll.rc">

@@ -31,6 +31,14 @@ namespace ui
 		currentRenderer()->draw(renderCtx);
 	}
 
+	void MainWindow::onResize(float width, float height)
+	{
+		if (isPage<HomePage>())
+		{
+			getPage<HomePage>().onResize(width, height);
+		}
+	}
+
 	bool MainWindow::onClose()
 	{
 		if (isPage<DownloadPage>())

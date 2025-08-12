@@ -35,22 +35,22 @@ namespace ui
 		virtual void onDiscardDeviceResources() override
 		{
 			m_pLinearGradientBrush.reset();
-			m_pGradientStops.reset();
 		}
 
 	private:
 		virtual HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget) override
 		{
-			D2D1_GRADIENT_STOP gradientStops[2] = {
+			D2D1_GRADIENT_STOP stops[2] = {
 				{0.0f, D2D1::ColorF(0x4A9DF8)},
 				{1.0f, D2D1::ColorF(0x6AC0FF)}
 			};
+			UniqueComPtr<ID2D1GradientStopCollection> gradientStops;
 			HResult hr = renderTarget->CreateGradientStopCollection(
-				gradientStops,
+				stops,
 				2,
 				D2D1_GAMMA_2_2,
 				D2D1_EXTEND_MODE_CLAMP,
-				&m_pGradientStops);
+				&gradientStops);
 			if (FAILED(hr))
 			{
 				return hr;
@@ -58,7 +58,7 @@ namespace ui
 
 			hr = renderTarget->CreateLinearGradientBrush(
 				D2D1::LinearGradientBrushProperties(D2D1::Point2F(0, 0), D2D1::Point2F(0, 0)),
-				m_pGradientStops,
+				gradientStops,
 				&m_pLinearGradientBrush);
 			if (FAILED(hr))
 			{
@@ -91,7 +91,6 @@ namespace ui
 		coro::LazyTask<void> updateShimmerPosition();
 
 	private:
-		UniqueComPtr<ID2D1GradientStopCollection> m_pGradientStops;
 		UniqueComPtr<ID2D1LinearGradientBrush> m_pLinearGradientBrush;
 		std::stop_source m_animStopSource{std::nostopstate};
 		coro::SharedTask<void> m_animTask{coro::SharedTask<void>::reject("anim not start")};

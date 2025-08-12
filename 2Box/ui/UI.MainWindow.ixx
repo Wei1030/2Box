@@ -19,6 +19,7 @@ namespace ui
 		virtual void draw(const RenderContext& renderCtx) override;
 
 	protected:
+		virtual void onResize(float width, float height) override;
 		virtual bool onClose() override;
 
 	private:

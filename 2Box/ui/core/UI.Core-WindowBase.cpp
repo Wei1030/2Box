@@ -242,7 +242,7 @@ namespace ui
 			// the next time EndDraw is called.
 			m_renderCtx.renderTarget->Resize(D2D1::SizeU(width, height));
 		}
-		onResize(width, height);
+		onResize(static_cast<float>(width), static_cast<float>(height));
 	}
 
 	void WindowBase::mouseMove(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState)
