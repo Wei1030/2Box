@@ -83,6 +83,8 @@ namespace ui
 			m_boundsInOwner = mapToOwner(D2D1::RectF(0, 0, m_bounds.right - m_bounds.left, m_bounds.bottom - m_bounds.top));
 		}
 
+		const D2D1_RECT_F& getBounds() const noexcept { return m_bounds; }
+
 		D2D1_SIZE_F size() const
 		{
 			return D2D1::SizeF(m_bounds.right - m_bounds.left, m_bounds.bottom - m_bounds.top);
@@ -114,26 +116,6 @@ namespace ui
 		void updateWholeWnd() const;
 
 	public:
-		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
-		{
-			HResult hr;
-			do
-			{
-				hr = createDeviceResourcesImpl(renderTarget);
-				if (FAILED(hr))
-				{
-					break;
-				}
-			}
-			while (false);
-
-			if (FAILED(hr))
-			{
-				onDiscardDeviceResources();
-			}
-			return hr;
-		}
-
 		virtual void draw(const RenderContext& renderCtx) override
 		{
 			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
@@ -181,11 +163,6 @@ namespace ui
 		}
 
 	private:
-		virtual HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget)
-		{
-			return S_OK;
-		}
-
 		virtual void drawImpl(const RenderContext& renderCtx)
 		{
 		}
@@ -200,9 +177,9 @@ namespace ui
 	class ControlManager
 	{
 	public:
-		ControlManager() noexcept
+		void reserveControls(std::size_t numControls)
 		{
-			m_controls.reserve(20);
+			m_controls.reserve(numControls);
 		}
 
 		void addControl(ControlBase* control)
@@ -229,6 +206,8 @@ namespace ui
 				}
 			}
 		}
+
+		std::vector<ControlBase*>& getControls() { return m_controls; }
 
 		void onMouseMove(const MouseEvent& e)
 		{
@@ -344,11 +323,14 @@ namespace ui
 		void invalidateRect();
 		D2D_RECT_F rectNeedUpdate() const;
 
-		ControlManager& controlManager() { return m_controlManager; }
+		void reserveRenderers(std::size_t numExcludeControls, std::size_t numControls);
+		void addRenderer(RendererInterface* renderer);
+		void addControl(ControlBase* control);
+		void removeControl(const ControlBase* control);
+		void removeRenderer(const RendererInterface* renderer);
 
 	protected:
 		const RenderContext& renderContext() const { return m_renderCtx; }
-		void requestCreateDeviceResources();
 
 	protected:
 		virtual void onResize(float width, float height)
@@ -386,6 +368,8 @@ namespace ui
 		bool m_bIsExitAppWhenWindowDestroyed{false};
 		DpiInfo m_dpiInfo{};
 		RenderContext m_renderCtx{};
+		std::vector<RendererInterface*> m_renderersExcludeControls;
+		std::vector<RendererInterface*> m_pendingNoDeviceResources;
 		ControlManager m_controlManager{};
 	};
 
@@ -397,7 +381,7 @@ namespace ui
 		{
 			std::unreachable();
 		}
-		m_ownerWnd->controlManager().addControl(this);
+		m_ownerWnd->addControl(this);
 	}
 
 	ControlBase::ControlBase(ControlBase* parent) noexcept
@@ -413,12 +397,12 @@ namespace ui
 		{
 			std::unreachable();
 		}
-		m_ownerWnd->controlManager().addControl(this);
+		m_ownerWnd->addControl(this);
 	}
 
 	ControlBase::~ControlBase()
 	{
-		m_ownerWnd->controlManager().removeControl(this);
+		m_ownerWnd->removeControl(this);
 	}
 
 	void ControlBase::update() const
@@ -429,5 +413,44 @@ namespace ui
 	void ControlBase::updateWholeWnd() const
 	{
 		m_ownerWnd->invalidateRect();
+	}
+
+	export struct DrawBoxShadowParams
+	{
+		D2D1_POINT_2F offset{};
+		float size = 3.f;
+		int layers = 3;
+		D2D1_COLOR_F color = D2D1::ColorF{0x000000, 0.05f};
+		float radius = 0.0f;
+	};
+
+	export void draw_box_shadow(const RenderContext& renderCtx, const D2D1_RECT_F& rect, const DrawBoxShadowParams& params)
+	{
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
+
+		const float maxAlpha = params.color.a;
+		D2D1_COLOR_F shadowColor = params.color;
+		const D2D1_POINT_2F& offset = params.offset;
+		for (int i = 0; i < params.layers; ++i)
+		{
+			const float sizeOffset = params.size * (params.layers - i) / params.layers;
+			D2D1_RECT_F shadowRect = {
+				rect.left + offset.x - sizeOffset,
+				rect.top + offset.y - sizeOffset,
+				rect.right + offset.x + sizeOffset,
+				rect.bottom + offset.y + sizeOffset
+			};
+			shadowColor.a = maxAlpha * (i + 1) / params.layers;
+			solidBrush->SetColor(shadowColor);
+			if (params.radius > 0.f)
+			{
+				renderTarget->FillRoundedRectangle(D2D1::RoundedRect(shadowRect, params.radius, params.radius), solidBrush);
+			}
+			else
+			{
+				renderTarget->FillRectangle(shadowRect, solidBrush);
+			}
+		}
 	}
 }

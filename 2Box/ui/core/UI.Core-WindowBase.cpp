@@ -129,15 +129,47 @@ namespace ui
 		return D2D1::RectF(rc.left * physicalToDevice, rc.top * physicalToDevice, rc.right * physicalToDevice, rc.bottom * physicalToDevice);
 	}
 
-	void WindowBase::requestCreateDeviceResources()
+	void WindowBase::reserveRenderers(std::size_t numExcludeControls, std::size_t numControls)
 	{
-		if (m_renderCtx.renderTarget)
+		m_renderersExcludeControls.reserve(numExcludeControls);
+		m_controlManager.reserveControls(numControls);
+		m_pendingNoDeviceResources.reserve(numExcludeControls + numControls);
+	}
+
+	void WindowBase::addRenderer(RendererInterface* renderer)
+	{
+		m_renderersExcludeControls.push_back(renderer);
+		m_pendingNoDeviceResources.push_back(renderer);
+	}
+
+	void WindowBase::addControl(ControlBase* control)
+	{
+		m_controlManager.addControl(control);
+		m_pendingNoDeviceResources.push_back(control);
+	}
+
+	static void remove_renderer_from_array(std::vector<RendererInterface*>& rendererArray, const RendererInterface* renderer)
+	{
+		for (auto it = rendererArray.begin(); it != rendererArray.end(); ++it)
 		{
-			if (FAILED(onCreateDeviceResources(m_renderCtx.renderTarget)))
+			if (*it == renderer)
 			{
-				releaseDeviceResources();
+				rendererArray.erase(it);
+				break;
 			}
 		}
+	}
+
+	void WindowBase::removeControl(const ControlBase* control)
+	{
+		m_controlManager.removeControl(control);
+		remove_renderer_from_array(m_pendingNoDeviceResources, control);
+	}
+
+	void WindowBase::removeRenderer(const RendererInterface* renderer)
+	{
+		remove_renderer_from_array(m_renderersExcludeControls, renderer);
+		remove_renderer_from_array(m_pendingNoDeviceResources, renderer);
 	}
 
 	HResult WindowBase::onRender()
@@ -160,9 +192,26 @@ namespace ui
 
 	HResult WindowBase::prepareDeviceResources()
 	{
+		auto prepareDeviceResourcesForPending = [this]() -> HResult
+		{
+			if (!m_pendingNoDeviceResources.empty())
+			{
+				for (auto it = m_pendingNoDeviceResources.begin(); it != m_pendingNoDeviceResources.end(); ++it)
+				{
+					if (const HResult hr = (*it)->onCreateDeviceResources(m_renderCtx.renderTarget); FAILED(hr))
+					{
+						m_pendingNoDeviceResources.clear();
+						return hr;
+					}
+				}
+				m_pendingNoDeviceResources.clear();
+			}
+			return S_OK;
+		};
+
 		if (m_renderCtx.renderTarget)
 		{
-			return S_OK;
+			return prepareDeviceResourcesForPending();
 		}
 		if (!m_hWnd)
 		{
@@ -190,11 +239,30 @@ namespace ui
 		{
 			return hr;
 		}
-		return onCreateDeviceResources(m_renderCtx.renderTarget);
+		hr = onCreateDeviceResources(m_renderCtx.renderTarget);
+		if (FAILED(hr))
+		{
+			return hr;
+		}
+		return prepareDeviceResourcesForPending();
 	}
 
 	void WindowBase::releaseDeviceResources()
 	{
+		m_pendingNoDeviceResources.clear();
+
+		std::vector<ControlBase*>& controls = m_controlManager.getControls();
+		for (auto it = controls.begin(); it != controls.end(); ++it)
+		{
+			(*it)->onDiscardDeviceResources();
+			m_pendingNoDeviceResources.push_back(*it);
+		}
+		for (auto it = m_renderersExcludeControls.begin(); it != m_renderersExcludeControls.end(); ++it)
+		{
+			(*it)->onDiscardDeviceResources();
+			m_pendingNoDeviceResources.push_back(*it);
+		}
+
 		m_renderCtx.renderTarget.reset();
 		m_renderCtx.brush.reset();
 		onDiscardDeviceResources();

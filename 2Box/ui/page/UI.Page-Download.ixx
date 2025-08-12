@@ -36,31 +36,15 @@ namespace ui
 		explicit DownloadPage(WindowBase* owner)
 		{
 			m_ownerWnd = owner;
+			m_ownerWnd->addRenderer(this);
 
 			initTextLayout();
 			initFileStatusCtrl();
 		}
 
-		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
+		virtual ~DownloadPage()
 		{
-			HResult hr = m_p32FileStatusCtrl->onCreateDeviceResources(renderTarget);
-			if constexpr (IS_CURRENT_ARCH_64_BIT)
-			{
-				if (SUCCEEDED(hr))
-				{
-					hr = m_p64FileStatusCtrl->onCreateDeviceResources(renderTarget);
-				}
-			}
-			return hr;
-		}
-
-		virtual void onDiscardDeviceResources() override
-		{
-			m_p32FileStatusCtrl->onDiscardDeviceResources();
-			if constexpr (IS_CURRENT_ARCH_64_BIT)
-			{
-				m_p64FileStatusCtrl->onDiscardDeviceResources();
-			}
+			m_ownerWnd->removeRenderer(this);
 		}
 
 		virtual void draw(const RenderContext& renderCtx) override

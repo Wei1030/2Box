@@ -13,6 +13,7 @@ namespace ui
 	{
 		setExitAppWhenWindowDestroyed(true);
 		initWindowPosition();
+		reserveRenderers(2, 20);
 		initSymbols().detachAndStart();
 	}
 

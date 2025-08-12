@@ -51,6 +51,8 @@ namespace ui
 
 		explicit HomePage(WindowBase* owner) : m_ownerWnd(owner)
 		{
+			owner->addRenderer(this);
+
 			m_leftSidebar = std::make_unique<LeftSidebar>(owner);
 			m_rightContent = std::make_unique<RightContent>(owner);
 
@@ -59,58 +61,27 @@ namespace ui
 			m_rightContent->setBounds(D2D1::RectF(sidebarWidth, 0, ownerRc.right, ownerRc.bottom));
 		}
 
+		virtual ~HomePage()
+		{
+			m_ownerWnd->removeRenderer(this);
+		}
+
 		void onResize(float width, float height) const
 		{
 			m_leftSidebar->setBounds(D2D1::RectF(0.f, 0.f, sidebarWidth, height));
 			m_rightContent->setBounds(D2D1::RectF(sidebarWidth, 0, width, height));
 		}
 
-		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
-		{
-			const D2D1_GRADIENT_STOP stops[2] = {
-				{0.0f, D2D1::ColorF(0x000000, 0.05f)},
-				{1.0f, D2D1::ColorF(0x000000, 0.f)}
-			};
-			UniqueComPtr<ID2D1GradientStopCollection> gradientStops;
-			HResult hr = renderTarget->CreateGradientStopCollection(
-				stops,
-				2,
-				D2D1_GAMMA_2_2,
-				D2D1_EXTEND_MODE_CLAMP,
-				&gradientStops);
-			if (FAILED(hr))
-			{
-				return hr;
-			}
-
-			hr = renderTarget->CreateLinearGradientBrush(
-				D2D1::LinearGradientBrushProperties(D2D1::Point2F(sidebarWidth, 0), D2D1::Point2F(sidebarWidth + sidebarShadowBlur, 0)),
-				gradientStops,
-				&m_pLinearGradientBrush);
-			if (FAILED(hr))
-			{
-				return hr;
-			}
-			return hr;
-		}
-
-		virtual void onDiscardDeviceResources() override
-		{
-			m_pLinearGradientBrush.reset();
-		}
-
 		virtual void draw(const RenderContext& renderCtx) override
 		{
 			m_rightContent->draw(renderCtx);
+			
+			draw_box_shadow(renderCtx, m_leftSidebar->getBounds(), {.offset = D2D1::Point2F(0.f, 1.f)});
 			m_leftSidebar->draw(renderCtx);
-
-			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
-			renderTarget->FillRectangle(D2D1::RectF(sidebarWidth, 0.f, sidebarWidth + sidebarShadowBlur, m_leftSidebar->size().height), m_pLinearGradientBrush);
 		}
 
 	private:
 		WindowBase* m_ownerWnd{nullptr};
-		UniqueComPtr<ID2D1LinearGradientBrush> m_pLinearGradientBrush;
 		std::unique_ptr<LeftSidebar> m_leftSidebar;
 		std::unique_ptr<RightContent> m_rightContent;
 	};

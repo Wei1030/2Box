@@ -129,6 +129,12 @@
     <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.cpp">
       <Filter>src\ui\control\biz_ctrl</Filter>
     </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\embed_dll.rc">

@@ -32,13 +32,7 @@ namespace ui
 		}
 
 	public:
-		virtual void onDiscardDeviceResources() override
-		{
-			m_pLinearGradientBrush.reset();
-		}
-
-	private:
-		virtual HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget) override
+		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override
 		{
 			D2D1_GRADIENT_STOP stops[2] = {
 				{0.0f, D2D1::ColorF(0x4A9DF8)},
@@ -67,6 +61,12 @@ namespace ui
 			return hr;
 		}
 
+		virtual void onDiscardDeviceResources() override
+		{
+			m_pLinearGradientBrush.reset();
+		}
+
+	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override
 		{
 			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;

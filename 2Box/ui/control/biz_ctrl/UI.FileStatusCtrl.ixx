@@ -195,22 +195,11 @@ namespace ui
 			}
 		}
 
-	public:
-		virtual void onDiscardDeviceResources() override
-		{
-			m_pLoadingIndicator->onDiscardDeviceResources();
-		}
-
 	private:
 		void initialize();
 
 		template <typename PainterEnumType, PainterEnumType>
 		friend class fsc_detail::TPainterType;
-
-		virtual HResult createDeviceResourcesImpl(ID2D1HwndRenderTarget* renderTarget) override
-		{
-			return m_pLoadingIndicator->onCreateDeviceResources(renderTarget);
-		}
 
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 		void drawBaseContent(const RenderContext& renderCtx) const;

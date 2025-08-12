@@ -31,7 +31,6 @@ namespace ui
 		void changePageTo()
 		{
 			m_pages = std::make_unique<PageType>(this);
-			requestCreateDeviceResources();
 			invalidateRect();
 		}
 

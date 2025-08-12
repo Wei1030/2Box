@@ -46,6 +46,8 @@
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.ixx" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.cpp" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.ixx" />
     <ClCompile Include="ui\control\UI.Button.cpp" />
     <ClCompile Include="ui\control\UI.Button.ixx" />
     <ClCompile Include="ui\control\UI.LoadingIndicator.cpp" />
