@@ -22,6 +22,14 @@ namespace ui
 		currentRenderer()->draw(renderCtx);
 	}
 
+	void MainWindow::onResize(float width, float height)
+	{
+		if (!std::holds_alternative<std::monostate>(m_pages))
+		{
+			currentRenderer()->onResize(width, height);
+		}
+	}
+
 	bool MainWindow::onClose()
 	{
 		if (isPage<DownloadPage>())
