@@ -17,27 +17,9 @@ namespace ui
 		initSymbols().detachAndStart();
 	}
 
-	HResult MainWindow::onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget)
-	{
-		return currentRenderer()->onCreateDeviceResources(renderTarget);
-	}
-
-	void MainWindow::onDiscardDeviceResources()
-	{
-		currentRenderer()->onDiscardDeviceResources();
-	}
-
 	void MainWindow::draw(const RenderContext& renderCtx)
 	{
 		currentRenderer()->draw(renderCtx);
-	}
-
-	void MainWindow::onResize(float width, float height)
-	{
-		if (isPage<HomePage>())
-		{
-			getPage<HomePage>().onResize(width, height);
-		}
 	}
 
 	bool MainWindow::onClose()

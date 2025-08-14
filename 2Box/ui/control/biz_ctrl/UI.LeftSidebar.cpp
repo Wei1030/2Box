@@ -16,7 +16,7 @@ namespace ui
 	void LeftSidebar::initialize()
 	{
 		m_startAppDiv = std::make_unique<StartAppDiv>(this);
-		m_startAppDiv->setBounds(D2D1::RectF(PADDING, PADDING, PADDING + 232.f, 226.f));
+		m_startAppDiv->setBounds(D2D1::RectF(PADDING, PADDING, PADDING + 232.f, PADDING + 36.f));
 	}
 
 	void LeftSidebar::drawImpl(const RenderContext& renderCtx)
@@ -31,7 +31,6 @@ namespace ui
 		solidBrush->SetColor(D2D1::ColorF(0xe0e0e0));
 		renderTarget->DrawLine(D2D1::Point2F(drawSize.width, 0.f), D2D1::Point2F(drawSize.width, drawSize.height), solidBrush);
 
-		draw_box_shadow(renderCtx, m_startAppDiv->getBounds(), {.offset = D2D1::Point2F(0.f, 1.f), .radius = 12.f});
 		m_startAppDiv->draw(renderCtx);
 	}
 }

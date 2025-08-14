@@ -311,6 +311,16 @@ namespace ui
 			m_renderCtx.renderTarget->Resize(D2D1::SizeU(width, height));
 		}
 		onResize(static_cast<float>(width), static_cast<float>(height));
+
+		// std::vector<ControlBase*>& controls = m_controlManager.getControls();
+		// for (auto it = controls.begin(); it != controls.end(); ++it)
+		// {
+		// 	(*it)->onResize(static_cast<float>(width), static_cast<float>(height));
+		// }
+		for (auto it = m_renderersExcludeControls.begin(); it != m_renderersExcludeControls.end(); ++it)
+		{
+			(*it)->onResize(static_cast<float>(width), static_cast<float>(height));
+		}
 	}
 
 	void WindowBase::mouseMove(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState)

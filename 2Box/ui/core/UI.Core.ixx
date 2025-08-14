@@ -59,6 +59,10 @@ namespace ui
 		{
 		}
 
+		virtual void onResize(float width, float height)
+		{
+		}
+
 		virtual void draw(const RenderContext& renderCtx)
 		{
 		}
@@ -71,6 +75,11 @@ namespace ui
 		explicit ControlBase(ControlBase* parent) noexcept;
 		virtual ~ControlBase();
 
+		ControlBase(const ControlBase&) = delete;
+		ControlBase& operator=(const ControlBase&) = delete;
+		ControlBase(ControlBase&& other) = delete;
+		ControlBase& operator=(ControlBase&& other) = delete;
+
 	public:
 		WindowBase* owner() const noexcept
 		{
@@ -80,7 +89,10 @@ namespace ui
 		void setBounds(const D2D1_RECT_F& newBounds)
 		{
 			m_bounds = newBounds;
-			m_boundsInOwner = mapToOwner(D2D1::RectF(0, 0, m_bounds.right - m_bounds.left, m_bounds.bottom - m_bounds.top));
+			const float width = m_bounds.right - m_bounds.left;
+			const float height = m_bounds.bottom - m_bounds.top;
+			m_boundsInOwner = mapToOwner(D2D1::RectF(0, 0, width, height));
+			onResize(width, height);
 		}
 
 		const D2D1_RECT_F& getBounds() const noexcept { return m_bounds; }
@@ -333,10 +345,6 @@ namespace ui
 		const RenderContext& renderContext() const { return m_renderCtx; }
 
 	protected:
-		virtual void onResize(float width, float height)
-		{
-		}
-
 		virtual HResult onRender();
 
 		// 返回true表示不要调用默认实现销毁窗口,而是自己处理

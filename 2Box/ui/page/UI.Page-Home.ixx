@@ -66,7 +66,7 @@ namespace ui
 			m_ownerWnd->removeRenderer(this);
 		}
 
-		void onResize(float width, float height) const
+		virtual void onResize(float width, float height) override
 		{
 			m_leftSidebar->setBounds(D2D1::RectF(0.f, 0.f, sidebarWidth, height));
 			m_rightContent->setBounds(D2D1::RectF(sidebarWidth, 0, width, height));
