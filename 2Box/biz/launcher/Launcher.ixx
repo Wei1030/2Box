@@ -11,8 +11,8 @@ namespace biz
 	public:
 		static Launcher& instance()
 		{
-			static Launcher instance;
-			return instance;
+			static Launcher sInstance;
+			return sInstance;
 		}
 
 	public:

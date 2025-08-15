@@ -289,7 +289,7 @@ export void show_error_message(std::wstring_view msg)
 {
 	app().get_scheduler().addTask([msg = std::wstring{msg}]
 	{
-		MessageBoxW(nullptr, msg.c_str(), app().appName.data(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
+		MessageBoxW(nullptr, msg.c_str(), MainApp::appName.data(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
 	});
 }
 

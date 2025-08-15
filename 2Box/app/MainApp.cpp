@@ -10,6 +10,7 @@ import "sys_defs.hpp";
 
 import UI.MainWindow;
 import EssentialData;
+import Env;
 
 namespace
 {
@@ -27,7 +28,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 		MainApp app{hInstance, lpCmdLine, nCmdShow};
 		g_app = &app;
 		
-		biz::get_essential_data();
+		biz::Reg::instance().initialize();
 #ifndef _WIN64
 #if 0
 		if (!biz::get_essential_data().version.is32BitSystem)

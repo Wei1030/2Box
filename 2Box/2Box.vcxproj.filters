@@ -46,6 +46,9 @@
     <Filter Include="src\biz\injector">
       <UniqueIdentifier>{50ff2df4-4d29-472c-b741-0b1d9a3eeda2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\biz\env">
+      <UniqueIdentifier>{88a1b02f-1a35-401b-99b7-d41eae0bb104}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -149,6 +152,12 @@
     </ClCompile>
     <ClCompile Include="biz\injector\Injector.ixx">
       <Filter>src\biz\injector</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env.cpp">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env.ixx">
+      <Filter>src\biz\env</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

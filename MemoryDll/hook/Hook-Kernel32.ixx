@@ -89,17 +89,27 @@ namespace hook
 			{
 				ResumeThread(lpProcessInformation->hThread);
 			}
+			if (lpProcessInformation == &backup)
+			{
+				CloseHandle(lpProcessInformation->hProcess);
+				CloseHandle(lpProcessInformation->hThread);
+			}
 		}
 		catch (...)
 		{
 			bRet = FALSE;
 			TerminateProcess(lpProcessInformation->hProcess, 0);
-		}
 
-		if (lpProcessInformation == &backup)
-		{
-			CloseHandle(lpProcessInformation->hProcess);
-			CloseHandle(lpProcessInformation->hThread);
+			if (lpProcessInformation)
+			{
+				CloseHandle(lpProcessInformation->hProcess);
+				CloseHandle(lpProcessInformation->hThread);
+
+				lpProcessInformation->hProcess = nullptr;
+				lpProcessInformation->hThread = nullptr;
+				lpProcessInformation->dwProcessId = 0;
+				lpProcessInformation->dwThreadId = 0;
+			}
 		}
 
 		return bRet;
@@ -138,17 +148,27 @@ namespace hook
 			{
 				ResumeThread(lpProcessInformation->hThread);
 			}
+			if (lpProcessInformation == &backup)
+			{
+				CloseHandle(lpProcessInformation->hProcess);
+				CloseHandle(lpProcessInformation->hThread);
+			}
 		}
 		catch (...)
 		{
 			bRet = FALSE;
 			TerminateProcess(lpProcessInformation->hProcess, 0);
-		}
 
-		if (lpProcessInformation == &backup)
-		{
-			CloseHandle(lpProcessInformation->hProcess);
-			CloseHandle(lpProcessInformation->hThread);
+			if (lpProcessInformation)
+			{
+				CloseHandle(lpProcessInformation->hProcess);
+				CloseHandle(lpProcessInformation->hThread);
+
+				lpProcessInformation->hProcess = nullptr;
+				lpProcessInformation->hThread = nullptr;
+				lpProcessInformation->dwProcessId = 0;
+				lpProcessInformation->dwThreadId = 0;
+			}
 		}
 		return bRet;
 	}
