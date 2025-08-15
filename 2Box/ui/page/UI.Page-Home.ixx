@@ -5,44 +5,9 @@ import std;
 import UI.Core;
 import UI.LeftSidebar;
 import UI.RightContent;
-// import UI.Button;
-// import PELoader;
-// import Injector;
-// import EssentialData;
 
 namespace ui
 {
-	// 	void testFunction()
-	// 	{
-	// 		PROCESS_INFORMATION ProcInfo = {nullptr};
-	// 		STARTUPINFO StartupInfo = {0};
-	// 		StartupInfo.cb = sizeof(StartupInfo);
-	// 		StartupInfo.dwFlags = STARTF_USESHOWWINDOW;
-	// 		StartupInfo.wShowWindow = SW_SHOW;
-	//
-	// #ifdef _WIN64
-	// 		std::wstring strCmd = L"03-Singleton.exe";
-	// #else
-	// 		std::wstring strCmd = L"test\\x86\\ConsoleApplication1.exe";
-	// #endif
-	// 		if (!CreateProcessW(nullptr, strCmd.data(), nullptr, nullptr, 0,
-	// 		                    CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, nullptr, nullptr, &StartupInfo, &ProcInfo))
-	// 		{
-	// 			return;
-	// 		}
-	// 		try
-	// 		{
-	// 			injector::inject_memory_dll_to_process(ProcInfo.dwProcessId, biz::get_random_number(), biz::get_injection_dlls(), biz::get_essential_data());
-	// 			ResumeThread(ProcInfo.hThread);
-	// 		}
-	// 		catch (...)
-	// 		{
-	// 			TerminateProcess(ProcInfo.hProcess, 0);
-	// 		}
-	// 		CloseHandle(ProcInfo.hThread);
-	// 		CloseHandle(ProcInfo.hProcess);
-	// 	}
-
 	export class HomePage final : public RendererInterface
 	{
 	public:

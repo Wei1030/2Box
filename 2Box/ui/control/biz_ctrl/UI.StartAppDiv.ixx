@@ -15,16 +15,22 @@ namespace ui
 		{
 			initialize();
 		}
+
 	private:
 		void initialize();
-		
+
 	protected:
 		virtual void onResize(float width, float height) override;
-	
+
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override;
+
+	private:
+		void onBtnStartPressed();
+
 	private:
 		UniqueComPtr<IDWriteTextLayout> m_pExePathTextLayout;
+		std::wstring m_strExePath;
 		float m_pathTextHeight{0};
 		std::unique_ptr<Button> m_btnStart;
 	};

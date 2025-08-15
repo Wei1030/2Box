@@ -526,21 +526,6 @@ namespace ui
 
 	namespace
 	{
-		std::wstring utf8_to_wide_string(std::string_view utf8)
-		{
-			const int len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), static_cast<int>(utf8.size()), nullptr, 0);
-			if (len == 0)
-			{
-				throw std::runtime_error{std::format("MultiByteToWideChar fail, error code: {}", GetLastError())};
-			}
-			std::wstring result(len, 0);
-			if (!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), static_cast<int>(utf8.size()), result.data(), len))
-			{
-				throw std::runtime_error{std::format("MultiByteToWideChar fail, error code: {}", GetLastError())};
-			}
-			return result;
-		}
-
 		void write_file_thread(std::wstring_view pdbFile, std::span<std::byte> bytes, const coro::GuaranteedResolver<void>& resolver)
 		{
 			try

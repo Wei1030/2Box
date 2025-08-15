@@ -40,6 +40,9 @@
     <Filter Include="src\biz\rpc">
       <UniqueIdentifier>{c9cee27b-da84-45a0-bda2-1843c12fb83f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\biz\launcher">
+      <UniqueIdentifier>{bb503e38-f837-4f75-a053-ffcc8427ced0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -134,6 +137,12 @@
     </ClCompile>
     <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.cpp">
       <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\launcher\Launcher.ixx">
+      <Filter>src\biz\launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\launcher\Launcher.cpp">
+      <Filter>src\biz\launcher</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

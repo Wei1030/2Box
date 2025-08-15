@@ -284,3 +284,31 @@ export MainApp& app() noexcept
 {
 	return *g_app;
 }
+
+export void show_error_message(std::wstring_view msg)
+{
+	app().get_scheduler().addTask([msg = std::wstring{msg}]
+	{
+		MessageBoxW(nullptr, msg.c_str(), app().appName.data(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
+	});
+}
+
+export std::wstring utf8_to_wide_string(std::string_view utf8)
+{
+	const int len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), static_cast<int>(utf8.size()), nullptr, 0);
+	if (len == 0)
+	{
+		throw std::runtime_error{std::format("MultiByteToWideChar fail, error code: {}", GetLastError())};
+	}
+	std::wstring result(len, 0);
+	if (!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), static_cast<int>(utf8.size()), result.data(), len))
+	{
+		throw std::runtime_error{std::format("MultiByteToWideChar fail, error code: {}", GetLastError())};
+	}
+	return result;
+}
+
+export void show_utf8_error_message(std::string_view msg)
+{
+	show_error_message(utf8_to_wide_string(msg));
+}
