@@ -12,8 +12,50 @@ import EssentialData;
 
 namespace biz
 {
-	EnvManager::EnvManager()
+	void EnvManager::initialize()
 	{
+		namespace fs = std::filesystem;
+		const fs::path envDir{fs::weakly_canonical(fs::path{get_essential_data().envDir})};
+		for (const auto& entry : fs::directory_iterator(envDir))
+		{
+			if (entry.is_regular_file())
+			{
+				const auto& path = entry.path();
+				if (path.extension().empty())
+				{
+					const auto& stem = path.stem();
+					if (!stem.empty())
+					{
+						std::unique_ptr<Env> env = std::make_unique<Env>();
+						env->setPath(path.native());
+						m_envMap.insert(std::make_pair(stem.native(), std::move(env)));
+					}
+				}
+			}
+		}
+
+		Reg::instance().initialize();
+		
+		for (auto it = m_envMap.begin(); it != m_envMap.end();)
+		{
+			Env* env = it->second.get();
+			if (env->isValid())
+			{
+				m_envs.insert(std::make_pair(env->getIndex(), env));
+				if (env->getIndex() > m_currentIndex)
+				{
+					m_currentIndex = env->getIndex();
+				}
+			}
+			else
+			{
+				std::error_code ec;
+				fs::remove(env->getPath(), ec);
+				it = m_envMap.erase(it);
+				continue;
+			}
+			++it;
+		}
 	}
 
 	void Reg::initialize()
@@ -72,6 +114,7 @@ namespace biz
 				{
 					env->setIndex(dwIndex);
 					env->setFlag(dwFlag);
+					env->setValid();
 					continue;
 				}
 			}

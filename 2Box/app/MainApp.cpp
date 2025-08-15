@@ -27,8 +27,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 	{
 		MainApp app{hInstance, lpCmdLine, nCmdShow};
 		g_app = &app;
-		
-		biz::Reg::instance().initialize();
+
+		biz::EnvManager::instance().initialize();
 #ifndef _WIN64
 #if 0
 		if (!biz::get_essential_data().version.is32BitSystem)
