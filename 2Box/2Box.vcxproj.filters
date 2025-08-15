@@ -43,6 +43,9 @@
     <Filter Include="src\biz\launcher">
       <UniqueIdentifier>{bb503e38-f837-4f75-a053-ffcc8427ced0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\biz\injector">
+      <UniqueIdentifier>{50ff2df4-4d29-472c-b741-0b1d9a3eeda2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -143,6 +146,9 @@
     </ClCompile>
     <ClCompile Include="biz\launcher\Launcher.cpp">
       <Filter>src\biz\launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\injector\Injector.ixx">
+      <Filter>src\biz\injector</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

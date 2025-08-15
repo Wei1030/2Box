@@ -22,6 +22,8 @@ namespace biz
 	{
 		try
 		{
+			co_await sched::transfer_to(m_execCtx);
+			
 			PROCESS_INFORMATION procInfo = {nullptr};
 			STARTUPINFOW startupInfo = {sizeof(startupInfo)};
 			startupInfo.dwFlags = STARTF_USESHOWWINDOW;
@@ -34,7 +36,7 @@ namespace biz
 			}
 			try
 			{
-				injector::inject_memory_dll_to_process(procInfo.dwProcessId, get_random_number(), get_injection_dlls(), get_essential_data());
+				inject_memory_dll_to_process(procInfo.dwProcessId, get_random_number(), get_injection_dlls(), get_essential_data());
 				ResumeThread(procInfo.hThread);
 				CloseHandle(procInfo.hThread);
 				CloseHandle(procInfo.hProcess);

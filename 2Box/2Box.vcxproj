@@ -38,6 +38,7 @@
     <ClCompile Include="app\MainApp.ixx" />
     <ClCompile Include="biz\essential_data\EssentialData.ixx" />
     <ClCompile Include="biz\http\WinHttp.ixx" />
+    <ClCompile Include="biz\injector\Injector.ixx" />
     <ClCompile Include="biz\launcher\Launcher.cpp" />
     <ClCompile Include="biz\launcher\Launcher.ixx" />
     <ClCompile Include="biz\rpc\RpcServer.cpp" />

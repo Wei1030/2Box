@@ -22,9 +22,6 @@
     <Filter Include="pe_loader">
       <UniqueIdentifier>{d9d94734-7b34-47f9-a211-c5080f712bc0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="injector">
-      <UniqueIdentifier>{2f50226e-9caf-4436-8552-9b6451055fa3}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="header_units\sys_defs.h">
@@ -116,9 +113,6 @@
     </ClCompile>
     <ClCompile Include="pe_loader\PELoader-SystemInfo.ixx">
       <Filter>pe_loader</Filter>
-    </ClCompile>
-    <ClCompile Include="injector\Injector.ixx">
-      <Filter>injector</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

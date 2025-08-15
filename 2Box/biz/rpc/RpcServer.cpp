@@ -52,7 +52,7 @@ void inject_to_process(handle_t IDL_handle, unsigned int pid, unsigned long long
 {
 	try
 	{
-		injector::inject_memory_dll_to_process(pid, envFlag, biz::get_injection_dlls(), biz::get_essential_data());
+		biz::inject_memory_dll_to_process(pid, envFlag, biz::get_injection_dlls(), biz::get_essential_data());
 	}
 	catch (...)
 	{

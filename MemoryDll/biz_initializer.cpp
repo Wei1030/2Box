@@ -11,9 +11,9 @@ void initialize_rpc()
 	rpc::get_default_binding_info();
 }
 
-void initialize_global_data(unsigned long long envFlag)
+void initialize_global_data(unsigned long long envFlag, std::wstring_view envDir)
 {
-	global::Data::get().initialize(envFlag);
+	global::Data::get().initialize(envFlag, envDir);
 }
 
 void initialize_hook()
@@ -21,13 +21,13 @@ void initialize_hook()
 	hook::hook_all();
 }
 
-void biz_initialize(unsigned long long envFlag)
+void biz_initialize(unsigned long long envFlag, const wchar_t* envDir, DWORD envDirCount)
 {
 	try
 	{
 		initialize_rpc();
-		initialize_global_data(envFlag);
-		initialize_hook();		
+		initialize_global_data(envFlag, std::wstring_view{envDir, envDirCount});
+		initialize_hook();
 	}
 	catch (...)
 	{

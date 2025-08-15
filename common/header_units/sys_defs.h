@@ -163,12 +163,17 @@ struct DllInjectionInfo
 	ULONGLONG desiredImageBase;
 };
 
+#pragma warning(push)
+#pragma warning(disable: 4200)
 struct ReflectiveInjectParams
 {
 	EssentialData essentialData;
 	DllInjectionInfo injectionInfo;
 	ULONGLONG envFlag;
+	DWORD padding;
+	DWORD envDirCount;
+	wchar_t envDir[];
 };
-
+#pragma warning(pop)
 
 #endif

@@ -72,10 +72,13 @@ namespace ui
 		hr = fileOpen->Show(m_ownerWnd->nativeHandle());
 		if (FAILED(hr))
 		{
-			MessageBoxW(m_ownerWnd->nativeHandle(),
-			            std::format(L"显示文件选择对话框失败! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-			            MainApp::appName.data(),
-			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
+			if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+			{
+				MessageBoxW(m_ownerWnd->nativeHandle(),
+				            std::format(L"显示文件选择对话框失败! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
+				            MainApp::appName.data(),
+				            MB_OK | MB_ICONERROR | MB_TASKMODAL);
+			}
 			return;
 		}
 		UniqueComPtr<IShellItem> item;

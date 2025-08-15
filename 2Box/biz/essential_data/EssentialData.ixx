@@ -73,7 +73,7 @@ namespace biz
 
 	export
 	template <ArchBit BitType = CURRENT_ARCH_BIT>
-	injector::InjectionDllsT<BitType> get_injection_dlls()
+	InjectionDllsT<BitType> get_injection_dlls()
 	{
 		if constexpr (BitType == ArchBit::Bit64)
 		{
@@ -92,24 +92,26 @@ namespace biz
 		return dis(rng);
 	}
 
-	export EssentialData& get_essential_data()
+	export EssentialDataWrapper& get_essential_data()
 	{
-		struct EssentialDataWrapper
+		struct InitializeOnceHelper
 		{
-			EssentialDataWrapper()
+			InitializeOnceHelper()
 			{
-				detail::init_os_version(data.version);
-				detail::init_kernel32_info<ArchBit::Bit32>(data.kernelInfo32);
+				detail::init_os_version(wrapper.data.version);
+				detail::init_kernel32_info<ArchBit::Bit32>(wrapper.data.kernelInfo32);
 				if constexpr (IS_CURRENT_ARCH_64_BIT)
 				{
-					detail::init_kernel32_info<ArchBit::Bit64>(data.kernelInfo64);
+					detail::init_kernel32_info<ArchBit::Bit64>(wrapper.data.kernelInfo64);
 				}
+				namespace fs = std::filesystem;
+				wrapper.envDir = fs::path{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"})}.native();
 			}
 
-			EssentialData data;
+			EssentialDataWrapper wrapper;
 		};
-		static EssentialDataWrapper wrapper;
-		return wrapper.data;
+		static InitializeOnceHelper dataInitialized;
+		return dataInitialized.wrapper;
 	}
 
 	namespace detail
@@ -160,7 +162,7 @@ namespace biz
 		try
 		{
 			const symbols::Loader loader{symbols::default_symbols_path()};
-			EssentialData& data = get_essential_data();
+			EssentialData& data = get_essential_data().data;
 			const NtdllSymbolRvaInfo rvaInfo = detail::init_symbols(loader.loadNtdllSymbol<BitType>());
 			if constexpr (BitType == ArchBit::Bit32)
 			{
