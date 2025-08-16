@@ -14,15 +14,12 @@ namespace global
 		}
 
 	public:
-		void initialize(std::uint64_t envFlag, std::wstring_view envDir)
+		void initialize(std::uint64_t envFlag, std::wstring_view envPath)
 		{
 			m_envFlag = envFlag;
 			m_envFlagName = std::format(L"{:016X}", envFlag);
 			m_envFlagNameA = std::format("{:016X}", envFlag);
-
-			namespace fs = std::filesystem;
-			const fs::path envPath{fs::weakly_canonical(fs::path{envDir} / fs::path{m_envFlagName})};
-			m_envPath = envPath.native();
+			m_envPath = envPath;
 		}
 
 	public:

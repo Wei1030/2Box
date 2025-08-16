@@ -153,10 +153,25 @@
     <ClCompile Include="biz\injector\Injector.ixx">
       <Filter>src\biz\injector</Filter>
     </ClCompile>
-    <ClCompile Include="biz\env\Env.cpp">
+    <ClCompile Include="biz\env\Env.ixx">
       <Filter>src\biz\env</Filter>
     </ClCompile>
-    <ClCompile Include="biz\env\Env.ixx">
+    <ClCompile Include="biz\env\Env-Reg.ixx">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-Reg.cpp">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-Envrironment.ixx">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-Envrironment.cpp">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-EnvManager.ixx">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-EnvManager.cpp">
       <Filter>src\biz\env</Filter>
     </ClCompile>
   </ItemGroup>

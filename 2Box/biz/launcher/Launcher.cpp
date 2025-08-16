@@ -10,6 +10,7 @@ import MainApp;
 import PELoader;
 import Injector;
 import EssentialData;
+import Env;
 
 namespace biz
 {
@@ -23,6 +24,7 @@ namespace biz
 		try
 		{
 			co_await sched::transfer_to(m_execCtx);
+			std::shared_ptr<Env> env = EnvManager::instance().testFindFirstOrCreate();
 			
 			PROCESS_INFORMATION procInfo = {nullptr};
 			STARTUPINFOW startupInfo = {sizeof(startupInfo)};
@@ -36,7 +38,7 @@ namespace biz
 			}
 			try
 			{
-				inject_memory_dll_to_process(procInfo.dwProcessId, get_random_number(), get_injection_dlls(), get_essential_data());
+				inject_memory_dll_to_process(procInfo.dwProcessId, env.get(), get_injection_dlls(), get_essential_data());
 				ResumeThread(procInfo.hThread);
 				CloseHandle(procInfo.hThread);
 				CloseHandle(procInfo.hProcess);

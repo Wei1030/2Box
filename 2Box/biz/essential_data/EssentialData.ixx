@@ -85,33 +85,24 @@ namespace biz
 		}
 	}
 
-	export std::uint64_t get_random_number()
+	export EssentialData& get_essential_data()
 	{
-		thread_local std::mt19937_64 rng{std::random_device{}()};
-		std::uniform_int_distribution<std::uint64_t> dis;
-		return dis(rng);
-	}
-
-	export EssentialDataWrapper& get_essential_data()
-	{
-		struct InitializeOnceHelper
+		struct EssentialDataWrapper
 		{
-			InitializeOnceHelper()
+			EssentialDataWrapper()
 			{
-				detail::init_os_version(wrapper.data.version);
-				detail::init_kernel32_info<ArchBit::Bit32>(wrapper.data.kernelInfo32);
+				detail::init_os_version(data.version);
+				detail::init_kernel32_info<ArchBit::Bit32>(data.kernelInfo32);
 				if constexpr (IS_CURRENT_ARCH_64_BIT)
 				{
-					detail::init_kernel32_info<ArchBit::Bit64>(wrapper.data.kernelInfo64);
+					detail::init_kernel32_info<ArchBit::Bit64>(data.kernelInfo64);
 				}
-				namespace fs = std::filesystem;
-				wrapper.envDir = fs::path{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"})}.native();
 			}
 
-			EssentialDataWrapper wrapper;
+			EssentialData data;
 		};
-		static InitializeOnceHelper dataInitialized;
-		return dataInitialized.wrapper;
+		static EssentialDataWrapper wrapper;
+		return wrapper.data;
 	}
 
 	namespace detail
@@ -162,7 +153,7 @@ namespace biz
 		try
 		{
 			const symbols::Loader loader{symbols::default_symbols_path()};
-			EssentialData& data = get_essential_data().data;
+			EssentialData& data = get_essential_data();
 			const NtdllSymbolRvaInfo rvaInfo = detail::init_symbols(loader.loadNtdllSymbol<BitType>());
 			if constexpr (BitType == ArchBit::Bit32)
 			{

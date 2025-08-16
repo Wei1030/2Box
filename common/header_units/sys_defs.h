@@ -171,8 +171,8 @@ struct ReflectiveInjectParams
 	DllInjectionInfo injectionInfo;
 	ULONGLONG envFlag;
 	DWORD padding;
-	DWORD envDirCount;
-	wchar_t envDir[];
+	DWORD envPathCount;
+	wchar_t envPath[];
 };
 #pragma warning(pop)
 

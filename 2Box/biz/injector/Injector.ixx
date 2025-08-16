@@ -5,6 +5,7 @@ import std;
 import DynamicWin32Api;
 import PELoader;
 import Utility.Toolhelp;
+import Env;
 
 namespace biz
 {
@@ -222,13 +223,7 @@ namespace biz
 
 	export
 	using InjectionDlls = InjectionDllsT<CURRENT_ARCH_BIT>;
-
-	export struct EssentialDataWrapper
-	{
-		EssentialData data;
-		std::wstring envDir;
-	};
-
+	
 	namespace detail
 	{
 		template <ArchBit BitType = CURRENT_ARCH_BIT>
@@ -249,23 +244,24 @@ namespace biz
 		}
 	}
 
-	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, std::uint64_t envFlag, InjectionDlls dlls, const EssentialDataWrapper& dataWrapper)
+	export void inject_memory_dll_to_process(std::uint32_t dwProcessId, const Env* pEnv, InjectionDlls dlls, const EssentialData& data)
 	{
 		const detail::ProcessWrapper process{dwProcessId};
 
 		const pe::MemoryModule& memModule = detail::select_memory_module(process.is32Bit(), dlls);
 		const auto& memModuleParser = memModule.getParser();
+		std::wstring_view envPath = pEnv->getPath();
+		const std::uint32_t envPathCount = static_cast<std::uint32_t>(envPath.length());
+		const std::uint32_t envPathSize = envPathCount * sizeof(wchar_t);
+		const std::uint32_t paramsSize = sizeof(ReflectiveInjectParams) + envPathSize;
 		// 1.先将 dll文件+ ReflectiveInjectParams 整个拷贝到目标进程
-		const std::uint32_t envDirCount = static_cast<std::uint32_t>(dataWrapper.envDir.length());
-		const std::uint32_t envDirSize = envDirCount * sizeof(wchar_t);
-		const std::uint32_t paramsSize = sizeof(ReflectiveInjectParams) + envDirSize;
 		detail::VirtualMemWrapper fileMemory{process.allocMemory(memModule.getSizeOfImage() + paramsSize, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE)};
 		fileMemory.write(0, memModule.getBaseAddr(), memModule.getSizeOfImage());
 		fileMemory.flushInstructionCache();
 
 		// 2.开始准备ReflectiveInjectParams
 		ReflectiveInjectParams injectParams;
-		injectParams.envFlag = envFlag;
+		injectParams.envFlag = pEnv->getFlag();
 		// 先初始化injectionInfo
 		DllInjectionInfo& injectionCtx = injectParams.injectionInfo;
 
@@ -284,12 +280,12 @@ namespace biz
 			injectionCtx.rvaEntryPoint = opHeader.AddressOfEntryPoint;
 		});
 		// 然后初始化essentialData， 直接copy过去就行
-		memcpy(&injectParams.essentialData, &dataWrapper.data, sizeof(EssentialData));
-		injectParams.envDirCount = envDirCount;
+		memcpy(&injectParams.essentialData, &data, sizeof(EssentialData));
+		injectParams.envPathCount = envPathCount;
 		// 准备完ReflectiveInjectParams之后将其写入目标进程
 		fileMemory.write(memModule.getSizeOfImage(), &injectParams, sizeof(ReflectiveInjectParams));
-		// 将envDir写入目标进程
-		fileMemory.write(memModule.getSizeOfImage() + sizeof(ReflectiveInjectParams), dataWrapper.envDir.data(), envDirSize);
+		// 将envPath写入目标进程
+		fileMemory.write(memModule.getSizeOfImage() + sizeof(ReflectiveInjectParams), envPath.data(), envPathSize);
 		void* injectParamsInRemote = fileMemory.getPtr() + memModule.getSizeOfImage();
 
 		// 3.创建远程线程，这次将injectParams作为线程参数

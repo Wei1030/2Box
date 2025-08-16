@@ -36,7 +36,12 @@
   <ItemGroup>
     <ClCompile Include="app\MainApp.cpp" />
     <ClCompile Include="app\MainApp.ixx" />
-    <ClCompile Include="biz\env\Env.cpp" />
+    <ClCompile Include="biz\env\Env-EnvManager.cpp" />
+    <ClCompile Include="biz\env\Env-EnvManager.ixx" />
+    <ClCompile Include="biz\env\Env-Envrironment.cpp" />
+    <ClCompile Include="biz\env\Env-Envrironment.ixx" />
+    <ClCompile Include="biz\env\Env-Reg.cpp" />
+    <ClCompile Include="biz\env\Env-Reg.ixx" />
     <ClCompile Include="biz\env\Env.ixx" />
     <ClCompile Include="biz\essential_data\EssentialData.ixx" />
     <ClCompile Include="biz\http\WinHttp.ixx" />

@@ -31,7 +31,7 @@ extern "C" __declspec(dllexport) unsigned long __stdcall initialize(void* lpThre
 	}
 	pe::wipe_header_memory(thisModule);
 
-	biz_initialize(injectParams.envFlag, injectParams.envDir, injectParams.envDirCount);
+	biz_initialize(injectParams.envFlag, injectParams.envPath, injectParams.envPathCount);
 	return 0;
 }
 
