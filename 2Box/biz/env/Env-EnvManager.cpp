@@ -26,7 +26,7 @@ namespace
 		std::wstring flagName;
 	};
 
-	EnvFileInfo ensure_create_new_env_file()
+	EnvFileInfo ensure_create_new_env()
 	{
 		namespace fs = std::filesystem;
 		EnvFileInfo result;
@@ -43,28 +43,11 @@ namespace
 			{
 				continue;
 			}
-			// create env file (app key)
-			const biz::RegKey appKey{
-				[&]()-> HKEY
-				{
-					HKEY hAppKey;
-					if (LSTATUS status = RegLoadAppKeyW(envPath.native().c_str(), &hAppKey, KEY_ALL_ACCESS, 0, 0);
-						status != ERROR_SUCCESS)
-					{
-						throw std::runtime_error(std::format("ensure_env_file_prepared failed, RegLoadAppKeyW result status:{}", status));
-					}
-					return hAppKey;
-				}
-			};
+
 			result.flag = flag;
 			result.flagName = flagName;
 			result.path = envPath;
 			break;
-		}
-
-		if (!fs::exists(result.path))
-		{
-			throw std::runtime_error{"unknown error in ensure_create_new_env_file!"};
 		}
 		return result;
 	}
@@ -86,25 +69,12 @@ namespace biz
 	std::shared_ptr<Env> EnvManager::createEnv()
 	{
 		std::shared_ptr<Env> envResult;
-		auto [path, flag, flagName] = ensure_create_new_env_file();
-		try
-		{
-			const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
-			const std::wstring name = std::format(L"环境{}", index + 1);
-			envResult = std::make_shared<Env>(index, flag, flagName, name, path.native());
-			add_env_to_reg(flagName, envResult.get());
-			addEnv(envResult);
-		}
-		catch (...)
-		{
-			namespace fs = std::filesystem;
-			if (fs::exists(path))
-			{
-				fs::remove(path);
-			}
-			throw;
-		}
-
+		auto [path, flag, flagName] = ensure_create_new_env();
+		const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
+		const std::wstring name = std::format(L"环境{}", index + 1);
+		envResult = std::make_shared<Env>(index, flag, flagName, name, path.native());
+		add_env_to_reg(flagName, envResult.get());
+		addEnv(envResult);
 		return envResult;
 	}
 
