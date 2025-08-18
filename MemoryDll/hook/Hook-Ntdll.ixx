@@ -179,7 +179,7 @@ namespace hook
 				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
 				UNICODE_STRING newObjName;
 				newObjName.Buffer = strNewName.data();
-				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(strCmpName.length() * sizeof(wchar_t));
+				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(strNewName.length() * sizeof(wchar_t));
 				ObjectAttributes->ObjectName = &newObjName;
 				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
 				                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
@@ -292,6 +292,6 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtOpenJobObject);
 		CREATE_HOOK_BY_NAME(NtCreateNamedPipeFile);
 		CREATE_HOOK_BY_NAME(NtCreateFile);
-		CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
+		// CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
 	}
 }

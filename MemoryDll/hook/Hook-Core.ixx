@@ -143,7 +143,7 @@ namespace hook
 
 		static constexpr Trampoline trampoline = Trampoline{};
 
-		void setHook(FuncPtrType targetFunc)
+		Trampoline setHook(FuncPtrType targetFunc)
 		{
 			Trampoline::funcAddress = IdentifyType::getFuncPtr();
 			if (!Trampoline::funcAddress)
@@ -151,9 +151,10 @@ namespace hook
 				throw std::runtime_error{std::format("Failed to find function address for '{}'", IdentifyType::apiName)};
 			}
 			HookManager::instance().addHook(std::addressof(Trampoline::funcAddress), targetFunc);
+			return trampoline;
 		}
 
-		void setHookFromMappedFile(void* fileMappedAddress, FuncPtrType targetFunc)
+		Trampoline setHookFromMappedFile(void* fileMappedAddress, FuncPtrType targetFunc)
 		{
 			Trampoline::funcAddress = IdentifyType::getFuncPtrByFile(fileMappedAddress);
 			if (!Trampoline::funcAddress)
@@ -161,6 +162,7 @@ namespace hook
 				throw std::runtime_error{std::format("Failed to find function address for '{}'", IdentifyType::apiName)};
 			}
 			HookManager::instance().addHook(std::addressof(Trampoline::funcAddress), targetFunc);
+			return trampoline;
 		}
 
 		template <typename Getter>
@@ -168,7 +170,7 @@ namespace hook
 			{
 				{ getter(std::integral_constant<Trampoline, trampoline>{}) } -> std::same_as<HookInfo<FuncPtrType>>;
 			}
-		void setHookFromGetter(Getter infoGetter)
+		Trampoline setHookFromGetter(Getter infoGetter)
 		{
 			const HookInfo<FuncPtrType> info = infoGetter(std::integral_constant<Trampoline, trampoline>{});
 			if (info.sourceFileMappedAddress)
@@ -184,6 +186,7 @@ namespace hook
 				throw std::runtime_error{std::format("Failed to find function address for '{}'", IdentifyType::apiName)};
 			}
 			HookManager::instance().addHook(std::addressof(Trampoline::funcAddress), info.targetFunc);
+			return trampoline;
 		}
 	};
 
