@@ -71,22 +71,22 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <PublicIncludeDirectories>$(ProjectDir)header_units\;$(PublicIncludeDirectories)</PublicIncludeDirectories>
+    <PublicIncludeDirectories>$(ProjectDir)header_units\;$(SolutionDir)3rdparty\Detours\include;$(PublicIncludeDirectories)</PublicIncludeDirectories>
     <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)lib\$(Configuration)\$(PlatformTarget)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <PublicIncludeDirectories>$(ProjectDir)header_units\;$(PublicIncludeDirectories)</PublicIncludeDirectories>
+    <PublicIncludeDirectories>$(ProjectDir)header_units\;$(SolutionDir)3rdparty\Detours\include;$(PublicIncludeDirectories)</PublicIncludeDirectories>
     <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)lib\$(PlatformTarget)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <PublicIncludeDirectories>$(ProjectDir)header_units\;$(PublicIncludeDirectories)</PublicIncludeDirectories>
+    <PublicIncludeDirectories>$(ProjectDir)header_units\;$(SolutionDir)3rdparty\Detours\include;$(PublicIncludeDirectories)</PublicIncludeDirectories>
     <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)lib\$(Configuration)\$(PlatformTarget)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <PublicIncludeDirectories>$(ProjectDir)header_units\;$(PublicIncludeDirectories)</PublicIncludeDirectories>
+    <PublicIncludeDirectories>$(ProjectDir)header_units\;$(SolutionDir)3rdparty\Detours\include;$(PublicIncludeDirectories)</PublicIncludeDirectories>
     <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)lib\$(PlatformTarget)\</OutDir>
   </PropertyGroup>
@@ -100,7 +100,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <BuildStlModules>true</BuildStlModules>
-      <AdditionalIncludeDirectories>$(ProjectDir)header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)header_units\;$(SolutionDir)3rdparty\Detours\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -121,7 +121,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BuildStlModules>true</BuildStlModules>
-      <AdditionalIncludeDirectories>$(ProjectDir)header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)header_units\;$(SolutionDir)3rdparty\Detours\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -140,7 +140,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <BuildStlModules>true</BuildStlModules>
-      <AdditionalIncludeDirectories>$(ProjectDir)header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)header_units\;$(SolutionDir)3rdparty\Detours\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -161,7 +161,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BuildStlModules>true</BuildStlModules>
-      <AdditionalIncludeDirectories>$(ProjectDir)header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)header_units\;$(SolutionDir)3rdparty\Detours\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>

@@ -1,4 +1,6 @@
 // ReSharper disable CppInconsistentNaming
+// module;
+// #include <ntstatus.h>
 export module Hook:Ntdll;
 
 import "sys_defs.h";
@@ -7,6 +9,7 @@ import std;
 import GlobalData;
 import Utility.SystemInfo;
 import RpcClient;
+import DynamicWin32Api;
 
 namespace hook
 {
@@ -266,6 +269,197 @@ namespace hook
 		return ret;
 	}
 
+	//////////////////////////////////////////////////////////////////////////
+	//Reg key
+	typedef enum _KEY_INFORMATION_CLASS
+	{
+		KeyBasicInformation,
+		KeyNodeInformation,
+		KeyFullInformation,
+		KeyNameInformation,
+		KeyCachedInformation,
+		KeyFlagsInformation,
+		KeyVirtualizationInformation,
+		KeyHandleTagsInformation,
+		KeyTrustInformation,
+		KeyLayerInformation,
+		MaxKeyInfoClass
+	} KEY_INFORMATION_CLASS;
+
+	typedef enum _KEY_VALUE_INFORMATION_CLASS
+	{
+		KeyValueBasicInformation,
+		KeyValueFullInformation,
+		KeyValuePartialInformation,
+		KeyValueFullInformationAlign64,
+		KeyValuePartialInformationAlign64,
+		KeyValueLayerInformation,
+		MaxKeyValueInfoClass
+	} KEY_VALUE_INFORMATION_CLASS;
+
+	typedef struct _KEY_NAME_INFORMATION
+	{
+		ULONG NameLength;
+		WCHAR Name[1];
+	} KEY_NAME_INFORMATION, *PKEY_NAME_INFORMATION;
+
+	typedef struct _KEY_VALUE_PARTIAL_INFORMATION
+	{
+		ULONG TitleIndex;
+		ULONG Type;
+		ULONG DataLength;
+		UCHAR Data[1];
+	} KEY_VALUE_PARTIAL_INFORMATION, *PKEY_VALUE_PARTIAL_INFORMATION;
+
+	typedef struct _KEY_VALUE_FULL_INFORMATION
+	{
+		ULONG TitleIndex;
+		ULONG Type;
+		ULONG DataOffset;
+		ULONG DataLength;
+		ULONG NameLength;
+		WCHAR Name[1];
+	} KEY_VALUE_FULL_INFORMATION, *PKEY_VALUE_FULL_INFORMATION;
+
+	inline constexpr auto NTDLL_NAME = utils::make_literal_name<L"ntdll">();
+
+	inline win32_api::ApiProxy<NTDLL_NAME, utils::make_literal_name<"NtClose">(), NTSTATUS (NTAPI)(_In_ HANDLE Handle)> NtClose;
+	inline win32_api::ApiProxy<NTDLL_NAME, utils::make_literal_name<"NtQueryKey">(), NTSTATUS (NTAPI)(_In_ HANDLE KeyHandle,
+	                                                                                                  _In_ KEY_INFORMATION_CLASS KeyInformationClass,
+	                                                                                                  _Out_writes_bytes_opt_(Length) PVOID KeyInformation,
+	                                                                                                  _In_ ULONG Length,
+	                                                                                                  _Out_ PULONG ResultLength)> NtQueryKey;
+
+	std::vector<std::byte> GetKeyNameInformation(HANDLE KeyHandle)
+	{
+		std::vector<std::byte> buffer;
+		if (!KeyHandle)
+		{
+			return buffer;
+		}
+		ULONG size = 0;
+		NtQueryKey(KeyHandle, KeyNameInformation, nullptr, 0, &size);
+		if (size == 0)
+		{
+			return buffer;
+		}
+		buffer.resize(size);
+		if (!NT_SUCCESS(NtQueryKey(KeyHandle, KeyNameInformation, buffer.data(), size, &size)))
+		{
+			buffer.clear();
+			return buffer;
+		}
+		return buffer;
+	}
+
+	std::wstring GetKeyName(HANDLE KeyHandle)
+	{
+		std::wstring fullName;
+		std::vector<std::byte> buffer = GetKeyNameInformation(KeyHandle);
+		if (buffer.empty())
+		{
+			return fullName;
+		}
+		const KEY_NAME_INFORMATION* ni = reinterpret_cast<KEY_NAME_INFORMATION*>(buffer.data());
+		fullName = std::wstring_view{ni->Name, ni->NameLength / sizeof(wchar_t)};
+		return fullName;
+	}
+
+	std::wstring GetObjectName(POBJECT_ATTRIBUTES ObjectAttributes)
+	{
+		std::wstring fullName;
+		if (!ObjectAttributes)
+		{
+			return fullName;
+		}
+
+		std::vector<std::byte> buffer = GetKeyNameInformation(ObjectAttributes->RootDirectory);
+		if (buffer.empty())
+		{
+			return fullName;
+		}
+		const KEY_NAME_INFORMATION* ni = reinterpret_cast<KEY_NAME_INFORMATION*>(buffer.data());
+		std::wstring_view rootName = std::wstring_view{ni->Name, ni->NameLength / sizeof(wchar_t)};
+		std::wstring_view objName;
+		if (ObjectAttributes->ObjectName && ObjectAttributes->ObjectName->Buffer && ObjectAttributes->ObjectName->Length)
+		{
+			objName = std::wstring_view{ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t)};
+		}
+		if (rootName.empty() && objName.empty())
+		{
+			return fullName;
+		}
+		fullName = std::format(L"{}\\{}", rootName, objName);
+		return fullName;
+	}
+
+	// template <auto trampoline>
+	// NTSTATUS NTAPI NtCreateKey(_Out_ PHANDLE KeyHandle,
+	//                            _In_ ACCESS_MASK DesiredAccess,
+	//                            _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+	//                            _Reserved_ ULONG TitleIndex,
+	//                            _In_opt_ PUNICODE_STRING Class,
+	//                            _In_ ULONG CreateOptions,
+	//                            _Out_opt_ PULONG Disposition)
+	// {
+	// 	return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, TitleIndex, Class, CreateOptions, Disposition);
+	// }
+
+	// template <auto trampoline>
+	// NTSTATUS NTAPI NtCreateKeyTransacted(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+	//                                      _Reserved_ ULONG TitleIndex, _In_opt_ PUNICODE_STRING Class, _In_ ULONG CreateOptions,
+	//                                      _In_ HANDLE TransactionHandle, _Out_opt_ PULONG Disposition)
+	// {
+	// 	const std::wstring fullName = GetObjectName(ObjectAttributes);
+	// 	if (fullName.size() && !global::is_app_key_name(fullName))
+	// 	{
+	// 		if (fullName.find(L"Blizzard Entertainment\\Battle.net") != std::wstring::npos)
+	// 		{
+	// 			if (ERROR_SUCCESS == RegCreateKeyTransactedW(global::Data::get().appKey(),
+	// 			                                             global::remove_leading_backslashes_sv(fullName).data(),
+	// 			                                             0, nullptr, CreateOptions, KEY_ALL_ACCESS, nullptr,
+	// 			                                             reinterpret_cast<PHKEY>(KeyHandle), Disposition, TransactionHandle, nullptr))
+	// 			{
+	// 				return STATUS_SUCCESS;
+	// 			}
+	// 		}
+	// 	}
+	// 	return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, TitleIndex, Class, CreateOptions, TransactionHandle, Disposition);
+	// }
+
+	// template <auto trampoline>
+	// NTSTATUS NTAPI NtOpenKeyEx(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes, _In_ ULONG OpenOptions)
+	// {
+	// 	return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, OpenOptions);
+	// }
+
+	// template <auto trampoline>
+	// NTSTATUS NTAPI NtOpenKeyTransactedEx(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes, _In_ ULONG OpenOptions, _In_ HANDLE TransactionHandle)
+	// {
+	// 	const std::wstring fullName = GetObjectName(ObjectAttributes);
+	// 	if (fullName.size() && !global::is_app_key_name(fullName))
+	// 	{
+	// 		if (fullName.find(L"Blizzard Entertainment\\Battle.net") != std::wstring::npos)
+	// 		{
+	// 			if (ERROR_SUCCESS == RegOpenKeyTransactedW(global::Data::get().appKey(),
+	// 												   global::remove_leading_backslashes_sv(fullName).data(),
+	// 												   OpenOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle),
+	// 												   TransactionHandle, nullptr))
+	// 			{
+	// 				return STATUS_SUCCESS;
+	// 			}
+	// 		}
+	// 	}
+	// 	return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, OpenOptions, TransactionHandle);
+	// }
+
+
+	LSTATUS APIENTRY RegLoadAppKeyW(_In_ LPCWSTR lpFile, _Out_ PHKEY phkResult, _In_ REGSAM samDesired, _In_ DWORD dwOptions, _Reserved_ DWORD Reserved)
+	{
+		*phkResult = global::Data::get().appKey();
+		return ERROR_SUCCESS;
+	}
+
 	void hook_ntdll()
 	{
 		constexpr auto NTDLL_LIB_NAME = utils::make_literal_name<L"ntdll.dll">();
@@ -293,5 +487,12 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtCreateNamedPipeFile);
 		CREATE_HOOK_BY_NAME(NtCreateFile);
 		// CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
+
+		//CREATE_HOOK_BY_NAME(NtCreateKey);
+		//CREATE_HOOK_BY_NAME(NtCreateKeyTransacted);
+		//CREATE_HOOK_BY_NAME(NtOpenKeyEx);
+		//CREATE_HOOK_BY_NAME(NtOpenKeyTransactedEx);
+
+		// create_hook_by_func_ptr<&::RegLoadAppKeyW>().setHook(&RegLoadAppKeyW);
 	}
 }

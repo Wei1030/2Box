@@ -1,8 +1,6 @@
-module;
-#include "sys_defs.h"
-#include "detours.h"
 export module Hook:Core;
 
+import "sys_defs.h";
 import std;
 import Utility.LiteralName;
 import DynamicWin32Api;

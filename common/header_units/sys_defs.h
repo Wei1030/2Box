@@ -15,6 +15,7 @@
 #include <tlhelp32.h>
 #include <winhttp.h>
 #include <dbghelp.h>
+#include <detours.h>
 #if defined(_MSC_VER) && defined(__INTELLISENSE__)
 #pragma message("Just for IntelliSense. You should not see this message!")
 // msvc的INTELLISENSE在模块中无法解析__declspec(nothrow)
@@ -176,4 +177,16 @@ struct ReflectiveInjectParams
 };
 #pragma warning(pop)
 
+// {C01FA6E2-92EB-4418-8D1A-F6307540CC19}
+inline constexpr GUID DETOUR_INJECT_PARAMS_GUID = {0xc01fa6e2, 0x92eb, 0x4418, {0x8d, 0x1a, 0xf6, 0x30, 0x75, 0x40, 0xcc, 0x19}};
+#pragma warning(push)
+#pragma warning(disable: 4200)
+struct DetourInjectParams
+{
+	ULONGLONG envFlag;
+	DWORD padding;
+	DWORD envPathCount;
+	wchar_t envPath[];
+};
+#pragma warning(pop)
 #endif

@@ -5,7 +5,6 @@ import :Core;
 import std;
 import GlobalData;
 import Utility.SystemInfo;
-import RpcClient;
 
 namespace hook
 {
@@ -72,10 +71,10 @@ namespace hook
 		{
 			lpProcessInformation = &backup;
 		}
-		BOOL bRet = Trampoline(lpApplicationName, lpCommandLine,
-		                       lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
-		                       lpEnvironment, lpCurrentDirectory,
-		                       lpStartupInfo, lpProcessInformation);
+		BOOL bRet = DetourCreateProcessWithDllExA(lpApplicationName, lpCommandLine,
+		                                          lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
+		                                          lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation,
+		                                          global::Data::get().dllFullPath().data(), Trampoline.funcAddress);
 		if (!bRet)
 		{
 			return bRet;
@@ -83,8 +82,19 @@ namespace hook
 
 		try
 		{
-			const rpc::ClientDefault c;
-			c.injectToProcess(lpProcessInformation->dwProcessId, global::Data::get().envFlag());
+			const std::wstring_view envPath = global::Data::get().envPath();
+			const std::uint32_t envPathCount = static_cast<std::uint32_t>(envPath.length());
+			const std::uint32_t envPathSize = envPathCount * sizeof(wchar_t);
+			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
+			std::vector<std::byte> buffer(paramsSize);
+			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
+			injectParams->envFlag = global::Data::get().envFlag();
+			injectParams->envPathCount = envPathCount;
+			memcpy(injectParams->envPath, envPath.data(), envPathSize);
+			if (!DetourCopyPayloadToProcess(lpProcessInformation->hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
+			{
+				throw std::runtime_error(std::format("copy payload failed, error code: {}", GetLastError()));
+			}
 			if (!bOrigSuspended)
 			{
 				ResumeThread(lpProcessInformation->hThread);
@@ -132,18 +142,29 @@ namespace hook
 		{
 			lpProcessInformation = &backup;
 		}
-		BOOL bRet = Trampoline(lpApplicationName, lpCommandLine,
-		                       lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
-		                       lpEnvironment, lpCurrentDirectory,
-		                       lpStartupInfo, lpProcessInformation);
+		BOOL bRet = DetourCreateProcessWithDllExW(lpApplicationName, lpCommandLine,
+		                                          lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
+		                                          lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation,
+		                                          global::Data::get().dllFullPath().data(), Trampoline.funcAddress);
 		if (!bRet)
 		{
 			return bRet;
 		}
 		try
 		{
-			const rpc::ClientDefault c;
-			c.injectToProcess(lpProcessInformation->dwProcessId, global::Data::get().envFlag());
+			const std::wstring_view envPath = global::Data::get().envPath();
+			const std::uint32_t envPathCount = static_cast<std::uint32_t>(envPath.length());
+			const std::uint32_t envPathSize = envPathCount * sizeof(wchar_t);
+			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
+			std::vector<std::byte> buffer(paramsSize);
+			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
+			injectParams->envFlag = global::Data::get().envFlag();
+			injectParams->envPathCount = envPathCount;
+			memcpy(injectParams->envPath, envPath.data(), envPathSize);
+			if (!DetourCopyPayloadToProcess(lpProcessInformation->hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
+			{
+				throw std::runtime_error(std::format("copy payload failed, error code: {}", GetLastError()));
+			}
 			if (!bOrigSuspended)
 			{
 				ResumeThread(lpProcessInformation->hThread);

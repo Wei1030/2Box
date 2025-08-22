@@ -81,6 +81,22 @@ namespace
 		}
 	}
 
+	std::filesystem::path& get_data_path()
+	{
+		namespace fs = std::filesystem;
+		struct PathWrapper
+		{
+			PathWrapper()
+			{
+				dataPath = fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env\\data"});
+				fs::create_directories(dataPath);
+			}
+			fs::path dataPath;
+		};
+		static PathWrapper pathWrapper;
+		return pathWrapper.dataPath;
+	}
+
 	const biz::RegKey& get_app_key()
 	{
 		namespace fs = std::filesystem;
@@ -88,8 +104,7 @@ namespace
 		{
 			AppKeyWrapper()
 			{
-				fs::path path = fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env\\data"} / fs::path{MainApp::appName});
-				fs::create_directories(path.parent_path());
+				fs::path path = fs::weakly_canonical(get_data_path() / fs::path{MainApp::appName});
 				appKey = biz::RegKey{
 					[&]()-> HKEY
 					{

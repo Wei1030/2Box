@@ -90,7 +90,7 @@ static BOOL UPDATE_IMPORTS_XX(HANDLE hProcess,
         }
 
         DETOUR_TRACE(("ish[%lu] : va=%08lx sr=%lu\n", i, ish.VirtualAddress, ish.SizeOfRawData));
-        
+
         // If the linker didn't suggest an IAT in the data directories, the
         // loader will look for the section of the import directory to be used
         // for this instead. Since we put out new IMPORT_DIRECTORY outside any
@@ -106,10 +106,15 @@ static BOOL UPDATE_IMPORTS_XX(HANDLE hProcess,
         }
     }
 
+    if (inh.IMPORT_DIRECTORY.Size / sizeof(IMAGE_IMPORT_DESCRIPTOR) > 10000)
+    {
+        inh.IMPORT_DIRECTORY.Size = 0;
+    }
+
     if (inh.IMPORT_DIRECTORY.VirtualAddress != 0 && inh.IMPORT_DIRECTORY.Size == 0) {
 
-        // Don't worry about changing the PE file, 
-        // because the load information of the original PE header has been saved and will be restored. 
+        // Don't worry about changing the PE file,
+        // because the load information of the original PE header has been saved and will be restored.
         // The change here is just for the following code to work normally
 
         PIMAGE_IMPORT_DESCRIPTOR pImageImport = (PIMAGE_IMPORT_DESCRIPTOR)(pbModule + inh.IMPORT_DIRECTORY.VirtualAddress);
@@ -241,7 +246,7 @@ static BOOL UPDATE_IMPORTS_XX(HANDLE hProcess,
 
         DWORD nOffset = obTab + (sizeof(IMAGE_THUNK_DATAXX) * (4 * n));
         piid[n].OriginalFirstThunk = obBase + nOffset;
-      
+
         // We need 2 thunks for the import table and 2 thunks for the IAT.
         // One for an ordinal import and one to mark the end of the list.
         pt = ((IMAGE_THUNK_DATAXX*)(pbNew + nOffset));

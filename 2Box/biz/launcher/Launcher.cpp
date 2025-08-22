@@ -8,7 +8,6 @@ import "sys_defs.hpp";
 
 import MainApp;
 import PELoader;
-import Injector;
 import EssentialData;
 import Env;
 
@@ -24,21 +23,36 @@ namespace biz
 		try
 		{
 			co_await sched::transfer_to(m_execCtx);
-			std::shared_ptr<Env> env = EnvManager::instance().testFindFirstOrCreate();
-			
+			const std::shared_ptr<Env> env = EnvManager::instance().testFindFirstOrCreate();
+
 			PROCESS_INFORMATION procInfo = {nullptr};
 			STARTUPINFOW startupInfo = {sizeof(startupInfo)};
 			startupInfo.dwFlags = STARTF_USESHOWWINDOW;
 			startupInfo.wShowWindow = SW_SHOW;
 
-			if (!CreateProcessW(nullptr, exePath.data(), nullptr, nullptr, 0,
-			                    CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, nullptr, nullptr, &startupInfo, &procInfo))
+			if (!DetourCreateProcessWithDllExW(nullptr, exePath.data(), nullptr, nullptr, 0,
+			                                   CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, nullptr,
+			                                   std::filesystem::path{exePath}.parent_path().native().c_str(), &startupInfo, &procInfo,
+			                                   get_detours_injection_dll_name(env->getPath(), env->getFlagName()).c_str(), &::CreateProcessW))
 			{
 				throw std::runtime_error(std::format("CreateProcessW Failed, error code: {}", GetLastError()));
 			}
 			try
 			{
-				inject_memory_dll_to_process(procInfo.dwProcessId, env.get(), get_injection_dlls(), get_essential_data());
+				// inject_memory_dll_to_process(procInfo.dwProcessId, env.get(), get_injection_dlls(), get_essential_data());
+				const std::wstring_view envPath = env->getPath();
+				const std::uint32_t envPathCount = static_cast<std::uint32_t>(envPath.length());
+				const std::uint32_t envPathSize = envPathCount * sizeof(wchar_t);
+				const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
+				std::vector<std::byte> buffer(paramsSize);
+				DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
+				injectParams->envFlag = env->getFlag();
+				injectParams->envPathCount = envPathCount;
+				memcpy(injectParams->envPath, envPath.data(), envPathSize);
+				if (!DetourCopyPayloadToProcess(procInfo.hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
+				{
+					throw std::runtime_error(std::format("copy payload failed, error code: {}", GetLastError()));
+				}
 				ResumeThread(procInfo.hThread);
 				CloseHandle(procInfo.hThread);
 				CloseHandle(procInfo.hProcess);

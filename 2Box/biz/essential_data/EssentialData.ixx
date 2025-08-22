@@ -13,10 +13,16 @@ import Utility.SystemInfo;
 
 namespace biz
 {
+	export struct DllResourceInfo
+	{
+		char* address;
+		unsigned int size;
+	};
+
 	namespace detail
 	{
 		template <ArchBit BitType = CURRENT_ARCH_BIT>
-		const char* get_dll_resource()
+		DllResourceInfo get_dll_resource()
 		{
 			HRSRC hRes;
 			if constexpr (BitType == ArchBit::Bit32)
@@ -37,7 +43,11 @@ namespace biz
 			{
 				throw std::runtime_error("failed to load resource");
 			}
-			return static_cast<const char*>(LockResource(hResourceLoaded));
+
+			return {
+				static_cast<char*>(LockResource(hResourceLoaded)),
+				SizeofResource(nullptr, hRes)
+			};
 		}
 
 		void init_os_version(SystemVersionInfo& version)
@@ -65,10 +75,33 @@ namespace biz
 
 	export
 	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	const DllResourceInfo& get_dll_resource_inst()
+	{
+		static DllResourceInfo instance = detail::get_dll_resource<BitType>();
+		return instance;
+	}
+
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
 	pe::MemoryModule& get_memory_module()
 	{
-		static pe::MemoryModule memModule{pe::Parser<>{detail::get_dll_resource<BitType>()}};
+		static pe::MemoryModule memModule{pe::Parser<>{get_dll_resource_inst<BitType>().address}};
 		return memModule;
+	}
+
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	std::string get_detours_injection_dll_name(std::wstring_view path, std::wstring_view flagName)
+	{
+		namespace fs = std::filesystem;
+		if constexpr (BitType == ArchBit::Bit64)
+		{
+			return fs::path{fs::weakly_canonical(fs::path{path} / fs::path{std::format(L"{}_64.bin", flagName)})}.string();
+		}
+		else
+		{
+			return fs::path{fs::weakly_canonical(fs::path{path} / fs::path{std::format(L"{}_32.bin", flagName)})}.string();
+		}
 	}
 
 	export

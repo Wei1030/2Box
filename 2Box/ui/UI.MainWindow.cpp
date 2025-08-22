@@ -14,7 +14,8 @@ namespace ui
 		setExitAppWhenWindowDestroyed(true);
 		initWindowPosition();
 		reserveRenderers(2, 20);
-		initSymbols().detachAndStart();
+		// initSymbols().detachAndStart();
+		changePageTo<HomePage>();
 	}
 
 	void MainWindow::draw(const RenderContext& renderCtx)

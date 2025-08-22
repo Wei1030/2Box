@@ -115,6 +115,7 @@
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/export:DetourFinishHelperProcess,@1,NONAME %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -140,6 +141,7 @@
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/export:DetourFinishHelperProcess,@1,NONAME %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -162,6 +164,7 @@
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/export:DetourFinishHelperProcess,@1,NONAME %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -187,6 +190,7 @@
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/export:DetourFinishHelperProcess,@1,NONAME %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -198,7 +202,12 @@
     <ClCompile Include="hook\Hook-Kernel32.ixx" />
     <ClCompile Include="hook\Hook-Ntdll.ixx" />
     <ClCompile Include="hook\Hook.ixx" />
-    <ClCompile Include="load_self\LoadSelf.cpp" />
+    <ClCompile Include="load_self\LoadSelf.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="rpc\RpcClient.ixx" />
     <ClCompile Include="rpc\RpcImplRequirement.cpp" />
   </ItemGroup>

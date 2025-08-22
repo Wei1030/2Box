@@ -170,13 +170,14 @@
       <ScanSourceForModuleDependencies>
       </ScanSourceForModuleDependencies>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)common\header_units\;$(SolutionDir)idl\$(PlatformTarget)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)common\header_units\;$(SolutionDir)3rdparty\Detours\include;$(SolutionDir)idl\$(PlatformTarget)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;winhttp.lib;dbghelp.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;winhttp.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -202,13 +203,14 @@
       </ScanSourceForModuleDependencies>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
       <DebugInformationFormat>None</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)common\header_units\;$(SolutionDir)idl\$(PlatformTarget)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)common\header_units\;$(SolutionDir)3rdparty\Detours\include;$(SolutionDir)idl\$(PlatformTarget)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;winhttp.lib;dbghelp.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;winhttp.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -232,13 +234,14 @@
       <ScanSourceForModuleDependencies>
       </ScanSourceForModuleDependencies>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)common\header_units\;$(SolutionDir)idl\$(PlatformTarget)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)common\header_units\;$(SolutionDir)3rdparty\Detours\include;$(SolutionDir)idl\$(PlatformTarget)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;winhttp.lib;dbghelp.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;winhttp.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -265,13 +268,14 @@
       </ScanSourceForModuleDependencies>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
       <DebugInformationFormat>None</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)common\header_units\;$(SolutionDir)idl\$(PlatformTarget)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)common\header_units\;$(SolutionDir)3rdparty\Detours\include;$(SolutionDir)idl\$(PlatformTarget)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;winhttp.lib;dbghelp.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;winhttp.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
