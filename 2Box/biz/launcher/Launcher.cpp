@@ -33,23 +33,24 @@ namespace biz
 			if (!DetourCreateProcessWithDllExW(nullptr, exePath.data(), nullptr, nullptr, 0,
 			                                   CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, nullptr,
 			                                   std::filesystem::path{exePath}.parent_path().native().c_str(), &startupInfo, &procInfo,
-			                                   get_detours_injection_dll_name(env->getPath(), env->getFlagName()).c_str(), &::CreateProcessW))
+			                                   env->getDllFullPath().data(), &::CreateProcessW))
 			{
 				throw std::runtime_error(std::format("CreateProcessW Failed, error code: {}", GetLastError()));
 			}
 			try
 			{
 				// inject_memory_dll_to_process(procInfo.dwProcessId, env.get(), get_injection_dlls(), get_essential_data());
-				const std::wstring_view envPath = env->getPath();
-				const std::uint32_t envPathCount = static_cast<std::uint32_t>(envPath.length());
-				const std::uint32_t envPathSize = envPathCount * sizeof(wchar_t);
-				const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
+				const std::wstring_view rootPath = app().exeDir();
+				const std::uint32_t rootPathCount = static_cast<std::uint32_t>(rootPath.length());
+				const std::uint32_t rootPathSize = rootPathCount * sizeof(wchar_t);
+				const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
 				std::vector<std::byte> buffer(paramsSize);
 				DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
 				injectParams->version = get_essential_data().version;
 				injectParams->envFlag = env->getFlag();
-				injectParams->envPathCount = envPathCount;
-				memcpy(injectParams->envPath, envPath.data(), envPathSize);
+				injectParams->envIndex = env->getIndex();
+				injectParams->rootPathCount = rootPathCount;
+				memcpy(injectParams->rootPath, rootPath.data(), rootPathSize);
 				if (!DetourCopyPayloadToProcess(procInfo.hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
 				{
 					throw std::runtime_error(std::format("copy payload failed, error code: {}", GetLastError()));

@@ -2,7 +2,7 @@
 #ifndef _WIN64
 #pragma comment(linker, "/EXPORT:initialize=_initialize@4")
 #endif
-#endif 
+#endif
 
 import "sys_defs.h";
 import std;
@@ -34,10 +34,10 @@ extern "C" __declspec(dllexport) unsigned long __stdcall initialize(void* lpThre
 	}
 	pe::wipe_header_memory(thisModule);
 
-	biz_initialize(injectParams.envFlag, injectParams.envPath, injectParams.envPathCount);
+	biz_initialize(injectParams.envFlag, injectParams.envIndex, injectParams.rootPath, injectParams.rootPathCount);
 	return 0;
 }
-#endif 
+#endif
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpReserved*/)
 {
@@ -57,7 +57,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpRese
 		}
 		const DetourInjectParams& injectParams = *static_cast<DetourInjectParams*>(payload);
 		pe::fill_os_version(injectParams.version);
-		biz_initialize(injectParams.envFlag, injectParams.envPath, injectParams.envPathCount);
+		biz_initialize(injectParams.envFlag, injectParams.envIndex, injectParams.rootPath, injectParams.rootPathCount);
 	}
 #endif
 	return TRUE;

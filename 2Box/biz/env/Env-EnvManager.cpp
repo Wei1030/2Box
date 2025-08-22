@@ -20,12 +20,12 @@ namespace
 		return dis(rng);
 	}
 
-	void ensure_dll_in_device(const std::filesystem::path& dir, std::wstring_view flagName)
+	void ensure_dll_in_device(std::wstring_view flagName)
 	{
 		namespace fs = std::filesystem;
-		if (const fs::path path32{fs::weakly_canonical(dir / fs::path{std::format(L"{}_32.bin", flagName)})}; !fs::exists(path32))
+		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(flagName)}; !fs::exists(path32))
 		{
-			const fs::path tempPath{fs::weakly_canonical(dir / fs::path{L"temp32.bin"})};
+			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp32.bin", flagName)})};
 			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit32>();
 			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
 			tempFile.write(address, size);
@@ -33,9 +33,9 @@ namespace
 			fs::rename(tempPath, path32);
 		}
 
-		if (const fs::path path64{fs::weakly_canonical(dir / fs::path{std::format(L"{}_64.bin", flagName)})}; !fs::exists(path64))
+		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(flagName)}; !fs::exists(path64))
 		{
-			const fs::path tempPath{fs::weakly_canonical(dir / fs::path{L"temp64.bin"})};
+			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp64.bin", flagName)})};
 			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit64>();
 			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
 			tempFile.write(address, size);
@@ -44,20 +44,19 @@ namespace
 		}
 	}
 
-	struct EnvFileInfo
+	struct EnvFlagInfo
 	{
-		std::filesystem::path path;
 		std::uint64_t flag;
 		std::wstring flagName;
 	};
 
-	EnvFileInfo ensure_create_new_env(std::uint32_t index)
+	EnvFlagInfo ensure_create_new_env(std::uint32_t index)
 	{
 		namespace fs = std::filesystem;
 		const fs::path envPath{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)})};
 		fs::create_directories(envPath);
 
-		EnvFileInfo result;
+		EnvFlagInfo result;
 		while (true)
 		{
 			const std::uint64_t flag = get_random_number();
@@ -72,10 +71,9 @@ namespace
 				continue;
 			}
 
-			ensure_dll_in_device(envPath, flagName);
+			ensure_dll_in_device(flagName);
 			result.flag = flag;
 			result.flagName = flagName;
-			result.path = envPath;
 			break;
 		}
 		return result;
@@ -93,17 +91,17 @@ namespace biz
 		namespace fs = std::filesystem;
 		const fs::path envPath{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)})};
 		fs::create_directories(envPath);
-		ensure_dll_in_device(envPath, flagName);
-		addEnv(std::make_shared<Env>(index, flag, flagName, name, envPath.native()));
+		ensure_dll_in_device(flagName);
+		addEnv(std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName)));
 	}
 
 	std::shared_ptr<Env> EnvManager::createEnv()
 	{
 		std::shared_ptr<Env> envResult;
 		const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
-		auto [path, flag, flagName] = ensure_create_new_env(index);
+		auto [flag, flagName] = ensure_create_new_env(index);
 		const std::wstring name = std::format(L"环境{}", index + 1);
-		envResult = std::make_shared<Env>(index, flag, flagName, name, path.native());
+		envResult = std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName));
 		add_env_to_reg(flagName, envResult.get());
 		addEnv(envResult);
 		return envResult;

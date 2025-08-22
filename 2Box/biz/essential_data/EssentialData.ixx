@@ -81,27 +81,49 @@ namespace biz
 		return instance;
 	}
 
+	export std::filesystem::path& get_bin_path()
+	{
+		namespace fs = std::filesystem;
+		struct BinPathWrapper
+		{
+			BinPathWrapper()
+			{
+				path = fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"bin"});
+				fs::create_directories(path);
+			}
+
+			fs::path path;
+		};
+		static BinPathWrapper wrapper{};
+		return wrapper.path;
+	}
+
+	export
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	std::filesystem::path get_dll_full_path(std::wstring_view flagName)
+	{
+		namespace fs = std::filesystem;
+		if constexpr (BitType == ArchBit::Bit64)
+		{
+			return fs::path{fs::weakly_canonical(get_bin_path() / fs::path{std::format(L"{}_64.bin", flagName)})};
+		}
+		else
+		{
+			return fs::path{fs::weakly_canonical(get_bin_path() / fs::path{std::format(L"{}_32.bin", flagName)})};
+		}
+	}
+
+	export std::string get_detours_injection_dll_name(std::wstring_view flagName)
+	{
+		return get_dll_full_path<CURRENT_ARCH_BIT>(flagName).string();
+	}
+
 	export
 	template <ArchBit BitType = CURRENT_ARCH_BIT>
 	pe::MemoryModule& get_memory_module()
 	{
 		static pe::MemoryModule memModule{pe::Parser<>{get_dll_resource_inst<BitType>().address}};
 		return memModule;
-	}
-
-	export
-	template <ArchBit BitType = CURRENT_ARCH_BIT>
-	std::string get_detours_injection_dll_name(std::wstring_view path, std::wstring_view flagName)
-	{
-		namespace fs = std::filesystem;
-		if constexpr (BitType == ArchBit::Bit64)
-		{
-			return fs::path{fs::weakly_canonical(fs::path{path} / fs::path{std::format(L"{}_64.bin", flagName)})}.string();
-		}
-		else
-		{
-			return fs::path{fs::weakly_canonical(fs::path{path} / fs::path{std::format(L"{}_32.bin", flagName)})}.string();
-		}
 	}
 
 	export

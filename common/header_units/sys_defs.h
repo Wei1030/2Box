@@ -171,9 +171,9 @@ struct ReflectiveInjectParams
 	EssentialData essentialData;
 	DllInjectionInfo injectionInfo;
 	ULONGLONG envFlag;
-	DWORD padding;
-	DWORD envPathCount;
-	wchar_t envPath[];
+	DWORD envIndex;
+	DWORD rootPathCount;
+	wchar_t rootPath[];
 };
 #pragma warning(pop)
 
@@ -185,9 +185,9 @@ struct DetourInjectParams
 {
 	SystemVersionInfo version;
 	ULONGLONG envFlag;
-	DWORD padding;
-	DWORD envPathCount;
-	wchar_t envPath[];
+	DWORD envIndex;
+	DWORD rootPathCount;
+	wchar_t rootPath[];
 };
 #pragma warning(pop)
 #endif

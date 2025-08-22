@@ -11,9 +11,9 @@ void initialize_rpc()
 	rpc::get_default_binding_info();
 }
 
-void initialize_global_data(unsigned long long envFlag, std::wstring_view envPath)
+void initialize_global_data(unsigned long long envFlag, unsigned long envIndex, std::wstring_view rootPath)
 {
-	global::Data::get().initialize(envFlag, envPath);
+	global::Data::get().initialize(envFlag, envIndex, rootPath);
 }
 
 void initialize_hook()
@@ -21,12 +21,12 @@ void initialize_hook()
 	hook::hook_all();
 }
 
-void biz_initialize(unsigned long long envFlag, const wchar_t* envPath, DWORD envPathCount)
+void biz_initialize(unsigned long long envFlag, unsigned long envIndex, const wchar_t* rootPath, DWORD rootPathCount)
 {
 	try
 	{
 		initialize_rpc();
-		initialize_global_data(envFlag, std::wstring_view{envPath, envPathCount});
+		initialize_global_data(envFlag, envIndex, std::wstring_view{rootPath, rootPathCount});
 		initialize_hook();
 	}
 	catch (...)

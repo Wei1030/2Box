@@ -8,8 +8,8 @@ namespace biz
 	{
 	public:
 		Env(std::uint32_t index, std::uint64_t flag,
-			std::wstring_view flagName, std::wstring_view name, std::wstring_view path)
-			: m_index(index), m_flag(flag), m_flagName(flagName), m_name(name), m_path(path)
+		    std::wstring_view flagName, std::wstring_view name, std::string_view dllFullPath)
+			: m_index(index), m_flag(flag), m_flagName(flagName), m_name(name), m_dllFullPath(dllFullPath)
 		{
 		}
 
@@ -18,13 +18,13 @@ namespace biz
 		std::uint64_t getFlag() const { return m_flag; }
 		std::wstring_view getFlagName() const { return m_flagName; }
 		std::wstring_view getName() const { return m_name; }
-		std::wstring_view getPath() const { return m_path; }
+		std::string_view getDllFullPath() const { return m_dllFullPath; }
 
 	private:
 		std::uint32_t m_index{0};
 		std::uint64_t m_flag{0};
 		std::wstring m_flagName;
 		std::wstring m_name;
-		std::wstring m_path;
+		std::string m_dllFullPath;
 	};
 }

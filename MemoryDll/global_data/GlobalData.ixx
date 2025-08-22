@@ -65,16 +65,17 @@ namespace global
 		}
 
 	public:
-		void initialize(std::uint64_t envFlag, std::wstring_view envPath)
+		void initialize(std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath)
 		{
 			m_envFlag = envFlag;
+			m_envIndex = envIndex;
 			m_envFlagName = std::format(L"{:016X}", envFlag);
 			m_envFlagNameA = std::format("{:016X}", envFlag);
-			m_envPath = envPath;
-			
+			m_rootPath = rootPath;
+
 			initializeRegistry();
 			initializeDllFullPath();
-			
+
 			// std::wcout.imbue(std::locale(""));
 			// InitConsole();
 		}
@@ -83,6 +84,11 @@ namespace global
 		std::uint64_t envFlag() const
 		{
 			return m_envFlag;
+		}
+
+		std::uint32_t envIndex() const
+		{
+			return m_envIndex;
 		}
 
 		std::wstring_view envFlagName() const
@@ -95,9 +101,9 @@ namespace global
 			return m_envFlagNameA;
 		}
 
-		std::wstring_view envPath() const
+		std::wstring_view rootPath() const
 		{
-			return m_envPath;
+			return m_rootPath;
 		}
 
 		std::string_view dllFullPath() const
@@ -119,7 +125,7 @@ namespace global
 				[&]()-> HKEY
 				{
 					namespace fs = std::filesystem;
-					const fs::path envFile{fs::weakly_canonical(fs::path{m_envPath} / fs::path{m_envFlagName})};
+					const fs::path envFile{fs::weakly_canonical(fs::path{m_rootPath} / fs::path{L"Env"} / fs::path{std::format(L"{}", m_envIndex)} / fs::path{m_envFlagName})};
 					HKEY hKey;
 					if (RegLoadAppKeyW(envFile.native().c_str(), &hKey, KEY_ALL_ACCESS, 0, 0) != ERROR_SUCCESS)
 					{
@@ -135,20 +141,21 @@ namespace global
 			namespace fs = std::filesystem;
 			if constexpr (CURRENT_ARCH_BIT == ArchBit::Bit64)
 			{
-				m_dllFullPath = fs::path{fs::weakly_canonical(fs::path{m_envPath} / fs::path{std::format(L"{}_64.bin", m_envFlagName)})}.string();
+				m_dllFullPath = fs::path{fs::weakly_canonical(fs::path{m_rootPath} / fs::path{L"bin"} / fs::path{std::format(L"{}_64.bin", m_envFlagName)})}.string();
 			}
 			else
 			{
-				m_dllFullPath = fs::path{fs::weakly_canonical(fs::path{m_envPath} / fs::path{std::format(L"{}_32.bin", m_envFlagName)})}.string();
+				m_dllFullPath = fs::path{fs::weakly_canonical(fs::path{m_rootPath} / fs::path{L"bin"} / fs::path{std::format(L"{}_32.bin", m_envFlagName)})}.string();
 			}
 		}
 
 	private:
 		std::uint64_t m_envFlag{0};
+		std::uint32_t m_envIndex{0};
 		std::wstring m_envFlagName;
 		std::string m_envFlagNameA;
 		std::string m_dllFullPath;
-		std::wstring m_envPath;
+		std::wstring m_rootPath;
 		RegKey m_appKey;
 	};
 

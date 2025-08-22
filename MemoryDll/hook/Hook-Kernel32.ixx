@@ -83,16 +83,17 @@ namespace hook
 
 		try
 		{
-			const std::wstring_view envPath = global::Data::get().envPath();
-			const std::uint32_t envPathCount = static_cast<std::uint32_t>(envPath.length());
-			const std::uint32_t envPathSize = envPathCount * sizeof(wchar_t);
-			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
+			const std::wstring_view rootPath = global::Data::get().rootPath();
+			const std::uint32_t rootPathCount = static_cast<std::uint32_t>(rootPath.length());
+			const std::uint32_t rootPathSize = rootPathCount * sizeof(wchar_t);
+			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
 			std::vector<std::byte> buffer(paramsSize);
 			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
 			injectParams->version = pe::g_os_version;
 			injectParams->envFlag = global::Data::get().envFlag();
-			injectParams->envPathCount = envPathCount;
-			memcpy(injectParams->envPath, envPath.data(), envPathSize);
+			injectParams->envIndex = global::Data::get().envIndex();
+			injectParams->rootPathCount = rootPathCount;
+			memcpy(injectParams->rootPath, rootPath.data(), rootPathSize);
 			if (!DetourCopyPayloadToProcess(lpProcessInformation->hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
 			{
 				throw std::runtime_error(std::format("copy payload failed, error code: {}", GetLastError()));
@@ -154,16 +155,17 @@ namespace hook
 		}
 		try
 		{
-			const std::wstring_view envPath = global::Data::get().envPath();
-			const std::uint32_t envPathCount = static_cast<std::uint32_t>(envPath.length());
-			const std::uint32_t envPathSize = envPathCount * sizeof(wchar_t);
-			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
+			const std::wstring_view rootPath = global::Data::get().rootPath();
+			const std::uint32_t rootPathCount = static_cast<std::uint32_t>(rootPath.length());
+			const std::uint32_t rootPathSize = rootPathCount * sizeof(wchar_t);
+			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
 			std::vector<std::byte> buffer(paramsSize);
 			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
 			injectParams->version = pe::g_os_version;
 			injectParams->envFlag = global::Data::get().envFlag();
-			injectParams->envPathCount = envPathCount;
-			memcpy(injectParams->envPath, envPath.data(), envPathSize);
+			injectParams->envIndex = global::Data::get().envIndex();
+			injectParams->rootPathCount = rootPathCount;
+			memcpy(injectParams->rootPath, rootPath.data(), rootPathSize);
 			if (!DetourCopyPayloadToProcess(lpProcessInformation->hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
 			{
 				throw std::runtime_error(std::format("copy payload failed, error code: {}", GetLastError()));
