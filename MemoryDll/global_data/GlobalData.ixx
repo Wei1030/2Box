@@ -55,34 +55,6 @@ namespace global
 		HKEY m_key{nullptr};
 	};
 
-	// std::wstring_view get_current_user_sid()
-	// {
-	// 	HANDLE hToken;
-	// 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
-	// 	{
-	// 		throw std::runtime_error{std::format("OpenProcessToken failed, error:{}\n", GetLastError())};
-	// 	}
-	//
-	// 	DWORD tuSize = 0;
-	// 	GetTokenInformation(hToken, TokenUser, nullptr, 0, &tuSize);
-	// 	if (!tuSize)
-	// 	{
-	// 		throw std::runtime_error{std::format("GetTokenInformation failed, error:{}\n", GetLastError())};
-	// 	}
-	// 	std::vector<std::byte> buffer(tuSize);
-	// 	if (!GetTokenInformation(hToken, TokenUser, buffer.data(), static_cast<DWORD>(buffer.size()), &tuSize))
-	// 	{
-	// 		throw std::runtime_error{std::format("GetTokenInformation failed, error:{}\n", GetLastError())};
-	// 	}
-	// 	const TOKEN_USER* pTu = reinterpret_cast<TOKEN_USER*>(buffer.data());
-	// 	wchar_t* pStrSid = nullptr;
-	// 	if (!ConvertSidToStringSidW(pTu->User.Sid, &pStrSid))
-	// 	{
-	// 		throw std::runtime_error{std::format("ConvertSidToStringSidW failed, error:{}\n", GetLastError())};
-	// 	}
-	// 	return {pStrSid};
-	// }
-
 	export class Data
 	{
 	public:

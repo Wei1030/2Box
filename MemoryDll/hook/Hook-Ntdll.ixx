@@ -1,6 +1,6 @@
 // ReSharper disable CppInconsistentNaming
-// module;
-// #include <ntstatus.h>
+module;
+#include <ntstatus.h>
 export module Hook:Ntdll;
 
 import "sys_defs.h";
@@ -286,49 +286,17 @@ namespace hook
 		MaxKeyInfoClass
 	} KEY_INFORMATION_CLASS;
 
-	typedef enum _KEY_VALUE_INFORMATION_CLASS
-	{
-		KeyValueBasicInformation,
-		KeyValueFullInformation,
-		KeyValuePartialInformation,
-		KeyValueFullInformationAlign64,
-		KeyValuePartialInformationAlign64,
-		KeyValueLayerInformation,
-		MaxKeyValueInfoClass
-	} KEY_VALUE_INFORMATION_CLASS;
-
 	typedef struct _KEY_NAME_INFORMATION
 	{
 		ULONG NameLength;
 		WCHAR Name[1];
 	} KEY_NAME_INFORMATION, *PKEY_NAME_INFORMATION;
 
-	typedef struct _KEY_VALUE_PARTIAL_INFORMATION
-	{
-		ULONG TitleIndex;
-		ULONG Type;
-		ULONG DataLength;
-		UCHAR Data[1];
-	} KEY_VALUE_PARTIAL_INFORMATION, *PKEY_VALUE_PARTIAL_INFORMATION;
-
-	typedef struct _KEY_VALUE_FULL_INFORMATION
-	{
-		ULONG TitleIndex;
-		ULONG Type;
-		ULONG DataOffset;
-		ULONG DataLength;
-		ULONG NameLength;
-		WCHAR Name[1];
-	} KEY_VALUE_FULL_INFORMATION, *PKEY_VALUE_FULL_INFORMATION;
-
-	inline constexpr auto NTDLL_NAME = utils::make_literal_name<L"ntdll">();
-
-	inline win32_api::ApiProxy<NTDLL_NAME, utils::make_literal_name<"NtClose">(), NTSTATUS (NTAPI)(_In_ HANDLE Handle)> NtClose;
-	inline win32_api::ApiProxy<NTDLL_NAME, utils::make_literal_name<"NtQueryKey">(), NTSTATUS (NTAPI)(_In_ HANDLE KeyHandle,
-	                                                                                                  _In_ KEY_INFORMATION_CLASS KeyInformationClass,
-	                                                                                                  _Out_writes_bytes_opt_(Length) PVOID KeyInformation,
-	                                                                                                  _In_ ULONG Length,
-	                                                                                                  _Out_ PULONG ResultLength)> NtQueryKey;
+	inline win32_api::ApiProxy<utils::make_literal_name<L"ntdll">(), utils::make_literal_name<"NtQueryKey">(), NTSTATUS (NTAPI)(_In_ HANDLE KeyHandle,
+	                                                                                                                            _In_ KEY_INFORMATION_CLASS KeyInformationClass,
+	                                                                                                                            _Out_writes_bytes_opt_(Length) PVOID KeyInformation,
+	                                                                                                                            _In_ ULONG Length,
+	                                                                                                                            _Out_ PULONG ResultLength)> NtQueryKey;
 
 	std::vector<std::byte> GetKeyNameInformation(HANDLE KeyHandle)
 	{
@@ -393,65 +361,106 @@ namespace hook
 		return fullName;
 	}
 
-	// template <auto trampoline>
-	// NTSTATUS NTAPI NtCreateKey(_Out_ PHANDLE KeyHandle,
-	//                            _In_ ACCESS_MASK DesiredAccess,
-	//                            _In_ POBJECT_ATTRIBUTES ObjectAttributes,
-	//                            _Reserved_ ULONG TitleIndex,
-	//                            _In_opt_ PUNICODE_STRING Class,
-	//                            _In_ ULONG CreateOptions,
-	//                            _Out_opt_ PULONG Disposition)
-	// {
-	// 	return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, TitleIndex, Class, CreateOptions, Disposition);
-	// }
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateKey(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+	                           _Reserved_ ULONG TitleIndex, _In_opt_ PUNICODE_STRING Class, _In_ ULONG CreateOptions, _Out_opt_ PULONG Disposition)
+	{
+		const std::wstring fullName = GetObjectName(ObjectAttributes);
+		if (fullName.size() && !global::is_app_key_name(fullName))
+		{
+			if (ERROR_SUCCESS == RegOpenKeyExW(global::Data::get().appKey(),
+			                                   global::remove_leading_backslashes_sv(fullName).data(),
+			                                   CreateOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle)))
+			{
+				return STATUS_SUCCESS;
+			}
+		}
+		return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, TitleIndex, Class, CreateOptions, Disposition);
+	}
 
-	// template <auto trampoline>
-	// NTSTATUS NTAPI NtCreateKeyTransacted(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes,
-	//                                      _Reserved_ ULONG TitleIndex, _In_opt_ PUNICODE_STRING Class, _In_ ULONG CreateOptions,
-	//                                      _In_ HANDLE TransactionHandle, _Out_opt_ PULONG Disposition)
-	// {
-	// 	const std::wstring fullName = GetObjectName(ObjectAttributes);
-	// 	if (fullName.size() && !global::is_app_key_name(fullName))
-	// 	{
-	// 		if (fullName.find(L"Blizzard Entertainment\\Battle.net") != std::wstring::npos)
-	// 		{
-	// 			if (ERROR_SUCCESS == RegCreateKeyTransactedW(global::Data::get().appKey(),
-	// 			                                             global::remove_leading_backslashes_sv(fullName).data(),
-	// 			                                             0, nullptr, CreateOptions, KEY_ALL_ACCESS, nullptr,
-	// 			                                             reinterpret_cast<PHKEY>(KeyHandle), Disposition, TransactionHandle, nullptr))
-	// 			{
-	// 				return STATUS_SUCCESS;
-	// 			}
-	// 		}
-	// 	}
-	// 	return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, TitleIndex, Class, CreateOptions, TransactionHandle, Disposition);
-	// }
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateKeyTransacted(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+	                                     _Reserved_ ULONG TitleIndex, _In_opt_ PUNICODE_STRING Class, _In_ ULONG CreateOptions,
+	                                     _In_ HANDLE TransactionHandle, _Out_opt_ PULONG Disposition)
+	{
+		const std::wstring fullName = GetObjectName(ObjectAttributes);
+		if (fullName.size() && !global::is_app_key_name(fullName))
+		{
+			if (ERROR_SUCCESS == RegOpenKeyTransactedW(global::Data::get().appKey(),
+			                                           global::remove_leading_backslashes_sv(fullName).data(),
+			                                           CreateOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle),
+			                                           TransactionHandle, nullptr))
+			{
+				return STATUS_SUCCESS;
+			}
+		}
+		return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, TitleIndex, Class, CreateOptions, TransactionHandle, Disposition);
+	}
 
-	// template <auto trampoline>
-	// NTSTATUS NTAPI NtOpenKeyEx(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes, _In_ ULONG OpenOptions)
-	// {
-	// 	return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, OpenOptions);
-	// }
+	template <auto trampoline>
+	NTSTATUS NTAPI NtOpenKeyEx(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes, _In_ ULONG OpenOptions)
+	{
+		const std::wstring fullName = GetObjectName(ObjectAttributes);
+		if (fullName.size() && !global::is_app_key_name(fullName))
+		{
+			if (ERROR_SUCCESS == RegOpenKeyExW(global::Data::get().appKey(),
+			                                   global::remove_leading_backslashes_sv(fullName).data(),
+			                                   OpenOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle)))
+			{
+				return STATUS_SUCCESS;
+			}
+		}
+		return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, OpenOptions);
+	}
 
-	// template <auto trampoline>
-	// NTSTATUS NTAPI NtOpenKeyTransactedEx(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes, _In_ ULONG OpenOptions, _In_ HANDLE TransactionHandle)
-	// {
-	// 	const std::wstring fullName = GetObjectName(ObjectAttributes);
-	// 	if (fullName.size() && !global::is_app_key_name(fullName))
-	// 	{
-	// 		if (fullName.find(L"Blizzard Entertainment\\Battle.net") != std::wstring::npos)
-	// 		{
-	// 			if (ERROR_SUCCESS == RegOpenKeyTransactedW(global::Data::get().appKey(),
-	// 												   global::remove_leading_backslashes_sv(fullName).data(),
-	// 												   OpenOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle),
-	// 												   TransactionHandle, nullptr))
-	// 			{
-	// 				return STATUS_SUCCESS;
-	// 			}
-	// 		}
-	// 	}
-	// 	return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, OpenOptions, TransactionHandle);
-	// }
+	template <auto trampoline>
+	NTSTATUS NTAPI NtOpenKeyTransactedEx(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes, _In_ ULONG OpenOptions, _In_ HANDLE TransactionHandle)
+	{
+		const std::wstring fullName = GetObjectName(ObjectAttributes);
+		if (fullName.size() && !global::is_app_key_name(fullName))
+		{
+			if (ERROR_SUCCESS == RegOpenKeyTransactedW(global::Data::get().appKey(),
+			                                           global::remove_leading_backslashes_sv(fullName).data(),
+			                                           OpenOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle),
+			                                           TransactionHandle, nullptr))
+			{
+				return STATUS_SUCCESS;
+			}
+		}
+		return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, OpenOptions, TransactionHandle);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtSetValueKey(_In_ HANDLE KeyHandle, _In_ PUNICODE_STRING ValueName, _In_opt_ ULONG TitleIndex,
+	                             _In_ ULONG Type, _In_reads_bytes_opt_(DataSize) PVOID Data, _In_ ULONG DataSize)
+	{
+		if (!ValueName || !ValueName->Buffer || !ValueName->Length)
+		{
+			return trampoline(KeyHandle, ValueName, TitleIndex, Type, Data, DataSize);
+		}
+		const std::wstring keyName = GetKeyName(KeyHandle);
+		if (keyName.size() && !global::is_app_key_name(keyName))
+		{
+			HKEY hKeyInAppEnv{nullptr};
+			if (ERROR_SUCCESS == RegCreateKeyExW(global::Data::get().appKey(),
+			                                     global::remove_leading_backslashes_sv(keyName).data(),
+			                                     0, nullptr, 0, KEY_ALL_ACCESS, nullptr,
+			                                     &hKeyInAppEnv, nullptr))
+			{
+				if (ERROR_SUCCESS == RegSetValueExW(hKeyInAppEnv,
+				                                    std::wstring_view{ValueName->Buffer, ValueName->Length / sizeof(WCHAR)}.data(),
+				                                    0, Type,
+				                                    static_cast<const BYTE*>(Data), DataSize))
+				{
+					RegCloseKey(hKeyInAppEnv);
+					return trampoline(KeyHandle, ValueName, TitleIndex, Type, Data, DataSize);
+				}
+				RegCloseKey(hKeyInAppEnv);
+			}
+			return STATUS_ACCESS_DENIED;
+		}
+		return trampoline(KeyHandle, ValueName, TitleIndex, Type, Data, DataSize);
+	}
 
 
 	LSTATUS APIENTRY RegLoadAppKeyW(_In_ LPCWSTR lpFile, _Out_ PHKEY phkResult, _In_ REGSAM samDesired, _In_ DWORD dwOptions, _Reserved_ DWORD Reserved)
@@ -488,10 +497,11 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtCreateFile);
 		// CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
 
-		//CREATE_HOOK_BY_NAME(NtCreateKey);
-		//CREATE_HOOK_BY_NAME(NtCreateKeyTransacted);
-		//CREATE_HOOK_BY_NAME(NtOpenKeyEx);
-		//CREATE_HOOK_BY_NAME(NtOpenKeyTransactedEx);
+		CREATE_HOOK_BY_NAME(NtCreateKey);
+		CREATE_HOOK_BY_NAME(NtCreateKeyTransacted);
+		CREATE_HOOK_BY_NAME(NtOpenKeyEx);
+		CREATE_HOOK_BY_NAME(NtOpenKeyTransactedEx);
+		CREATE_HOOK_BY_NAME(NtSetValueKey);
 
 		// create_hook_by_func_ptr<&::RegLoadAppKeyW>().setHook(&RegLoadAppKeyW);
 	}
