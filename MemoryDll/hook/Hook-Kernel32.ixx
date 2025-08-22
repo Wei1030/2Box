@@ -4,6 +4,7 @@ import "sys_defs.h";
 import :Core;
 import std;
 import GlobalData;
+import PELoader;
 import Utility.SystemInfo;
 
 namespace hook
@@ -88,6 +89,7 @@ namespace hook
 			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
 			std::vector<std::byte> buffer(paramsSize);
 			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
+			injectParams->version = pe::g_os_version;
 			injectParams->envFlag = global::Data::get().envFlag();
 			injectParams->envPathCount = envPathCount;
 			memcpy(injectParams->envPath, envPath.data(), envPathSize);
@@ -158,6 +160,7 @@ namespace hook
 			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
 			std::vector<std::byte> buffer(paramsSize);
 			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
+			injectParams->version = pe::g_os_version;
 			injectParams->envFlag = global::Data::get().envFlag();
 			injectParams->envPathCount = envPathCount;
 			memcpy(injectParams->envPath, envPath.data(), envPathSize);

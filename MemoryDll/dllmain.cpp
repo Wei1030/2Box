@@ -56,6 +56,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpRese
 			TerminateProcess(GetCurrentProcess(), 0);
 		}
 		const DetourInjectParams& injectParams = *static_cast<DetourInjectParams*>(payload);
+		pe::fill_os_version(injectParams.version);
 		biz_initialize(injectParams.envFlag, injectParams.envPath, injectParams.envPathCount);
 	}
 #endif

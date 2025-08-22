@@ -183,6 +183,7 @@ inline constexpr GUID DETOUR_INJECT_PARAMS_GUID = {0xc01fa6e2, 0x92eb, 0x4418, {
 #pragma warning(disable: 4200)
 struct DetourInjectParams
 {
+	SystemVersionInfo version;
 	ULONGLONG envFlag;
 	DWORD padding;
 	DWORD envPathCount;

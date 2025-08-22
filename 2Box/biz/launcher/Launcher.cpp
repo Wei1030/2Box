@@ -46,6 +46,7 @@ namespace biz
 				const std::uint32_t paramsSize = sizeof(DetourInjectParams) + envPathSize;
 				std::vector<std::byte> buffer(paramsSize);
 				DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
+				injectParams->version = get_essential_data().version;
 				injectParams->envFlag = env->getFlag();
 				injectParams->envPathCount = envPathCount;
 				memcpy(injectParams->envPath, envPath.data(), envPathSize);

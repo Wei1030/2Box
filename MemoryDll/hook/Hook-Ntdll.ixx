@@ -462,13 +462,6 @@ namespace hook
 		return trampoline(KeyHandle, ValueName, TitleIndex, Type, Data, DataSize);
 	}
 
-
-	LSTATUS APIENTRY RegLoadAppKeyW(_In_ LPCWSTR lpFile, _Out_ PHKEY phkResult, _In_ REGSAM samDesired, _In_ DWORD dwOptions, _Reserved_ DWORD Reserved)
-	{
-		*phkResult = global::Data::get().appKey();
-		return ERROR_SUCCESS;
-	}
-
 	void hook_ntdll()
 	{
 		constexpr auto NTDLL_LIB_NAME = utils::make_literal_name<L"ntdll.dll">();
@@ -502,7 +495,5 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtOpenKeyEx);
 		CREATE_HOOK_BY_NAME(NtOpenKeyTransactedEx);
 		CREATE_HOOK_BY_NAME(NtSetValueKey);
-
-		// create_hook_by_func_ptr<&::RegLoadAppKeyW>().setHook(&RegLoadAppKeyW);
 	}
 }
