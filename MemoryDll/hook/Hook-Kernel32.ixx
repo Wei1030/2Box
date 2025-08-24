@@ -55,13 +55,45 @@ namespace hook
 		return Trampoline(Name, Flags);
 	}
 
+	inline PDETOUR_CREATE_PROCESS_ROUTINEW* pCreateProcessTrampolineW{nullptr};
+
+	BOOL inject_dll_to_process(LPPROCESS_INFORMATION lpProcessInformation)
+	{
+		std::string_view dllFullPath = global::Data::get().dllFullPath();
+		LPCSTR sz = dllFullPath.data();
+
+		if (!DetourUpdateProcessWithDll(lpProcessInformation->hProcess, &sz, 1) &&
+			!DetourProcessViaHelperW(lpProcessInformation->dwProcessId,
+			                         dllFullPath.data(),
+			                         *pCreateProcessTrampolineW))
+		{
+			return FALSE;
+		}
+		const std::wstring_view rootPath = global::Data::get().rootPath();
+		const std::uint32_t rootPathCount = static_cast<std::uint32_t>(rootPath.length());
+		const std::uint32_t rootPathSize = rootPathCount * sizeof(wchar_t);
+		const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
+		std::vector<std::byte> buffer(paramsSize);
+		DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
+		injectParams->version = pe::g_os_version;
+		injectParams->envFlag = global::Data::get().envFlag();
+		injectParams->envIndex = global::Data::get().envIndex();
+		injectParams->rootPathCount = rootPathCount;
+		memcpy(injectParams->rootPath, rootPath.data(), rootPathSize);
+		if (!DetourCopyPayloadToProcess(lpProcessInformation->hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
+		{
+			return FALSE;
+		}
+		return TRUE;
+	}
+
 	template <auto Trampoline>
 	BOOL WINAPI CreateProcessA(__in_opt LPCSTR lpApplicationName, __inout_opt LPSTR lpCommandLine,
 	                           __in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes, __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
 	                           __in BOOL bInheritHandles, __in DWORD dwCreationFlags, __in_opt LPVOID lpEnvironment, __in_opt LPCSTR lpCurrentDirectory,
 	                           __in LPSTARTUPINFOA lpStartupInfo, __out LPPROCESS_INFORMATION lpProcessInformation)
 	{
-		BOOL bOrigSuspended = dwCreationFlags & CREATE_SUSPENDED;
+		const BOOL bOrigSuspended = dwCreationFlags & CREATE_SUSPENDED;
 		if (!bOrigSuspended)
 		{
 			dwCreationFlags |= CREATE_SUSPENDED;
@@ -72,32 +104,16 @@ namespace hook
 		{
 			lpProcessInformation = &backup;
 		}
-		BOOL bRet = DetourCreateProcessWithDllExA(lpApplicationName, lpCommandLine,
-		                                          lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
-		                                          lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation,
-		                                          global::Data::get().dllFullPath().data(), Trampoline.funcAddress);
-		if (!bRet)
-		{
-			return bRet;
-		}
 
-		try
+		if (!Trampoline(lpApplicationName, lpCommandLine,
+		                lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
+		                lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation))
 		{
-			const std::wstring_view rootPath = global::Data::get().rootPath();
-			const std::uint32_t rootPathCount = static_cast<std::uint32_t>(rootPath.length());
-			const std::uint32_t rootPathSize = rootPathCount * sizeof(wchar_t);
-			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
-			std::vector<std::byte> buffer(paramsSize);
-			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
-			injectParams->version = pe::g_os_version;
-			injectParams->envFlag = global::Data::get().envFlag();
-			injectParams->envIndex = global::Data::get().envIndex();
-			injectParams->rootPathCount = rootPathCount;
-			memcpy(injectParams->rootPath, rootPath.data(), rootPathSize);
-			if (!DetourCopyPayloadToProcess(lpProcessInformation->hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
-			{
-				throw std::runtime_error(std::format("copy payload failed, error code: {}", GetLastError()));
-			}
+			return FALSE;
+		}
+		const BOOL bRet = inject_dll_to_process(lpProcessInformation);
+		if (bRet)
+		{
 			if (!bOrigSuspended)
 			{
 				ResumeThread(lpProcessInformation->hThread);
@@ -108,23 +124,19 @@ namespace hook
 				CloseHandle(lpProcessInformation->hThread);
 			}
 		}
-		catch (...)
+		else
 		{
-			bRet = FALSE;
-			TerminateProcess(lpProcessInformation->hProcess, 0);
-
-			if (lpProcessInformation)
+			TerminateProcess(lpProcessInformation->hProcess, ~0u);
+			CloseHandle(lpProcessInformation->hProcess);
+			CloseHandle(lpProcessInformation->hThread);
+			if (lpProcessInformation != &backup)
 			{
-				CloseHandle(lpProcessInformation->hProcess);
-				CloseHandle(lpProcessInformation->hThread);
-
 				lpProcessInformation->hProcess = nullptr;
 				lpProcessInformation->hThread = nullptr;
 				lpProcessInformation->dwProcessId = 0;
 				lpProcessInformation->dwThreadId = 0;
 			}
 		}
-
 		return bRet;
 	}
 
@@ -134,7 +146,7 @@ namespace hook
 	                           __in_opt LPVOID lpEnvironment, __in_opt LPCWSTR lpCurrentDirectory,
 	                           __in LPSTARTUPINFOW lpStartupInfo, __out LPPROCESS_INFORMATION lpProcessInformation)
 	{
-		BOOL bOrigSuspended = dwCreationFlags & CREATE_SUSPENDED;
+		const BOOL bOrigSuspended = dwCreationFlags & CREATE_SUSPENDED;
 		if (!bOrigSuspended)
 		{
 			dwCreationFlags |= CREATE_SUSPENDED;
@@ -145,31 +157,16 @@ namespace hook
 		{
 			lpProcessInformation = &backup;
 		}
-		BOOL bRet = DetourCreateProcessWithDllExW(lpApplicationName, lpCommandLine,
-		                                          lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
-		                                          lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation,
-		                                          global::Data::get().dllFullPath().data(), Trampoline.funcAddress);
-		if (!bRet)
+
+		if (!Trampoline(lpApplicationName, lpCommandLine,
+		                lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
+		                lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation))
 		{
-			return bRet;
+			return FALSE;
 		}
-		try
+		const BOOL bRet = inject_dll_to_process(lpProcessInformation);
+		if (bRet)
 		{
-			const std::wstring_view rootPath = global::Data::get().rootPath();
-			const std::uint32_t rootPathCount = static_cast<std::uint32_t>(rootPath.length());
-			const std::uint32_t rootPathSize = rootPathCount * sizeof(wchar_t);
-			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
-			std::vector<std::byte> buffer(paramsSize);
-			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
-			injectParams->version = pe::g_os_version;
-			injectParams->envFlag = global::Data::get().envFlag();
-			injectParams->envIndex = global::Data::get().envIndex();
-			injectParams->rootPathCount = rootPathCount;
-			memcpy(injectParams->rootPath, rootPath.data(), rootPathSize);
-			if (!DetourCopyPayloadToProcess(lpProcessInformation->hProcess, DETOUR_INJECT_PARAMS_GUID, injectParams, paramsSize))
-			{
-				throw std::runtime_error(std::format("copy payload failed, error code: {}", GetLastError()));
-			}
 			if (!bOrigSuspended)
 			{
 				ResumeThread(lpProcessInformation->hThread);
@@ -180,16 +177,13 @@ namespace hook
 				CloseHandle(lpProcessInformation->hThread);
 			}
 		}
-		catch (...)
+		else
 		{
-			bRet = FALSE;
-			TerminateProcess(lpProcessInformation->hProcess, 0);
-
-			if (lpProcessInformation)
+			TerminateProcess(lpProcessInformation->hProcess, ~0u);
+			CloseHandle(lpProcessInformation->hProcess);
+			CloseHandle(lpProcessInformation->hThread);
+			if (lpProcessInformation != &backup)
 			{
-				CloseHandle(lpProcessInformation->hProcess);
-				CloseHandle(lpProcessInformation->hThread);
-
 				lpProcessInformation->hProcess = nullptr;
 				lpProcessInformation->hThread = nullptr;
 				lpProcessInformation->dwProcessId = 0;
@@ -459,7 +453,7 @@ namespace hook
 		CREATE_HOOK_BY_NAME(CreateBoundaryDescriptorA);
 		CREATE_HOOK_BY_NAME(CreateBoundaryDescriptorW);
 		CREATE_HOOK_BY_NAME(CreateProcessA);
-		CREATE_HOOK_BY_NAME(CreateProcessW);
+		pCreateProcessTrampolineW = std::addressof(CREATE_HOOK_BY_NAME(CreateProcessW).funcAddress);
 		CREATE_HOOK_BY_NAME(WinExec);
 		CREATE_HOOK_BY_NAME(DeviceIoControl);
 	}
