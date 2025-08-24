@@ -1,4 +1,4 @@
-﻿export module Utility.SystemInfo;
+export module Utility.SystemInfo;
 
 import std;
 import "sys_defs.h";

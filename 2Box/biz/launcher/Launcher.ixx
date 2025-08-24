@@ -20,10 +20,12 @@ namespace biz
 
 	private:
 		coro::LazyTask<void> launch(std::wstring exePath);
+
 	private:
 		Launcher() = default;
 
 	private:
 		sched::SingleThreadContext m_execCtx;
+		coro::AsyncScope m_asyncScope;
 	};
 }

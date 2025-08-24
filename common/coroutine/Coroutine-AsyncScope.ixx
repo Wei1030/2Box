@@ -11,10 +11,7 @@ namespace coro
 	public:
 		~AsyncScope()
 		{
-			if (!m_continuation)
-			{
-				std::unreachable();
-			}
+			join();
 		}
 
 		struct FinishOnExit

@@ -1,4 +1,4 @@
-﻿export module PELoader:Parser;
+export module PELoader:Parser;
 
 import std;
 import "sys_defs.h";
