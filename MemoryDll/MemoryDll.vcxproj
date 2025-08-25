@@ -196,6 +196,7 @@
   <ItemGroup>
     <ClCompile Include="biz_initializer.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="global_data\GlobalData.cpp" />
     <ClCompile Include="global_data\GlobalData.ixx" />
     <ClCompile Include="hook\Hook-Advapi32.ixx" />
     <ClCompile Include="hook\Hook-All.ixx" />

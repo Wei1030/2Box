@@ -1,6 +1,3 @@
-// module;
-// #define _CRT_SECURE_NO_WARNINGS
-// #include <cstdio>
 export module GlobalData;
 
 import "sys_defs.h";
@@ -8,16 +5,6 @@ import std;
 
 namespace global
 {
-	// void InitConsole()
-	// {
-	// 	if (!AllocConsole())
-	// 	{
-	// 		return;
-	// 	}
-	//
-	// 	freopen("CONOUT$", "w", stdout);
-	// }
-
 	export class RegKey
 	{
 	public:
@@ -65,20 +52,7 @@ namespace global
 		}
 
 	public:
-		void initialize(std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath)
-		{
-			m_envFlag = envFlag;
-			m_envIndex = envIndex;
-			m_envFlagName = std::format(L"{:016X}", envFlag);
-			m_envFlagNameA = std::format("{:016X}", envFlag);
-			m_rootPath = rootPath;
-
-			initializeRegistry();
-			initializeDllFullPath();
-
-			// std::wcout.imbue(std::locale(""));
-			// InitConsole();
-		}
+		void initialize(std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath);
 
 	public:
 		std::uint64_t envFlag() const
@@ -116,38 +90,14 @@ namespace global
 			return m_appKey;
 		}
 
+		std::expected<std::wstring, bool> redirectKnownFolderPath(std::wstring_view fullPath) const;
+
 	private:
 		Data() = default;
 
-		void initializeRegistry()
-		{
-			m_appKey = RegKey{
-				[&]()-> HKEY
-				{
-					namespace fs = std::filesystem;
-					const fs::path envFile{fs::weakly_canonical(fs::path{m_rootPath} / fs::path{L"Env"} / fs::path{std::format(L"{}", m_envIndex)} / fs::path{m_envFlagName})};
-					HKEY hKey;
-					if (RegLoadAppKeyW(envFile.native().c_str(), &hKey, KEY_ALL_ACCESS, 0, 0) != ERROR_SUCCESS)
-					{
-						throw std::runtime_error("Failed to load app key");
-					}
-					return hKey;
-				}
-			};
-		}
-
-		void initializeDllFullPath()
-		{
-			namespace fs = std::filesystem;
-			if constexpr (CURRENT_ARCH_BIT == ArchBit::Bit64)
-			{
-				m_dllFullPath = fs::path{fs::weakly_canonical(fs::path{m_rootPath} / fs::path{L"bin"} / fs::path{std::format(L"{}_64.bin", m_envFlagName)})}.string();
-			}
-			else
-			{
-				m_dllFullPath = fs::path{fs::weakly_canonical(fs::path{m_rootPath} / fs::path{L"bin"} / fs::path{std::format(L"{}_32.bin", m_envFlagName)})}.string();
-			}
-		}
+		void initializeRegistry();
+		void initializeDllFullPath();
+		void initializeKnownFolderPath();
 
 	private:
 		std::uint64_t m_envFlag{0};
@@ -157,6 +107,7 @@ namespace global
 		std::string m_dllFullPath;
 		std::wstring m_rootPath;
 		RegKey m_appKey;
+		std::vector<std::wstring> m_knownFolders;
 	};
 
 	export bool is_app_key_name(std::wstring_view fullName)

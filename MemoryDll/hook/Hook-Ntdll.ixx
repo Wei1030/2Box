@@ -160,7 +160,7 @@ namespace hook
 	                            IN ULONG ShareAccess, IN ULONG CreateDisposition, IN ULONG CreateOptions,
 	                            IN PVOID EaBuffer OPTIONAL, IN ULONG EaLength)
 	{
-		NTSTATUS ret = -1;
+		NTSTATUS ret = STATUS_ACCESS_DENIED;
 
 		do
 		{
@@ -189,13 +189,64 @@ namespace hook
 				ObjectAttributes->ObjectName = pOldName;
 				break;
 			}
+
+			if (std::expected<std::wstring, bool> result = global::Data::get().redirectKnownFolderPath(strCmpName))
+			{
+				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
+				UNICODE_STRING newObjName;
+				newObjName.Buffer = result.value().data();
+				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
+				ObjectAttributes->ObjectName = &newObjName;
+				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
+								 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+				ObjectAttributes->ObjectName = pOldName;
+				break;
+			}
 		}
 		while (false);
 
-		if (ret < 0)
+		if (!NT_SUCCESS(ret))
 		{
 			ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
 			                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+		}
+		return ret;
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtOpenFile(OUT PHANDLE FileHandle, IN ACCESS_MASK DesiredAccess,
+	                          IN POBJECT_ATTRIBUTES ObjectAttributes, OUT PIO_STATUS_BLOCK IoStatusBlock,
+	                          IN ULONG ShareAccess, IN ULONG OpenOptions)
+	{
+		NTSTATUS ret = STATUS_ACCESS_DENIED;
+		do
+		{
+			if (!ObjectAttributes
+				|| !ObjectAttributes->ObjectName
+				|| !ObjectAttributes->ObjectName->Buffer
+				|| !ObjectAttributes->ObjectName->Length)
+			{
+				break;
+			}
+
+			std::wstring_view strCmpName(ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t));
+			if (std::expected<std::wstring, bool> result = global::Data::get().redirectKnownFolderPath(strCmpName))
+			{
+				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
+				UNICODE_STRING newObjName;
+				newObjName.Buffer = result.value().data();
+				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
+				ObjectAttributes->ObjectName = &newObjName;
+				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
+				ObjectAttributes->ObjectName = pOldName;
+				break;
+			}
+		}
+		while (false);
+
+		if (!NT_SUCCESS(ret))
+		{
+			ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
 		}
 		return ret;
 	}
@@ -226,7 +277,7 @@ namespace hook
 	NTSTATUS NTAPI NtQuerySystemInformation(IN SYSTEM_INFORMATION_CLASS SystemInformationClass, IN OUT PVOID SystemInformation, IN ULONG SystemInformationLength, OUT PULONG ReturnLength OPTIONAL)
 	{
 		const NTSTATUS ret = trampoline(SystemInformationClass, SystemInformation, SystemInformationLength, ReturnLength);
-		if (ret < 0 || !SystemInformation)
+		if (!NT_SUCCESS(ret) || !SystemInformation)
 		{
 			return ret;
 		}
@@ -382,7 +433,7 @@ namespace hook
 		{
 			return std::expected<HKEY, LSTATUS>{hResKey};
 		}
-		return std::expected<HKEY, LSTATUS>{std::unexpect, status};
+		return std::unexpected{status};
 	}
 
 	std::expected<HKEY, LSTATUS> RegOpenKeyExW(_In_ HKEY hKey, _In_opt_ LPCWSTR lpSubKey)
@@ -393,7 +444,7 @@ namespace hook
 		{
 			return std::expected<HKEY, LSTATUS>{hResKey};
 		}
-		return std::expected<HKEY, LSTATUS>{std::unexpect, status};
+		return std::unexpected{status};
 	}
 
 	template <auto trampoline>
@@ -415,13 +466,13 @@ namespace hook
 		{
 			const std::expected<HKEY, LSTATUS> result =
 				RegCreateKeyExW(global::Data::get().appKey(), global::remove_leading_backslashes_sv(keyName).data())
-				.and_then([&](HKEY hKey)
+				.and_then([&](HKEY hKey)-> std::expected<HKEY, LSTATUS>
 				{
 					const NTSTATUS status = trampoline(hKey, ValueName, TitleIndex, Type, Data, DataSize);
 					RegCloseKey(hKey);
 					if (!NT_SUCCESS(status))
 					{
-						return std::expected<HKEY, LSTATUS>{std::unexpect, status};
+						return std::unexpected{status};
 					}
 					return std::expected<HKEY, LSTATUS>{HKEY{}};
 				});
@@ -447,13 +498,13 @@ namespace hook
 		{
 			const std::expected<HKEY, LSTATUS> result =
 				RegOpenKeyExW(global::Data::get().appKey(), global::remove_leading_backslashes_sv(keyName).data())
-				.and_then([&](HKEY hKey)
+				.and_then([&](HKEY hKey)-> std::expected<HKEY, LSTATUS>
 				{
 					const NTSTATUS status = trampoline(hKey, ValueName, KeyValueInformationClass, KeyValueInformation, Length, ResultLength);
 					RegCloseKey(hKey);
 					if (!NT_SUCCESS(status))
 					{
-						return std::expected<HKEY, LSTATUS>{std::unexpect, status};
+						return std::unexpected{status};
 					}
 					return std::expected<HKEY, LSTATUS>{HKEY{}};
 				});
@@ -484,13 +535,13 @@ namespace hook
 		{
 			const std::expected<HKEY, LSTATUS> result =
 				RegOpenKeyExW(global::Data::get().appKey(), global::remove_leading_backslashes_sv(keyName).data())
-				.and_then([&](HKEY hKey)
+				.and_then([&](HKEY hKey)-> std::expected<HKEY, LSTATUS>
 				{
 					const NTSTATUS status = trampoline(hKey, ValueEntries, EntryCount, ValueBuffer, BufferLength, RequiredBufferLength);
 					RegCloseKey(hKey);
 					if (!NT_SUCCESS(status))
 					{
-						return std::expected<HKEY, LSTATUS>{std::unexpect, status};
+						return std::unexpected{status};
 					}
 					return std::expected<HKEY, LSTATUS>{HKEY{}};
 				});
@@ -533,6 +584,7 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtOpenJobObject);
 		CREATE_HOOK_BY_NAME(NtCreateNamedPipeFile);
 		CREATE_HOOK_BY_NAME(NtCreateFile);
+		CREATE_HOOK_BY_NAME(NtOpenFile);
 		// CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
 
 		// 简单做一个虚拟注册表：将所有的写入操作都copy一份到自己的环境中，查询优先查询虚拟环境中的，找不到的话再从真实注册表查

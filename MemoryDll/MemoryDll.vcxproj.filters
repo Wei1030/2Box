@@ -54,6 +54,9 @@
     <ClCompile Include="hook\Hook-Advapi32.ixx">
       <Filter>src\hook</Filter>
     </ClCompile>
+    <ClCompile Include="global_data\GlobalData.cpp">
+      <Filter>src\global_data</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="biz_initializer.h">
