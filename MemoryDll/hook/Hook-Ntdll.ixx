@@ -292,6 +292,17 @@ namespace hook
 		WCHAR Name[1];
 	} KEY_NAME_INFORMATION, *PKEY_NAME_INFORMATION;
 
+	typedef enum _KEY_VALUE_INFORMATION_CLASS
+	{
+		KeyValueBasicInformation,
+		KeyValueFullInformation,
+		KeyValuePartialInformation,
+		KeyValueFullInformationAlign64,
+		KeyValuePartialInformationAlign64,
+		KeyValueLayerInformation,
+		MaxKeyValueInfoClass
+	} KEY_VALUE_INFORMATION_CLASS;
+
 	inline win32_api::ApiProxy<utils::make_literal_name<L"ntdll">(), utils::make_literal_name<"NtQueryKey">(), NTSTATUS (NTAPI)(_In_ HANDLE KeyHandle,
 	                                                                                                                            _In_ KEY_INFORMATION_CLASS KeyInformationClass,
 	                                                                                                                            _Out_writes_bytes_opt_(Length) PVOID KeyInformation,
@@ -361,105 +372,139 @@ namespace hook
 		return fullName;
 	}
 
-	template <auto trampoline>
-	NTSTATUS NTAPI NtCreateKey(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes,
-	                           _Reserved_ ULONG TitleIndex, _In_opt_ PUNICODE_STRING Class, _In_ ULONG CreateOptions, _Out_opt_ PULONG Disposition)
+	std::expected<HKEY, LSTATUS> RegCreateKeyExW(_In_ HKEY hKey, _In_opt_ LPCWSTR lpSubKey)
 	{
-		const std::wstring fullName = GetObjectName(ObjectAttributes);
-		if (fullName.size() && !global::is_app_key_name(fullName))
+		HKEY hResKey{nullptr};
+		LSTATUS status = ::RegCreateKeyExW(hKey, lpSubKey,
+		                                   0, nullptr, 0,
+		                                   KEY_ALL_ACCESS, nullptr, &hResKey, nullptr);
+		if (status == ERROR_SUCCESS)
 		{
-			if (ERROR_SUCCESS == RegOpenKeyExW(global::Data::get().appKey(),
-			                                   global::remove_leading_backslashes_sv(fullName).data(),
-			                                   CreateOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle)))
-			{
-				return STATUS_SUCCESS;
-			}
+			return std::expected<HKEY, LSTATUS>{hResKey};
 		}
-		return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, TitleIndex, Class, CreateOptions, Disposition);
+		return std::expected<HKEY, LSTATUS>{std::unexpect, status};
 	}
 
-	template <auto trampoline>
-	NTSTATUS NTAPI NtCreateKeyTransacted(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes,
-	                                     _Reserved_ ULONG TitleIndex, _In_opt_ PUNICODE_STRING Class, _In_ ULONG CreateOptions,
-	                                     _In_ HANDLE TransactionHandle, _Out_opt_ PULONG Disposition)
+	std::expected<HKEY, LSTATUS> RegOpenKeyExW(_In_ HKEY hKey, _In_opt_ LPCWSTR lpSubKey)
 	{
-		const std::wstring fullName = GetObjectName(ObjectAttributes);
-		if (fullName.size() && !global::is_app_key_name(fullName))
+		HKEY hResKey{nullptr};
+		LSTATUS status = ::RegOpenKeyExW(hKey, lpSubKey, 0, KEY_ALL_ACCESS, &hResKey);
+		if (status == ERROR_SUCCESS)
 		{
-			if (ERROR_SUCCESS == RegOpenKeyTransactedW(global::Data::get().appKey(),
-			                                           global::remove_leading_backslashes_sv(fullName).data(),
-			                                           CreateOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle),
-			                                           TransactionHandle, nullptr))
-			{
-				return STATUS_SUCCESS;
-			}
+			return std::expected<HKEY, LSTATUS>{hResKey};
 		}
-		return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, TitleIndex, Class, CreateOptions, TransactionHandle, Disposition);
-	}
-
-	template <auto trampoline>
-	NTSTATUS NTAPI NtOpenKeyEx(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes, _In_ ULONG OpenOptions)
-	{
-		const std::wstring fullName = GetObjectName(ObjectAttributes);
-		if (fullName.size() && !global::is_app_key_name(fullName))
-		{
-			if (ERROR_SUCCESS == RegOpenKeyExW(global::Data::get().appKey(),
-			                                   global::remove_leading_backslashes_sv(fullName).data(),
-			                                   OpenOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle)))
-			{
-				return STATUS_SUCCESS;
-			}
-		}
-		return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, OpenOptions);
-	}
-
-	template <auto trampoline>
-	NTSTATUS NTAPI NtOpenKeyTransactedEx(_Out_ PHANDLE KeyHandle, _In_ ACCESS_MASK DesiredAccess, _In_ POBJECT_ATTRIBUTES ObjectAttributes, _In_ ULONG OpenOptions, _In_ HANDLE TransactionHandle)
-	{
-		const std::wstring fullName = GetObjectName(ObjectAttributes);
-		if (fullName.size() && !global::is_app_key_name(fullName))
-		{
-			if (ERROR_SUCCESS == RegOpenKeyTransactedW(global::Data::get().appKey(),
-			                                           global::remove_leading_backslashes_sv(fullName).data(),
-			                                           OpenOptions, KEY_ALL_ACCESS, reinterpret_cast<PHKEY>(KeyHandle),
-			                                           TransactionHandle, nullptr))
-			{
-				return STATUS_SUCCESS;
-			}
-		}
-		return trampoline(KeyHandle, DesiredAccess, ObjectAttributes, OpenOptions, TransactionHandle);
+		return std::expected<HKEY, LSTATUS>{std::unexpect, status};
 	}
 
 	template <auto trampoline>
 	NTSTATUS NTAPI NtSetValueKey(_In_ HANDLE KeyHandle, _In_ PUNICODE_STRING ValueName, _In_opt_ ULONG TitleIndex,
 	                             _In_ ULONG Type, _In_reads_bytes_opt_(DataSize) PVOID Data, _In_ ULONG DataSize)
 	{
-		if (!ValueName || !ValueName->Buffer || !ValueName->Length)
+		// TODO:
+		// 暂时先允许写入真实注册表
+		// 测试发现一些写入如果不写入真实注册表程序会变的很卡，不知道为什么。也许一些系统操作必须写入，其对应的查询又貌似不走NtQueryValueKey
+		// 暂时不研究过滤了，写入也不影响啥，又不是安全软件。
+		const NTSTATUS retStatus = trampoline(KeyHandle, ValueName, TitleIndex, Type, Data, DataSize);
+		if (!NT_SUCCESS(retStatus))
 		{
-			return trampoline(KeyHandle, ValueName, TitleIndex, Type, Data, DataSize);
+			return retStatus;
 		}
+		// 额外往app env key写入，已供后续优先查询，这样每个环境中都有一份自己的虚拟注册表了
 		const std::wstring keyName = GetKeyName(KeyHandle);
 		if (keyName.size() && !global::is_app_key_name(keyName))
 		{
-			HKEY hKeyInAppEnv{nullptr};
-			if (ERROR_SUCCESS == RegCreateKeyExW(global::Data::get().appKey(),
-			                                     global::remove_leading_backslashes_sv(keyName).data(),
-			                                     0, nullptr, 0, KEY_ALL_ACCESS, nullptr,
-			                                     &hKeyInAppEnv, nullptr))
-			{
-				if (ERROR_SUCCESS == RegSetValueExW(hKeyInAppEnv,
-				                                    std::wstring_view{ValueName->Buffer, ValueName->Length / sizeof(WCHAR)}.data(),
-				                                    0, Type,
-				                                    static_cast<const BYTE*>(Data), DataSize))
+			const std::expected<HKEY, LSTATUS> result =
+				RegCreateKeyExW(global::Data::get().appKey(), global::remove_leading_backslashes_sv(keyName).data())
+				.and_then([&](HKEY hKey)
 				{
-					RegCloseKey(hKeyInAppEnv);
-					return trampoline(KeyHandle, ValueName, TitleIndex, Type, Data, DataSize);
-				}
-				RegCloseKey(hKeyInAppEnv);
-			}
-			return STATUS_ACCESS_DENIED;
+					const NTSTATUS status = trampoline(hKey, ValueName, TitleIndex, Type, Data, DataSize);
+					RegCloseKey(hKey);
+					if (!NT_SUCCESS(status))
+					{
+						return std::expected<HKEY, LSTATUS>{std::unexpect, status};
+					}
+					return std::expected<HKEY, LSTATUS>{HKEY{}};
+				});
+			// if (result)
+			// {
+			// 	return STATUS_SUCCESS;
+			// }
 		}
-		return trampoline(KeyHandle, ValueName, TitleIndex, Type, Data, DataSize);
+		return retStatus;
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtQueryValueKey(_In_ HANDLE KeyHandle,
+	                               _In_ PUNICODE_STRING ValueName,
+	                               _In_ KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass,
+	                               _Out_writes_bytes_opt_(Length) PVOID KeyValueInformation,
+	                               _In_ ULONG Length,
+	                               _Out_ PULONG ResultLength)
+	{
+		// 优先从app env key查询，查询失败才从真实注册表查
+		const std::wstring keyName = GetKeyName(KeyHandle);
+		if (keyName.size() && !global::is_app_key_name(keyName))
+		{
+			const std::expected<HKEY, LSTATUS> result =
+				RegOpenKeyExW(global::Data::get().appKey(), global::remove_leading_backslashes_sv(keyName).data())
+				.and_then([&](HKEY hKey)
+				{
+					const NTSTATUS status = trampoline(hKey, ValueName, KeyValueInformationClass, KeyValueInformation, Length, ResultLength);
+					RegCloseKey(hKey);
+					if (!NT_SUCCESS(status))
+					{
+						return std::expected<HKEY, LSTATUS>{std::unexpect, status};
+					}
+					return std::expected<HKEY, LSTATUS>{HKEY{}};
+				});
+			if (result)
+			{
+				return STATUS_SUCCESS;
+			}
+			// 缓冲区不够不认为是失败，也直接返回。
+			if (result.error() == STATUS_BUFFER_TOO_SMALL || result.error() == STATUS_BUFFER_OVERFLOW)
+			{
+				return result.error();
+			}
+		}
+		return trampoline(KeyHandle, ValueName, KeyValueInformationClass, KeyValueInformation, Length, ResultLength);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtQueryMultipleValueKey(_In_ HANDLE KeyHandle,
+	                                       _Inout_updates_(EntryCount) PKEY_VALUE_ENTRY ValueEntries,
+	                                       _In_ ULONG EntryCount,
+	                                       _Out_writes_bytes_(*BufferLength) PVOID ValueBuffer,
+	                                       _Inout_ PULONG BufferLength,
+	                                       _Out_opt_ PULONG RequiredBufferLength)
+	{
+		// 优先从app env key查询，查询失败才从真实注册表查
+		const std::wstring keyName = GetKeyName(KeyHandle);
+		if (keyName.size() && !global::is_app_key_name(keyName))
+		{
+			const std::expected<HKEY, LSTATUS> result =
+				RegOpenKeyExW(global::Data::get().appKey(), global::remove_leading_backslashes_sv(keyName).data())
+				.and_then([&](HKEY hKey)
+				{
+					const NTSTATUS status = trampoline(hKey, ValueEntries, EntryCount, ValueBuffer, BufferLength, RequiredBufferLength);
+					RegCloseKey(hKey);
+					if (!NT_SUCCESS(status))
+					{
+						return std::expected<HKEY, LSTATUS>{std::unexpect, status};
+					}
+					return std::expected<HKEY, LSTATUS>{HKEY{}};
+				});
+			if (result)
+			{
+				return STATUS_SUCCESS;
+			}
+			// 缓冲区不够不认为是失败，也直接返回。
+			if (result.error() == STATUS_BUFFER_TOO_SMALL || result.error() == STATUS_BUFFER_OVERFLOW)
+			{
+				return result.error();
+			}
+		}
+		return trampoline(KeyHandle, ValueEntries, EntryCount, ValueBuffer, BufferLength, RequiredBufferLength);
 	}
 
 	void hook_ntdll()
@@ -490,10 +535,9 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtCreateFile);
 		// CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
 
-		CREATE_HOOK_BY_NAME(NtCreateKey);
-		CREATE_HOOK_BY_NAME(NtCreateKeyTransacted);
-		CREATE_HOOK_BY_NAME(NtOpenKeyEx);
-		CREATE_HOOK_BY_NAME(NtOpenKeyTransactedEx);
+		// 简单做一个虚拟注册表：将所有的写入操作都copy一份到自己的环境中，查询优先查询虚拟环境中的，找不到的话再从真实注册表查
 		CREATE_HOOK_BY_NAME(NtSetValueKey);
+		CREATE_HOOK_BY_NAME(NtQueryValueKey);
+		CREATE_HOOK_BY_NAME(NtQueryMultipleValueKey);
 	}
 }
