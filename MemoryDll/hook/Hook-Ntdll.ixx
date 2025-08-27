@@ -258,7 +258,7 @@ namespace hook
 		{
 			const rpc::ClientDefault c;
 			std::uint64_t pids[rpc::MAX_PID_COUNT]{};
-			std::uint32_t count = 0;
+			std::uint32_t count = rpc::MAX_PID_COUNT;
 			c.getAllProcessIdInEnv(global::Data::get().envFlag(), pids, &count);
 			allProc.reserve(count);
 			for (std::uint32_t i = 0; i < count; ++i)
@@ -585,7 +585,7 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtCreateNamedPipeFile);
 		CREATE_HOOK_BY_NAME(NtCreateFile);
 		CREATE_HOOK_BY_NAME(NtOpenFile);
-		// CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
+		CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
 
 		// 简单做一个虚拟注册表：将所有的写入操作都copy一份到自己的环境中，查询优先查询虚拟环境中的，找不到的话再从真实注册表查
 		CREATE_HOOK_BY_NAME(NtSetValueKey);

@@ -455,6 +455,6 @@ namespace hook
 		CREATE_HOOK_BY_NAME(CreateProcessA);
 		pCreateProcessTrampolineW = std::addressof(CREATE_HOOK_BY_NAME(CreateProcessW).funcAddress);
 		CREATE_HOOK_BY_NAME(WinExec);
-		CREATE_HOOK_BY_NAME(DeviceIoControl);
+		//CREATE_HOOK_BY_NAME(DeviceIoControl);
 	}
 }

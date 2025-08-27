@@ -6,14 +6,15 @@ import GlobalData;
 import RpcClient;
 import Hook;
 
-void initialize_rpc()
-{
-	rpc::get_default_binding_info();
-}
-
 void initialize_global_data(unsigned long long envFlag, unsigned long envIndex, std::wstring_view rootPath)
 {
 	global::Data::get().initialize(envFlag, envIndex, rootPath);
+}
+
+void initialize_rpc()
+{
+	const rpc::ClientDefault c;
+	c.addToBox(GetCurrentProcessId(), global::Data::get().envFlag());
 }
 
 void initialize_hook()
@@ -25,8 +26,8 @@ void biz_initialize(unsigned long long envFlag, unsigned long envIndex, const wc
 {
 	try
 	{
-		initialize_rpc();
 		initialize_global_data(envFlag, envIndex, std::wstring_view{rootPath, rootPathCount});
+		initialize_rpc();
 		initialize_hook();
 	}
 	catch (...)

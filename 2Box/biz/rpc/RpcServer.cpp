@@ -3,7 +3,6 @@
 #include "RpcServer.h"
 
 import std;
-import Injector;
 import EssentialData;
 import Env;
 
@@ -49,11 +48,12 @@ namespace rpc
 
 
 extern "C" {
-void inject_to_process(handle_t IDL_handle, unsigned int pid, unsigned long long envFlag)
+void add_to_box(handle_t /*IDL_handle*/, unsigned int pid, unsigned long long envFlag)
 {
 	try
 	{
-		biz::inject_memory_dll_to_process(pid, biz::EnvManager::instance().findEnvByFlag(envFlag).get(), biz::get_injection_dlls(), biz::get_essential_data());
+		std::shared_ptr<biz::Env> pEnv = biz::EnvManager::instance().findEnvByFlag(envFlag);
+		pEnv->addProcess(pid);
 	}
 	catch (...)
 	{
@@ -61,9 +61,23 @@ void inject_to_process(handle_t IDL_handle, unsigned int pid, unsigned long long
 	}
 }
 
-void get_all_process_id_in_env(handle_t IDL_handle, unsigned long long envFlag, unsigned long long pids[], unsigned int* count)
+void get_all_process_id_in_env(handle_t /*IDL_handle*/, unsigned long long envFlag, unsigned long long pids[], unsigned int* count)
 {
-	*count = 0;
+	try
+	{
+		std::shared_ptr<biz::Env> pEnv = biz::EnvManager::instance().findEnvByFlag(envFlag);
+		std::vector<DWORD> allPids = pEnv->getAllProcessIds();
+		const unsigned int allCount = allPids.size() > MAX_PIDS ? MAX_PIDS : static_cast<unsigned int>(allPids.size());
+		for (unsigned int i = 0; i < allCount; ++i)
+		{
+			pids[i] = allPids[i];
+		}
+		*count = allCount;
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
 }
 }
 

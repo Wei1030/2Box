@@ -4,7 +4,7 @@ version(1.0)
 ]
 interface service
 {
-    void inject_to_process([in] unsigned int pid, [in] unsigned long long envFlag);
+    void add_to_box([in] unsigned int pid, [in] unsigned long long envFlag);
 	
 	inline const unsigned int MAX_PIDS = 1024;
 	void get_all_process_id_in_env([in] unsigned long long envFlag,

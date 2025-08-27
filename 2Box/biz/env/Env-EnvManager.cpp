@@ -107,9 +107,9 @@ namespace biz
 		return envResult;
 	}
 
-	std::shared_ptr<Env> EnvManager::findEnvByFlagNoExcept(std::uint64_t flag)
+	std::shared_ptr<Env> EnvManager::findEnvByFlagNoExcept(std::uint64_t flag) const
 	{
-		std::lock_guard lock(m_mutex);
+		std::shared_lock lock(m_mutex);
 		const auto it = m_flagToEnv.find(flag);
 		if (it == m_flagToEnv.end())
 		{
@@ -118,7 +118,7 @@ namespace biz
 		return it->second;
 	}
 
-	std::shared_ptr<Env> EnvManager::findEnvByFlag(std::uint64_t flag)
+	std::shared_ptr<Env> EnvManager::findEnvByFlag(std::uint64_t flag) const
 	{
 		std::shared_ptr<Env> result = findEnvByFlagNoExcept(flag);
 		if (!result)
@@ -131,7 +131,7 @@ namespace biz
 	std::shared_ptr<Env> EnvManager::testFindFirstOrCreate()
 	{
 		{
-			std::lock_guard lock(m_mutex);
+			std::shared_lock lock(m_mutex);
 			if (m_orderedEnvs.size())
 			{
 				return m_orderedEnvs.begin()->second;
@@ -142,7 +142,7 @@ namespace biz
 
 	void EnvManager::addEnv(const std::shared_ptr<Env>& env)
 	{
-		std::lock_guard lock(m_mutex);
+		std::unique_lock lock(m_mutex);
 		const auto [it, success] = m_orderedEnvs.insert(std::make_pair(env->getIndex(), env));
 		if (success)
 		{

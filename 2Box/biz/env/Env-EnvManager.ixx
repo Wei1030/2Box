@@ -16,8 +16,8 @@ namespace biz
 
 		void loadEnvFrom(std::uint32_t index, std::uint64_t flag, std::wstring_view flagName, std::wstring_view name);
 		std::shared_ptr<Env> createEnv();
-		std::shared_ptr<Env> findEnvByFlagNoExcept(std::uint64_t flag);
-		std::shared_ptr<Env> findEnvByFlag(std::uint64_t flag);
+		std::shared_ptr<Env> findEnvByFlagNoExcept(std::uint64_t flag) const;
+		std::shared_ptr<Env> findEnvByFlag(std::uint64_t flag) const;
 		std::shared_ptr<Env> testFindFirstOrCreate();
 
 	private:
@@ -27,7 +27,7 @@ namespace biz
 
 	private:
 		std::atomic<std::uint32_t> m_currentIndex{0};
-		std::mutex m_mutex;
+		mutable std::shared_mutex m_mutex;
 		std::map<std::uint32_t, std::shared_ptr<Env>> m_orderedEnvs;
 		std::unordered_map<std::uint64_t, std::shared_ptr<Env>> m_flagToEnv;
 	};

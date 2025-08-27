@@ -162,9 +162,9 @@ namespace rpc
 			return static_cast<const DerivedT*>(this)->getHandle();
 		}
 
-		decltype(auto) injectToProcess(unsigned int pid, unsigned long long envFlag) const
+		decltype(auto) addToBox(unsigned int pid, unsigned long long envFlag) const
 		{
-			return inject_to_process(handle(), pid, envFlag);
+			return add_to_box(handle(), pid, envFlag);
 		}
 
 		decltype(auto) getAllProcessIdInEnv(unsigned long long envFlag, unsigned long long pids[], unsigned int* count) const
