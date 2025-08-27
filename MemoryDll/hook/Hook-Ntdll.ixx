@@ -190,7 +190,7 @@ namespace hook
 				break;
 			}
 
-			if (std::expected<std::wstring, bool> result = global::Data::get().redirectKnownFolderPath(strCmpName))
+			if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(strCmpName))
 			{
 				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
 				UNICODE_STRING newObjName;
@@ -198,7 +198,7 @@ namespace hook
 				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
 				ObjectAttributes->ObjectName = &newObjName;
 				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
-								 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+				                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
 				ObjectAttributes->ObjectName = pOldName;
 				break;
 			}
@@ -230,7 +230,7 @@ namespace hook
 			}
 
 			std::wstring_view strCmpName(ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t));
-			if (std::expected<std::wstring, bool> result = global::Data::get().redirectKnownFolderPath(strCmpName))
+			if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(strCmpName))
 			{
 				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
 				UNICODE_STRING newObjName;

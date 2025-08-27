@@ -24,7 +24,7 @@ namespace
 	// }
 
 	template <bool IsDirectory = false>
-	std::expected<std::filesystem::path, bool> try_to_create_redirect_path(std::wstring_view knownFolderPath)
+	std::optional<std::filesystem::path> try_to_create_redirect_path(std::wstring_view knownFolderPath)
 	{
 		static constexpr std::wstring_view driverMarker(LR"(:\)");
 
@@ -65,7 +65,7 @@ namespace
 		catch (...)
 		{
 		}
-		return std::unexpected{false};
+		return std::nullopt;
 	}
 }
 
@@ -87,18 +87,18 @@ namespace global
 		// InitConsole();
 	}
 
-	std::expected<std::wstring, bool> Data::redirectKnownFolderPath(std::wstring_view fullPath) const
+	std::optional<std::wstring> Data::redirectKnownFolderPath(std::wstring_view fullPath) const
 	{
 		static constexpr std::wstring_view prefixToCheck(LR"(\??\)");
 
 		if (m_knownFolders.empty())
 		{
-			return std::unexpected{false};
+			return std::nullopt;
 		}
 
 		if (!fullPath.starts_with(prefixToCheck))
 		{
-			return std::unexpected{false};
+			return std::nullopt;
 		}
 
 		std::wstring_view pathToCheck = fullPath.substr(prefixToCheck.length());
@@ -106,7 +106,7 @@ namespace global
 			|| pathToCheck.contains(L"NVIDIA")
 			|| pathToCheck.contains(L"AMD"))
 		{
-			return std::unexpected{false};
+			return std::nullopt;
 		}
 		std::wstring lowerPath(pathToCheck);
 		auto toLowerIterNow = lowerPath.begin();
@@ -128,13 +128,13 @@ namespace global
 			{
 				continue;
 			}
-			if (const std::expected<std::filesystem::path, bool> result = try_to_create_redirect_path(pathToCheck))
+			if (const std::optional<std::filesystem::path> result = try_to_create_redirect_path(pathToCheck))
 			{
-				return std::expected<std::wstring, bool>{std::format(L"{}{}", prefixToCheck, result.value().native())};
+				return std::format(L"{}{}", prefixToCheck, result.value().native());
 			}
 			break;
 		}
-		return std::unexpected{false};
+		return std::nullopt;
 	}
 
 	void Data::initializeRegistry()

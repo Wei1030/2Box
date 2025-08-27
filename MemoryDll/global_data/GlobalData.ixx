@@ -90,7 +90,7 @@ namespace global
 			return m_appKey;
 		}
 
-		std::expected<std::wstring, bool> redirectKnownFolderPath(std::wstring_view fullPath) const;
+		std::optional<std::wstring> redirectKnownFolderPath(std::wstring_view fullPath) const;
 
 	private:
 		Data() = default;
