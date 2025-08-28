@@ -42,6 +42,7 @@ namespace biz
 			pWaitObject && pWaitObject->m_cb)
 		{
 			pWaitObject->m_cb();
+			pWaitObject->m_cb = nullptr;
 		}
 	}
 
@@ -131,12 +132,12 @@ namespace biz
 		m_fullPath.resize(pathLength);
 	}
 
-	void ProcessDenseMap::addProcessInfo(const std::shared_ptr<ProcessInfo>& procInfo)
+	bool ProcessDenseMap::addProcessInfo(const std::shared_ptr<ProcessInfo>& procInfo)
 	{
 		const DWORD pid = procInfo->getProcessId();
 		if (m_sparse.contains(pid))
 		{
-			return;
+			return false;
 		}
 
 		m_uniqueProcNames.insert(procInfo->getProcessFullPath());
@@ -145,53 +146,62 @@ namespace biz
 		procInfo->setDenseIndex(m_densePids.size() - 1);
 
 		m_sparse.insert(std::make_pair(pid, procInfo));
+		return true;
 	}
 
-	void ProcessDenseMap::removeProcessInfoById(DWORD pid)
+	bool ProcessDenseMap::removeProcessInfoById(DWORD pid)
 	{
 		const auto it = m_sparse.find(pid);
-		if (it != m_sparse.end())
+		if (it == m_sparse.end())
 		{
-			m_uniqueProcNames.erase(it->second->getProcessFullPath());
-
-			const size_t idx = it->second->getDenseIndex();
-			if (idx < m_densePids.size() - 1)
-			{
-				std::swap(m_densePids.at(idx), m_densePids.back());
-			}
-			m_densePids.pop_back();
-			m_sparse.erase(it);
+			return false;
 		}
+		m_uniqueProcNames.erase(it->second->getProcessFullPath());
+
+		const size_t idx = it->second->getDenseIndex();
+		if (idx < m_densePids.size() - 1)
+		{
+			std::swap(m_densePids.at(idx), m_densePids.back());
+		}
+		m_densePids.pop_back();
+		m_sparse.erase(it);
+		return true;
 	}
 
 	void Env::addProcess(HANDLE handle)
 	{
 		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(handle);
-		addProcessInternal(newProcInfo);
-		m_waiter.addWait(newProcInfo->getHandle(), [this, pid = newProcInfo->getProcessId()]
+		if (addProcessInternal(newProcInfo))
 		{
-			removeProcessInternal(pid);
-		});
+			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
+			{
+				removeProcessInternal(newProcInfo->getProcessId());
+			});
+		}
 	}
 
 	void Env::addProcess(DWORD pid)
 	{
 		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(pid);
-		addProcessInternal(newProcInfo);
-		m_waiter.addWait(newProcInfo->getHandle(), [this, pid = newProcInfo->getProcessId()]
+		if (addProcessInternal(newProcInfo))
 		{
-			removeProcessInternal(pid);
-		});
+			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
+			{
+				removeProcessInternal(newProcInfo->getProcessId());
+			});
+		}
 	}
 
 	void Env::addProcess(HANDLE handle, DWORD pid)
 	{
 		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(handle, pid);
-		addProcessInternal(newProcInfo);
-		m_waiter.addWait(newProcInfo->getHandle(), [this, pid = newProcInfo->getProcessId()]
+		if (addProcessInternal(newProcInfo))
 		{
-			removeProcessInternal(pid);
-		});
+			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
+			{
+				removeProcessInternal(newProcInfo->getProcessId());
+			});
+		}
 	}
 
 	std::vector<DWORD> Env::getAllProcessIds() const
@@ -206,15 +216,15 @@ namespace biz
 		return m_processes.contains(procFullName);
 	}
 
-	void Env::addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo)
+	bool Env::addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo)
 	{
 		std::unique_lock lock(m_mutex);
-		m_processes.addProcessInfo(procInfo);
+		return m_processes.addProcessInfo(procInfo);
 	}
 
-	void Env::removeProcessInternal(DWORD pid)
+	bool Env::removeProcessInternal(DWORD pid)
 	{
 		std::unique_lock lock(m_mutex);
-		m_processes.removeProcessInfoById(pid);
+		return m_processes.removeProcessInfoById(pid);
 	}
 }

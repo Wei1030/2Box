@@ -380,8 +380,16 @@ namespace hook
 				{
 					break;
 				}
-
-				if (nOutBufferSize < 8)
+				STORAGE_PROPERTY_QUERY* query = static_cast<STORAGE_PROPERTY_QUERY*>(lpInBuffer);
+				if (query->QueryType == PropertyExistsQuery)
+				{
+					break;
+				}
+				if (query->PropertyId != StorageDeviceProperty)
+				{
+					break;
+				}
+				if (nOutBufferSize < sizeof(STORAGE_DESCRIPTOR_HEADER))
 				{
 					break;
 				}
@@ -390,37 +398,30 @@ namespace hook
 				           lpInBuffer, nInBufferSize,
 				           lpOutBuffer, nOutBufferSize,
 				           lpBytesReturned, nullptr);
-				const std::string_view newName = global::Data::get().envFlagNameA();
-				constexpr DWORD iMinLen = sizeof(STORAGE_DEVICE_DESCRIPTOR);
-				DWORD iNewLen = static_cast<DWORD>(newName.length());
 				PSTORAGE_DEVICE_DESCRIPTOR sdn = static_cast<PSTORAGE_DEVICE_DESCRIPTOR>(lpOutBuffer);
-				sdn->Size = iMinLen + iNewLen;
+				const std::string_view flagName = global::Data::get().envFlagNameA();
+				constexpr DWORD iMinLen = sizeof(STORAGE_DEVICE_DESCRIPTOR);
+				sdn->Size = std::min(sdn->Size, static_cast<DWORD>(flagName.length() + iMinLen));
 				bProcessed = TRUE;
 
 				if (nOutBufferSize <= iMinLen)
 				{
 					break;
 				}
-
-				if (nOutBufferSize < sdn->Size)
+				DWORD bytesReturned = std::min(sdn->Size, nOutBufferSize);
+				if (lpBytesReturned)
 				{
-					iNewLen = nOutBufferSize - iMinLen - 1;
-					if (0 == iNewLen)
-					{
-						break;
-					}
+					*lpBytesReturned = bytesReturned;
 				}
-
-				sdn->RawPropertiesLength = iNewLen;
-				sdn->VendorIdOffset = iMinLen;
-				sdn->ProductIdOffset = iMinLen;
-				sdn->ProductRevisionOffset = iMinLen;
+				sdn->RawPropertiesLength = bytesReturned - iMinLen;
+				sdn->VendorIdOffset = 0;
+				sdn->ProductIdOffset = 0;
+				sdn->ProductRevisionOffset = 0;
 				sdn->SerialNumberOffset = iMinLen;
 
 				BYTE* pData = reinterpret_cast<BYTE*>(sdn) + iMinLen;
-
-				memcpy(pData, newName.data(), iNewLen);
-				pData[iNewLen] = 0;
+				memcpy(pData, flagName.data(), sdn->RawPropertiesLength);
+				pData[sdn->RawPropertiesLength - 1] = 0;
 				break;
 			}
 		}
@@ -455,6 +456,6 @@ namespace hook
 		CREATE_HOOK_BY_NAME(CreateProcessA);
 		pCreateProcessTrampolineW = std::addressof(CREATE_HOOK_BY_NAME(CreateProcessW).funcAddress);
 		CREATE_HOOK_BY_NAME(WinExec);
-		//CREATE_HOOK_BY_NAME(DeviceIoControl);
+		CREATE_HOOK_BY_NAME(DeviceIoControl);
 	}
 }

@@ -114,8 +114,8 @@ namespace biz
 	class ProcessDenseMap
 	{
 	public:
-		void addProcessInfo(const std::shared_ptr<ProcessInfo>& procInfo);
-		void removeProcessInfoById(DWORD pid);
+		bool addProcessInfo(const std::shared_ptr<ProcessInfo>& procInfo);
+		bool removeProcessInfoById(DWORD pid);
 
 	public:
 		const std::vector<DWORD>& getPids() const { return m_densePids; }
@@ -153,8 +153,8 @@ namespace biz
 		bool contains(std::wstring_view procFullName) const;
 
 	private:
-		void addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo);
-		void removeProcessInternal(DWORD pid);
+		bool addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo);
+		bool removeProcessInternal(DWORD pid);
 
 	private:
 		std::uint32_t m_index{0};
