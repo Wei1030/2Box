@@ -102,28 +102,31 @@ namespace global
 		}
 
 		std::wstring_view pathToCheck = fullPath.substr(prefixToCheck.length());
-		if (pathToCheck.contains(L"Microsoft")
-			|| pathToCheck.contains(L"NVIDIA")
-			|| pathToCheck.contains(L"AMD"))
+		std::wstring lowerPath(pathToCheck);
+		std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), std::towlower);
+
+		if (lowerPath.contains(L"microsoft")
+			|| lowerPath.contains(L"nvidia")
+			|| lowerPath.contains(L"amd")
+			|| lowerPath.contains(L"google"))
 		{
 			return std::nullopt;
 		}
-		std::wstring lowerPath(pathToCheck);
-		auto toLowerIterNow = lowerPath.begin();
+		//auto toLowerIterNow = lowerPath.begin();
 		for (const std::wstring& knownFolder : m_knownFolders)
 		{
 			if (knownFolder.length() > lowerPath.length())
 			{
 				continue;
 			}
-			if (const size_t alreadyToLowerCount = toLowerIterNow - lowerPath.begin();
-				alreadyToLowerCount < knownFolder.length())
-			{
-				const size_t needToLowerCount = knownFolder.length() - alreadyToLowerCount;
-				const auto last = toLowerIterNow + needToLowerCount;
-				std::transform(toLowerIterNow, last, toLowerIterNow, std::towlower);
-				toLowerIterNow = last;
-			}
+			// if (const size_t alreadyToLowerCount = toLowerIterNow - lowerPath.begin();
+			// 	alreadyToLowerCount < knownFolder.length())
+			// {
+			// 	const size_t needToLowerCount = knownFolder.length() - alreadyToLowerCount;
+			// 	const auto last = toLowerIterNow + needToLowerCount;
+			// 	std::transform(toLowerIterNow, last, toLowerIterNow, std::towlower);
+			// 	toLowerIterNow = last;
+			// }
 			if (!lowerPath.starts_with(knownFolder))
 			{
 				continue;

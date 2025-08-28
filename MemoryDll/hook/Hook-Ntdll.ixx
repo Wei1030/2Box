@@ -239,7 +239,7 @@ namespace hook
 				ObjectAttributes->ObjectName = &newObjName;
 				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
 				ObjectAttributes->ObjectName = pOldName;
-				break;
+				return ret;
 			}
 		}
 		while (false);
