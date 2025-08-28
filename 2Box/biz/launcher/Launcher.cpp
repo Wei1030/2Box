@@ -77,7 +77,7 @@ namespace biz
 			const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath);
 			ResumeThread(procInfo.hThread);
 			CloseHandle(procInfo.hThread);
-			env->addProcess(procInfo.hProcess, procInfo.dwProcessId);
+			CloseHandle(procInfo.hProcess);
 		}
 		catch (const std::exception& e)
 		{
