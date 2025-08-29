@@ -23,6 +23,7 @@ namespace ui
 		virtual void onResize(float width, float height) override;
 
 	private:
+		void updateBoundsWhenPathChanged();
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	private:
@@ -32,6 +33,7 @@ namespace ui
 		UniqueComPtr<IDWriteTextLayout> m_pExePathTextLayout;
 		std::wstring m_strExePath;
 		float m_pathTextHeight{0};
+		std::unique_ptr<Button> m_btnClear;
 		std::unique_ptr<Button> m_btnStart;
 	};
 }

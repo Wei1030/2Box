@@ -12,7 +12,6 @@ namespace ui
 	{
 	public:
 		static constexpr float sidebarWidth = 280.0f;
-		static constexpr float sidebarShadowBlur = 3.f;
 
 		explicit HomePage(WindowBase* owner) : m_ownerWnd(owner)
 		{

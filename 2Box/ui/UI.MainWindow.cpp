@@ -14,8 +14,11 @@ namespace ui
 		setExitAppWhenWindowDestroyed(true);
 		initWindowPosition();
 		reserveRenderers(2, 20);
-		// initSymbols().detachAndStart();
+#if 0	// 暂时不使用反射注入，就不需要下载pdb了
+		initSymbols().detachAndStart();
+#else
 		changePageTo<HomePage>();
+#endif
 	}
 
 	void MainWindow::draw(const RenderContext& renderCtx)
