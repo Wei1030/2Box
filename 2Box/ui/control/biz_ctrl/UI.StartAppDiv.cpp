@@ -41,7 +41,6 @@ namespace ui
 		{
 			m_strExePath.clear();
 			updateBoundsWhenPathChanged();
-			updateWholeWnd();
 		});
 
 		m_btnStart = std::make_unique<Button>(this);
@@ -90,7 +89,7 @@ namespace ui
 
 		const D2D1_RECT_F& rcNow = getBounds();
 		setBounds(D2D1::RectF(rcNow.left, rcNow.top, rcNow.right, rcNow.top + get_path_area_height(m_pathTextHeight) + START_BTN_HEIGHT));
-		update();
+		updateWholeWnd();
 	}
 
 	void StartAppDiv::drawImpl(const RenderContext& renderCtx)

@@ -168,6 +168,11 @@ namespace biz
 		return true;
 	}
 
+	std::size_t ProcessDenseMap::getCount() const
+	{
+		return m_sparse.size();
+	}
+
 	void Env::addProcess(HANDLE handle)
 	{
 		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(handle);
@@ -202,6 +207,12 @@ namespace biz
 				removeProcessInternal(newProcInfo->getProcessId());
 			});
 		}
+	}
+
+	std::size_t Env::getAllProcessesCount() const
+	{
+		std::shared_lock lock(m_mutex);
+		return m_processes.getCount();
 	}
 
 	std::vector<DWORD> Env::getAllProcessIds() const

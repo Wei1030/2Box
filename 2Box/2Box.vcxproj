@@ -50,6 +50,8 @@
     <ClCompile Include="biz\launcher\Launcher.ixx" />
     <ClCompile Include="biz\rpc\RpcServer.cpp" />
     <ClCompile Include="biz\symbols\SymbolLoader.ixx" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.cpp" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.cpp" />

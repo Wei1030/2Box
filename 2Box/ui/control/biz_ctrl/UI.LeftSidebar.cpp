@@ -6,9 +6,14 @@ import "sys_defs.h";
 import "sys_defs.hpp";
 #endif
 
+import Env;
+
 namespace
 {
 	constexpr float PADDING = 24.f;
+	constexpr float MARGIN_BOTTOM = 24.f;
+	constexpr float CARD_HEIGHT = 132.f;
+	constexpr float CARD_MARGIN_BOTTOM = 12.f;
 }
 
 namespace ui
@@ -17,6 +22,20 @@ namespace ui
 	{
 		m_startAppDiv = std::make_unique<StartAppDiv>(this);
 		m_startAppDiv->setBounds(D2D1::RectF(PADDING, PADDING, PADDING + 232.f, PADDING + 36.f));
+
+		initializeAllEnvBoxCard();
+	}
+
+	void LeftSidebar::initializeAllEnvBoxCard()
+	{
+		std::vector<std::shared_ptr<biz::Env>> allEnv = biz::EnvManager::instance().getAllEnv();
+		m_envs.reserve(allEnv.size());
+		for (auto it = allEnv.begin(); it != allEnv.end(); ++it)
+		{
+			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
+			card->setEnv(*it);
+			m_envs.push_back(std::move(card));
+		}
 	}
 
 	void LeftSidebar::drawImpl(const RenderContext& renderCtx)
@@ -32,5 +51,38 @@ namespace ui
 		renderTarget->DrawLine(D2D1::Point2F(drawSize.width, 0.f), D2D1::Point2F(drawSize.width, drawSize.height), solidBrush);
 
 		m_startAppDiv->draw(renderCtx);
+
+		if (m_envs.size())
+		{
+			float startYPos = m_startAppDiv->getBounds().bottom + MARGIN_BOTTOM;
+			solidBrush->SetColor(D2D1::ColorF(0xe0e0e0));
+			renderTarget->DrawLine(D2D1::Point2F(PADDING, startYPos), D2D1::Point2F(drawSize.width, startYPos), solidBrush);
+
+			startYPos += MARGIN_BOTTOM;
+
+			for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
+			{
+				EnvBoxCard* card = it->get();
+				card->setBounds(D2D1::RectF(PADDING, startYPos, drawSize.width - PADDING, startYPos + CARD_HEIGHT));
+				if (card->isHovered())
+				{
+					draw_box_shadow(renderCtx, card->getBounds(),
+					                {
+						                .offset = D2D1::Point2F(0.f, 4.f),
+						                .size = 6.f,
+						                .layers = 6,
+						                .color = D2D1::ColorF{0x000000, 0.03f},
+						                .radius = 12.f
+					                });
+				}
+				else
+				{
+					draw_box_shadow(renderCtx, card->getBounds(), {.offset = D2D1::Point2F(0.f, 1.f), .radius = 12.f});
+				}
+				card->draw(renderCtx);
+
+				startYPos += CARD_HEIGHT + CARD_MARGIN_BOTTOM;
+			}
+		}
 	}
 }

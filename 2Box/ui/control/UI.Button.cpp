@@ -131,6 +131,8 @@ namespace ui
 			4.0f, 4.0f);
 		brush->SetColor(stateCtx.backgroundColor);
 		renderTarget->FillRoundedRectangle(roundedRect, brush);
+		brush->SetColor(stateCtx.borderColor);
+		renderTarget->DrawRoundedRectangle(roundedRect, brush);
 
 		brush->SetColor(stateCtx.textColor);
 		if (stateCtx.textLayout)

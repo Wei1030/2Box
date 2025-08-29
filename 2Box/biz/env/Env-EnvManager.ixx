@@ -20,6 +20,9 @@ namespace biz
 		std::shared_ptr<Env> findEnvByFlag(std::uint64_t flag) const;
 		std::shared_ptr<Env> testFindFirstOrCreate();
 
+	public:
+		std::vector<std::shared_ptr<Env>> getAllEnv() const;
+
 	private:
 		EnvManager() = default;
 		

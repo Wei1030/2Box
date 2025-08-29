@@ -48,6 +48,7 @@ namespace ui
 		public:
 			D2D1_COLOR_F textColor{D2D1::ColorF(0xffffff)};
 			D2D1_COLOR_F backgroundColor{D2D1::ColorF(0x000000)};
+			D2D1_COLOR_F borderColor{D2D1::ColorF(0x000000, 0.f)};
 			IDWriteTextFormat* textFormat{nullptr};
 			UniqueComPtr<IDWriteTextLayout> textLayout;
 			std::wstring text;
@@ -129,6 +130,16 @@ namespace ui
 				return;
 			}
 			ctxFromState(state).backgroundColor = color;
+		}
+
+		void setBorderColor(const D2D1_COLOR_F& color, EState state = EState::All)
+		{
+			if (state == EState::All)
+			{
+				applyAllState(std::make_index_sequence<static_cast<std::size_t>(EState::All)>(), &Button::setBorderColor, this, color);
+				return;
+			}
+			ctxFromState(state).borderColor = color;
 		}
 
 		void setTextFormat(IDWriteTextFormat* textFormat, EState state = EState::All);

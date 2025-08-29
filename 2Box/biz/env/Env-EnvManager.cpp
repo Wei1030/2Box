@@ -140,6 +140,18 @@ namespace biz
 		return createEnv();
 	}
 
+	std::vector<std::shared_ptr<Env>> EnvManager::getAllEnv() const
+	{
+		std::vector<std::shared_ptr<Env>> result;
+		std::shared_lock lock(m_mutex);
+		result.reserve(m_orderedEnvs.size());
+		for (auto it = m_orderedEnvs.begin(); it != m_orderedEnvs.end(); ++it)
+		{
+			result.push_back(it->second);
+		}
+		return result;
+	}
+
 	void EnvManager::addEnv(const std::shared_ptr<Env>& env)
 	{
 		std::unique_lock lock(m_mutex);
