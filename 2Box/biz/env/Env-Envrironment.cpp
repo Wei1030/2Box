@@ -227,15 +227,37 @@ namespace biz
 		return m_processes.contains(procFullName);
 	}
 
+	void Env::setProcCountChangeNotify(ProcCountChangeNotify notify)
+	{
+		std::unique_lock lock(m_mutex);
+		m_notify = std::move(notify);
+	}
+
 	bool Env::addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo)
 	{
 		std::unique_lock lock(m_mutex);
-		return m_processes.addProcessInfo(procInfo);
+		if (m_processes.addProcessInfo(procInfo))
+		{
+			if (m_notify)
+			{
+				m_notify(m_processes.getCount());
+			}
+			return true;
+		}
+		return false;
 	}
 
 	bool Env::removeProcessInternal(DWORD pid)
 	{
 		std::unique_lock lock(m_mutex);
-		return m_processes.removeProcessInfoById(pid);
+		if (m_processes.removeProcessInfoById(pid))
+		{
+			if (m_notify)
+			{
+				m_notify(m_processes.getCount());
+			}
+			return true;
+		}
+		return false;
 	}
 }

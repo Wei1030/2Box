@@ -4,7 +4,7 @@ import "sys_defs.h";
 import std;
 import UI.Core;
 import UI.Button;
-
+import Coroutine;
 import Env;
 
 namespace ui
@@ -17,6 +17,8 @@ namespace ui
 		{
 			initialize();
 		}
+
+		virtual ~EnvBoxCard();
 
 	public:
 		void setEnv(const std::shared_ptr<biz::Env>& env);
@@ -34,12 +36,14 @@ namespace ui
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	private:
+		coro::LazyTask<void> onProcessCountChange(std::size_t count);
 		void onBtnStartPressed();
 
 	private:
 		std::unique_ptr<Button> m_btnStart;
 		bool m_isHovered = false;
 		bool m_isPressed = false;
+		coro::AsyncScope m_asyncScope;
 
 	private:
 		std::shared_ptr<biz::Env> m_env;

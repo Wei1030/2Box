@@ -15,11 +15,24 @@ namespace
 
 namespace ui
 {
+	EnvBoxCard::~EnvBoxCard()
+	{
+		// 不再接收通知，且会等待已经通知的回调结束
+		m_env->setProcCountChangeNotify(nullptr);
+		// 之后就绝对不会spawn新的协程，才可以安全等待所有协程结束
+		m_asyncScope.join();
+	}
+
 	void EnvBoxCard::setEnv(const std::shared_ptr<biz::Env>& env)
 	{
 		m_env = env;
 		m_name = m_env->getName();
 		m_strProcCount = std::format(L"{}", m_env->getAllProcessesCount());
+
+		m_env->setProcCountChangeNotify([this](std::size_t count)
+		{
+			m_asyncScope.spawn(onProcessCountChange(count));
+		});
 	}
 
 	void EnvBoxCard::initialize()
@@ -107,6 +120,14 @@ namespace ui
 		                        solidBrush);
 
 		m_btnStart->draw(renderCtx);
+	}
+
+	coro::LazyTask<void> EnvBoxCard::onProcessCountChange(std::size_t count)
+	{
+		// 转到主线程
+		co_await sched::transfer_to(app().get_scheduler());
+		m_strProcCount = std::format(L"{}", count);
+		update();
 	}
 
 	void EnvBoxCard::onBtnStartPressed()

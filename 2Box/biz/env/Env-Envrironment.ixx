@@ -154,6 +154,9 @@ namespace biz
 		std::vector<DWORD> getAllProcessIds() const;
 		bool contains(std::wstring_view procFullName) const;
 
+		using ProcCountChangeNotify = std::function<void(std::size_t)>;
+		void setProcCountChangeNotify(ProcCountChangeNotify notify);
+
 	private:
 		bool addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo);
 		bool removeProcessInternal(DWORD pid);
@@ -164,8 +167,10 @@ namespace biz
 		std::wstring m_flagName;
 		std::wstring m_name;
 		std::string m_dllFullPath;
+
 		HandleWaiter m_waiter;
 		mutable std::shared_mutex m_mutex;
 		ProcessDenseMap m_processes;
+		ProcCountChangeNotify m_notify;
 	};
 }
