@@ -200,7 +200,7 @@ namespace hook
 				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
 				                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
 				ObjectAttributes->ObjectName = pOldName;
-				break;
+				return ret;
 			}
 		}
 		while (false);

@@ -108,7 +108,7 @@ namespace global
 		if (lowerPath.contains(L"microsoft")
 			|| lowerPath.contains(L"nvidia")
 			|| lowerPath.contains(L"amd")
-			|| lowerPath.contains(L"google"))
+			/*|| lowerPath.contains(L"google")*/)
 		{
 			return std::nullopt;
 		}
