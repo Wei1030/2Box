@@ -36,7 +36,7 @@ namespace ui
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	private:
-		coro::LazyTask<void> onProcessCountChange(std::size_t count);
+		coro::LazyTask<void> onProcessCountChange(biz::Env::EProcEvent e, std::shared_ptr<biz::ProcessInfo> proc, std::size_t count);
 		void onBtnStartPressed();
 
 	private:
@@ -49,5 +49,6 @@ namespace ui
 		std::shared_ptr<biz::Env> m_env;
 		std::wstring m_name;
 		std::wstring m_strProcCount{L"0"};
+		// std::map<std::uint32_t, std::shared_ptr<biz::ProcessInfo>> m_processes;
 	};
 }

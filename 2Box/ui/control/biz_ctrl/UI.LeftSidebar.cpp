@@ -6,7 +6,8 @@ import "sys_defs.h";
 import "sys_defs.hpp";
 #endif
 
-import Biz.Core;
+import MainApp;
+import Scheduler;
 
 namespace
 {
@@ -18,6 +19,14 @@ namespace
 
 namespace ui
 {
+	LeftSidebar::~LeftSidebar()
+	{
+		// 不再接收通知，且会等待已经通知的回调结束
+		biz::env_mgr().setEnvChangeNotify(nullptr);
+		// 之后就绝对不会spawn新的协程，才可以安全等待所有协程结束
+		m_asyncScope.join();
+	}
+
 	void LeftSidebar::initialize()
 	{
 		m_startAppDiv = std::make_unique<StartAppDiv>(this);
@@ -29,13 +38,36 @@ namespace ui
 	void LeftSidebar::initializeAllEnvBoxCard()
 	{
 		std::vector<std::shared_ptr<biz::Env>> allEnv = biz::env_mgr().getAllEnv();
-		m_envs.reserve(allEnv.size());
 		for (auto it = allEnv.begin(); it != allEnv.end(); ++it)
 		{
 			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
 			card->setEnv(*it);
-			m_envs.push_back(std::move(card));
+			m_envs.insert(std::make_pair((*it)->getIndex(), std::move(card)));
 		}
+
+		biz::env_mgr().setEnvChangeNotify([this](biz::EnvManager::EChangeType changeType, const std::shared_ptr<biz::Env>& env)
+		{
+			m_asyncScope.spawn(onEnvCountChange(changeType, env));
+		});
+	}
+
+	coro::LazyTask<void> LeftSidebar::onEnvCountChange(biz::EnvManager::EChangeType changeType, std::shared_ptr<biz::Env> env)
+	{
+		// 转到主线程
+		co_await sched::transfer_to(app().get_scheduler());
+
+		if (changeType == biz::EnvManager::EChangeType::Create)
+		{
+			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
+			card->setEnv(env);
+			m_envs.insert(std::make_pair(env->getIndex(), std::move(card)));
+		}
+		else if (changeType == biz::EnvManager::EChangeType::Delete)
+		{
+			m_envs.erase(env->getIndex());
+		}
+
+		update();
 	}
 
 	void LeftSidebar::drawImpl(const RenderContext& renderCtx)
@@ -62,7 +94,7 @@ namespace ui
 
 			for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
 			{
-				EnvBoxCard* card = it->get();
+				EnvBoxCard* card = it->second.get();
 				card->setBounds(D2D1::RectF(PADDING, startYPos, drawSize.width - PADDING, startYPos + CARD_HEIGHT));
 				if (card->isHovered())
 				{

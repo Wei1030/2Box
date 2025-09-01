@@ -1,6 +1,7 @@
 module UI.EnvBoxCard;
 
 import MainApp;
+import Scheduler;
 
 namespace
 {
@@ -29,9 +30,9 @@ namespace ui
 		m_name = m_env->getName();
 		m_strProcCount = std::format(L"{}", m_env->getAllProcessesCount());
 
-		m_env->setProcCountChangeNotify([this](std::size_t count)
+		m_env->setProcCountChangeNotify([this](biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& proc, std::size_t count)
 		{
-			m_asyncScope.spawn(onProcessCountChange(count));
+			m_asyncScope.spawn(onProcessCountChange(e, proc, count));
 		});
 	}
 
@@ -122,11 +123,18 @@ namespace ui
 		m_btnStart->draw(renderCtx);
 	}
 
-	coro::LazyTask<void> EnvBoxCard::onProcessCountChange(std::size_t count)
+	coro::LazyTask<void> EnvBoxCard::onProcessCountChange(biz::Env::EProcEvent e, std::shared_ptr<biz::ProcessInfo> proc, std::size_t count)
 	{
 		// 转到主线程
 		co_await sched::transfer_to(app().get_scheduler());
 		m_strProcCount = std::format(L"{}", count);
+
+		if (e == biz::Env::EProcEvent::Create)
+		{
+		}
+		else if (e == biz::Env::EProcEvent::Terminate)
+		{
+		}
 		update();
 	}
 

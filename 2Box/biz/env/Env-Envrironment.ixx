@@ -86,7 +86,7 @@ namespace biz
 		HANDLE m_handle;
 	};
 
-	class ProcessInfo
+	export class ProcessInfo
 	{
 	public:
 		explicit ProcessInfo(HANDLE handle);
@@ -119,6 +119,7 @@ namespace biz
 
 	public:
 		std::size_t getCount() const;
+		std::vector<std::shared_ptr<ProcessInfo>> getAllProcesses() const;
 		const std::vector<DWORD>& getPids() const { return m_densePids; }
 		bool contains(std::wstring_view procFullName) const { return m_uniqueProcNames.contains(procFullName); }
 
@@ -151,15 +152,22 @@ namespace biz
 		void addProcess(HANDLE handle, DWORD pid);
 
 		std::size_t getAllProcessesCount() const;
+		std::vector<std::shared_ptr<ProcessInfo>> getAllProcesses() const;
 		std::vector<DWORD> getAllProcessIds() const;
 		bool contains(std::wstring_view procFullName) const;
 
-		using ProcCountChangeNotify = std::function<void(std::size_t)>;
+		enum class EProcEvent:std::uint8_t
+		{
+			Create,
+			Terminate,
+		};
+
+		using ProcCountChangeNotify = std::function<void(EProcEvent, const std::shared_ptr<ProcessInfo>&, std::size_t)>;
 		void setProcCountChangeNotify(ProcCountChangeNotify notify);
 
 	private:
 		bool addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo);
-		bool removeProcessInternal(DWORD pid);
+		bool removeProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo);
 
 	private:
 		std::uint32_t m_index{0};

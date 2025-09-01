@@ -105,9 +105,9 @@ namespace biz
 	{
 		{
 			std::shared_lock lock(m_mutex);
-			if (m_orderedEnvs.size())
+			if (m_flagToEnv.size())
 			{
-				return m_orderedEnvs.begin()->second;
+				return m_flagToEnv.begin()->second;
 			}
 		}
 		return createEnv();
@@ -117,12 +117,18 @@ namespace biz
 	{
 		std::vector<std::shared_ptr<Env>> result;
 		std::shared_lock lock(m_mutex);
-		result.reserve(m_orderedEnvs.size());
-		for (auto it = m_orderedEnvs.begin(); it != m_orderedEnvs.end(); ++it)
+		result.reserve(m_flagToEnv.size());
+		for (auto it = m_flagToEnv.begin(); it != m_flagToEnv.end(); ++it)
 		{
 			result.push_back(it->second);
 		}
 		return result;
+	}
+
+	void EnvManager::setEnvChangeNotify(EnvChangeNotify envChangeNotify)
+	{
+		std::unique_lock lock(m_mutex);
+		m_envChangeNotify = std::move(envChangeNotify);
 	}
 
 	EnvManager::EnvFlagInfo EnvManager::ensureCreateNewEnvFlag(std::uint32_t index) const
@@ -157,25 +163,28 @@ namespace biz
 	void EnvManager::addEnv(const std::shared_ptr<Env>& env)
 	{
 		std::unique_lock lock(m_mutex);
-		const auto [it, success] = m_orderedEnvs.insert(std::make_pair(env->getIndex(), env));
-		if (success)
+		if (!m_flagToEnv.insert(std::make_pair(env->getFlag(), env)).second)
 		{
-			try
-			{
-				if (!m_flagToEnv.insert(std::make_pair(env->getFlag(), env)).second)
-				{
-					throw std::runtime_error("add env failed! env flag error!");
-				}
-			}
-			catch (...)
-			{
-				m_orderedEnvs.erase(it);
-				throw;
-			}
+			throw std::runtime_error("add env failed! env flag error!");
 		}
-		else
+		if (m_envChangeNotify)
 		{
-			throw std::runtime_error("add env failed! env index error!");
+			m_envChangeNotify(EChangeType::Create, env);
 		}
+	}
+
+	void EnvManager::removeEnv(std::uint64_t flag)
+	{
+		std::unique_lock lock(m_mutex);
+		const auto it = m_flagToEnv.find(flag);
+		if (it == m_flagToEnv.end())
+		{
+			throw std::runtime_error("remove env failed! can't find env flag!");
+		}
+		if (m_envChangeNotify)
+		{
+			m_envChangeNotify(EChangeType::Delete, it->second);
+		}
+		m_flagToEnv.erase(it);
 	}
 }

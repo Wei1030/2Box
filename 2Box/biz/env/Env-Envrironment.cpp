@@ -173,6 +173,16 @@ namespace biz
 		return m_sparse.size();
 	}
 
+	std::vector<std::shared_ptr<ProcessInfo>> ProcessDenseMap::getAllProcesses() const
+	{
+		std::vector<std::shared_ptr<ProcessInfo>> result;
+		for (auto it = m_sparse.begin(); it != m_sparse.end(); ++it)
+		{
+			result.emplace_back(it->second);
+		}
+		return result;
+	}
+
 	void Env::addProcess(HANDLE handle)
 	{
 		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(handle);
@@ -180,7 +190,7 @@ namespace biz
 		{
 			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
 			{
-				removeProcessInternal(newProcInfo->getProcessId());
+				removeProcessInternal(newProcInfo);
 			});
 		}
 	}
@@ -192,7 +202,7 @@ namespace biz
 		{
 			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
 			{
-				removeProcessInternal(newProcInfo->getProcessId());
+				removeProcessInternal(newProcInfo);
 			});
 		}
 	}
@@ -204,7 +214,7 @@ namespace biz
 		{
 			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
 			{
-				removeProcessInternal(newProcInfo->getProcessId());
+				removeProcessInternal(newProcInfo);
 			});
 		}
 	}
@@ -213,6 +223,12 @@ namespace biz
 	{
 		std::shared_lock lock(m_mutex);
 		return m_processes.getCount();
+	}
+
+	std::vector<std::shared_ptr<ProcessInfo>> Env::getAllProcesses() const
+	{
+		std::shared_lock lock(m_mutex);
+		return m_processes.getAllProcesses();
 	}
 
 	std::vector<DWORD> Env::getAllProcessIds() const
@@ -240,21 +256,21 @@ namespace biz
 		{
 			if (m_notify)
 			{
-				m_notify(m_processes.getCount());
+				m_notify(EProcEvent::Create, procInfo, m_processes.getCount());
 			}
 			return true;
 		}
 		return false;
 	}
 
-	bool Env::removeProcessInternal(DWORD pid)
+	bool Env::removeProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo)
 	{
 		std::unique_lock lock(m_mutex);
-		if (m_processes.removeProcessInfoById(pid))
+		if (m_processes.removeProcessInfoById(procInfo->getProcessId()))
 		{
 			if (m_notify)
 			{
-				m_notify(m_processes.getCount());
+				m_notify(EProcEvent::Terminate, procInfo, m_processes.getCount());
 			}
 			return true;
 		}
