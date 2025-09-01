@@ -4,7 +4,7 @@
 
 import std;
 import EssentialData;
-import Env;
+import Biz.Core;
 
 namespace rpc
 {
@@ -52,7 +52,7 @@ void add_to_box(handle_t /*IDL_handle*/, unsigned int pid, unsigned long long en
 {
 	try
 	{
-		std::shared_ptr<biz::Env> pEnv = biz::EnvManager::instance().findEnvByFlag(envFlag);
+		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
 		pEnv->addProcess(pid);
 	}
 	catch (...)
@@ -65,7 +65,7 @@ void get_all_process_id_in_env(handle_t /*IDL_handle*/, unsigned long long envFl
 {
 	try
 	{
-		std::shared_ptr<biz::Env> pEnv = biz::EnvManager::instance().findEnvByFlag(envFlag);
+		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
 		std::vector<DWORD> allPids = pEnv->getAllProcessIds();
 		const unsigned int allCount = allPids.size() > MAX_PIDS ? MAX_PIDS : static_cast<unsigned int>(allPids.size());
 		for (unsigned int i = 0; i < allCount; ++i)

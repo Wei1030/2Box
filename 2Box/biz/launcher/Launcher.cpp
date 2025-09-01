@@ -9,7 +9,7 @@ import "sys_defs.hpp";
 import MainApp;
 import PELoader;
 import EssentialData;
-import Env;
+import Biz.Core;
 import Utility.SystemInfo;
 
 namespace
@@ -73,7 +73,7 @@ namespace biz
 		{
 			co_await sched::transfer_to(m_execCtx);
 
-			const std::shared_ptr<Env> env = EnvManager::instance().testFindFirstOrCreate();
+			const std::shared_ptr<Env> env = env_mgr().testFindFirstOrCreate();
 			const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath);
 			ResumeThread(procInfo.hThread);
 			CloseHandle(procInfo.hThread);

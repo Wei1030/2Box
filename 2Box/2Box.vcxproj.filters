@@ -49,6 +49,9 @@
     <Filter Include="src\biz\env">
       <UniqueIdentifier>{88a1b02f-1a35-401b-99b7-d41eae0bb104}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\biz\core">
+      <UniqueIdentifier>{f61f5d4a-e115-44ec-b02c-1357c1f2cf4c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -179,6 +182,9 @@
     </ClCompile>
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.cpp">
       <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\core\Biz.Core.ixx">
+      <Filter>src\biz\core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

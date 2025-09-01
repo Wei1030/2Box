@@ -9,21 +9,11 @@ namespace biz
 	export class Launcher
 	{
 	public:
-		static Launcher& instance()
-		{
-			static Launcher sInstance;
-			return sInstance;
-		}
-
-	public:
 		void run(std::wstring_view exePath);
 
 	private:
 		coro::LazyTask<void> launch(std::wstring exePath);
-
-	private:
-		Launcher() = default;
-
+	
 	private:
 		sched::SingleThreadContext m_execCtx;
 		coro::AsyncScope m_asyncScope;

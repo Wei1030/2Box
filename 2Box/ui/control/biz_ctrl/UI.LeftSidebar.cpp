@@ -6,7 +6,7 @@ import "sys_defs.h";
 import "sys_defs.hpp";
 #endif
 
-import Env;
+import Biz.Core;
 
 namespace
 {
@@ -28,7 +28,7 @@ namespace ui
 
 	void LeftSidebar::initializeAllEnvBoxCard()
 	{
-		std::vector<std::shared_ptr<biz::Env>> allEnv = biz::EnvManager::instance().getAllEnv();
+		std::vector<std::shared_ptr<biz::Env>> allEnv = biz::env_mgr().getAllEnv();
 		m_envs.reserve(allEnv.size());
 		for (auto it = allEnv.begin(); it != allEnv.end(); ++it)
 		{

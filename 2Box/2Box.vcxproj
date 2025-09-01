@@ -36,6 +36,7 @@
   <ItemGroup>
     <ClCompile Include="app\MainApp.cpp" />
     <ClCompile Include="app\MainApp.ixx" />
+    <ClCompile Include="biz\core\Biz.Core.ixx" />
     <ClCompile Include="biz\env\Env-EnvManager.cpp" />
     <ClCompile Include="biz\env\Env-EnvManager.ixx" />
     <ClCompile Include="biz\env\Env-Envrironment.cpp" />

@@ -10,6 +10,7 @@ namespace biz
 	{
 	public:
 		RegKey() = default;
+
 		explicit RegKey(auto creator)
 		{
 			m_key = creator();
@@ -42,6 +43,16 @@ namespace biz
 		HKEY m_key{nullptr};
 	};
 
-	export void initialize_env_reg();
+	struct EnvInitializeData
+	{
+		std::uint32_t index;
+		std::uint64_t flag;
+		std::wstring_view flagName;
+		std::wstring_view name;
+	};
+
+	using EnvInitializeNotify = std::function<void(const EnvInitializeData&)>;
+
+	export void initialize_env_reg(const EnvInitializeNotify& notify);
 	export void add_env_to_reg(std::wstring_view flagName, const Env* env);
 }

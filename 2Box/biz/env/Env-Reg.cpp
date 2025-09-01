@@ -91,6 +91,7 @@ namespace
 				dataPath = fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env\\data"});
 				fs::create_directories(dataPath);
 			}
+
 			fs::path dataPath;
 		};
 		static PathWrapper pathWrapper;
@@ -129,7 +130,7 @@ namespace
 
 namespace biz
 {
-	void initialize_env_reg()
+	void initialize_env_reg(const EnvInitializeNotify& notify)
 	{
 		const RegKey& appKey = get_app_key();
 		const RegKey rootEnvKey{
@@ -172,7 +173,7 @@ namespace biz
 			try
 			{
 				auto [index, flag, name] = get_env_property(rootEnvKey, strSubKeyName);
-				EnvManager::instance().loadEnvFrom(index, flag, strSubKeyName, name);
+				notify(EnvInitializeData{index, flag, strSubKeyName, name});
 			}
 			catch (...)
 			{

@@ -8,12 +8,7 @@ namespace biz
 	export class EnvManager
 	{
 	public:
-		static EnvManager& instance()
-		{
-			static EnvManager sInstance;
-			return sInstance;
-		}
-
+		EnvManager();
 		void loadEnvFrom(std::uint32_t index, std::uint64_t flag, std::wstring_view flagName, std::wstring_view name);
 		std::shared_ptr<Env> createEnv();
 		std::shared_ptr<Env> findEnvByFlagNoExcept(std::uint64_t flag) const;
@@ -24,8 +19,14 @@ namespace biz
 		std::vector<std::shared_ptr<Env>> getAllEnv() const;
 
 	private:
-		EnvManager() = default;
-		
+		struct EnvFlagInfo
+		{
+			std::uint64_t flag;
+			std::wstring flagName;
+		};
+
+		EnvFlagInfo ensureCreateNewEnvFlag(std::uint32_t index) const;
+
 		void addEnv(const std::shared_ptr<Env>& env);
 
 	private:

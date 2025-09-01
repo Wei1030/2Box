@@ -43,45 +43,18 @@ namespace
 			fs::rename(tempPath, path64);
 		}
 	}
-
-	struct EnvFlagInfo
-	{
-		std::uint64_t flag;
-		std::wstring flagName;
-	};
-
-	EnvFlagInfo ensure_create_new_env(std::uint32_t index)
-	{
-		namespace fs = std::filesystem;
-		const fs::path envPath{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)})};
-		fs::create_directories(envPath);
-
-		EnvFlagInfo result;
-		while (true)
-		{
-			const std::uint64_t flag = get_random_number();
-			if (biz::EnvManager::instance().findEnvByFlagNoExcept(flag))
-			{
-				continue;
-			}
-			const std::wstring flagName = std::format(L"{:016X}", flag);
-			const fs::path envFile{fs::weakly_canonical(envPath / fs::path{flagName})};
-			if (fs::exists(envFile))
-			{
-				continue;
-			}
-
-			ensure_dll_in_device(flagName);
-			result.flag = flag;
-			result.flagName = flagName;
-			break;
-		}
-		return result;
-	}
 }
 
 namespace biz
 {
+	EnvManager::EnvManager()
+	{
+		initialize_env_reg([this](const EnvInitializeData& data)
+		{
+			loadEnvFrom(data.index, data.flag, data.flagName, data.name);
+		});
+	}
+
 	void EnvManager::loadEnvFrom(std::uint32_t index, std::uint64_t flag, std::wstring_view flagName, std::wstring_view name)
 	{
 		if (index >= m_currentIndex.load(std::memory_order_relaxed))
@@ -99,7 +72,7 @@ namespace biz
 	{
 		std::shared_ptr<Env> envResult;
 		const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
-		auto [flag, flagName] = ensure_create_new_env(index);
+		auto [flag, flagName] = ensureCreateNewEnvFlag(index);
 		const std::wstring name = std::format(L"环境{}", index + 1);
 		envResult = std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName));
 		add_env_to_reg(flagName, envResult.get());
@@ -148,6 +121,35 @@ namespace biz
 		for (auto it = m_orderedEnvs.begin(); it != m_orderedEnvs.end(); ++it)
 		{
 			result.push_back(it->second);
+		}
+		return result;
+	}
+
+	EnvManager::EnvFlagInfo EnvManager::ensureCreateNewEnvFlag(std::uint32_t index) const
+	{
+		namespace fs = std::filesystem;
+		const fs::path envPath{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)})};
+		fs::create_directories(envPath);
+
+		EnvFlagInfo result;
+		while (true)
+		{
+			const std::uint64_t flag = get_random_number();
+			if (findEnvByFlagNoExcept(flag))
+			{
+				continue;
+			}
+			const std::wstring flagName = std::format(L"{:016X}", flag);
+			const fs::path envFile{fs::weakly_canonical(envPath / fs::path{flagName})};
+			if (fs::exists(envFile))
+			{
+				continue;
+			}
+
+			ensure_dll_in_device(flagName);
+			result.flag = flag;
+			result.flagName = flagName;
+			break;
 		}
 		return result;
 	}

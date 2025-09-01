@@ -10,7 +10,7 @@ import "sys_defs.hpp";
 #endif
 
 import MainApp;
-import Launcher;
+import Biz.Core;
 
 namespace
 {
@@ -135,7 +135,7 @@ namespace ui
 	{
 		if (m_strExePath.size())
 		{
-			biz::Launcher::instance().run(m_strExePath);
+			biz::launcher().run(m_strExePath);
 			return;
 		}
 
@@ -196,6 +196,6 @@ namespace ui
 
 		updateBoundsWhenPathChanged();
 
-		biz::Launcher::instance().run(m_strExePath);
+		biz::launcher().run(m_strExePath);
 	}
 }

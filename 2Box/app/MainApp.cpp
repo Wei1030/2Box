@@ -1,5 +1,3 @@
-module;
-#include "biz/rpc/RpcServer.h"
 module MainApp;
 
 import "sys_defs.h";
@@ -10,7 +8,7 @@ import "sys_defs.hpp";
 
 import UI.MainWindow;
 import EssentialData;
-import Env;
+import Biz.Core;
 
 namespace
 {
@@ -39,12 +37,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 		MainApp app{hInstance, lpCmdLine, nCmdShow};
 		g_app = &app;
 
-		biz::initialize_env_reg();
+		biz::Core biz;
 
 		ui::MainWindow mainWnd;
 		ui::g_main_wnd = &mainWnd;
-
-		rpc::Server server;
 
 		mainWnd.show(app.cmdShow());
 
