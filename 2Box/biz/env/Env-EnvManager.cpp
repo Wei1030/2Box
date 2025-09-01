@@ -10,6 +10,7 @@ import std;
 import MainApp;
 import :Reg;
 import EssentialData;
+import Utility.SystemInfo;
 
 namespace
 {
@@ -62,6 +63,24 @@ namespace
 		}
 	}
 
+	void delete_dir_by_cmd(std::wstring_view dir)
+	{
+		PROCESS_INFORMATION procInfo = {nullptr};
+		STARTUPINFOW startupInfo = {sizeof(startupInfo)};
+		startupInfo.dwFlags = STARTF_USESHOWWINDOW;
+		startupInfo.wShowWindow = SW_HIDE;
+		namespace fs = std::filesystem;
+		const fs::path cmdPath{fs::weakly_canonical(fs::path{sys_info::get_system_dir()} / fs::path{L"cmd.exe"})};
+		std::wstring cmdLine = std::format(LR"(/c rd /s /q "{}")", dir);
+		if (CreateProcessW(cmdPath.c_str(), cmdLine.data(),
+		                   nullptr, nullptr, FALSE, CREATE_DEFAULT_ERROR_MODE, nullptr, nullptr,
+		                   &startupInfo, &procInfo))
+		{
+			CloseHandle(procInfo.hThread);
+			CloseHandle(procInfo.hProcess);
+		}
+	}
+
 	void delete_env_dir(std::uint32_t index, std::wstring_view flagName)
 	{
 		namespace fs = std::filesystem;
@@ -76,7 +95,7 @@ namespace
 			if (fs::exists(envPath) && !fs::exists(tempPath))
 			{
 				fs::rename(envPath, tempPath);
-				fs::remove_all(tempPath);
+				delete_dir_by_cmd(tempPath.native());
 			}
 		}
 		catch (...)
