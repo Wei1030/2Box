@@ -44,17 +44,43 @@ namespace
 		}
 	}
 
+	void delete_dll_from_device(std::wstring_view flagName)
+	{
+		namespace fs = std::filesystem;
+		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(flagName)}; fs::exists(path32))
+		{
+			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp32.bin", flagName)})};
+			fs::rename(path32, tempPath);
+			fs::remove(tempPath);
+		}
+
+		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(flagName)}; fs::exists(path64))
+		{
+			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp64.bin", flagName)})};
+			fs::rename(path64, tempPath);
+			fs::remove(tempPath);
+		}
+	}
+
 	void delete_env_dir(std::uint32_t index, std::wstring_view flagName)
 	{
 		namespace fs = std::filesystem;
-		const fs::path envDir{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"})};
-		const fs::path envPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}", index)})};
-		const fs::path tempPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}_{}_to_delete", index, flagName)})};
-
-		if (fs::exists(envPath) && !fs::exists(tempPath))
+		try
 		{
-			fs::rename(envPath, tempPath);
-			fs::remove_all(tempPath);
+			delete_dll_from_device(flagName);
+
+			const fs::path envDir{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"})};
+			const fs::path envPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}", index)})};
+			const fs::path tempPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}_{}_to_delete", index, flagName)})};
+
+			if (fs::exists(envPath) && !fs::exists(tempPath))
+			{
+				fs::rename(envPath, tempPath);
+				fs::remove_all(tempPath);
+			}
+		}
+		catch (...)
+		{
 		}
 	}
 }

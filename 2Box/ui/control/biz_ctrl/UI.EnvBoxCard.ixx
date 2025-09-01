@@ -41,6 +41,7 @@ namespace ui
 
 	private:
 		std::unique_ptr<Button> m_btnStart;
+		std::unique_ptr<Button> m_btnDelete;
 		bool m_isHovered = false;
 		bool m_isPressed = false;
 		coro::AsyncScope m_asyncScope;
@@ -48,6 +49,7 @@ namespace ui
 	private:
 		std::shared_ptr<biz::Env> m_env;
 		std::wstring m_name;
+		std::size_t m_procCount{0};
 		std::wstring m_strProcCount{L"0"};
 		// std::map<std::uint32_t, std::shared_ptr<biz::ProcessInfo>> m_processes;
 	};

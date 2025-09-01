@@ -48,7 +48,7 @@ namespace biz
 
 	void HandleWaiter::addWait(HANDLE handle, WaitObject::WaitCallback cb)
 	{
-		const Object objWrapper = getObject();
+		WaitObjectWrapper* objWrapper = getObject();
 		objWrapper->obj.setWait(handle, [this, objWrapper, cb = std::move(cb)]
 		{
 			releaseObject(objWrapper);
@@ -59,30 +59,30 @@ namespace biz
 		});
 	}
 
-	HandleWaiter::Object HandleWaiter::getObject()
+	HandleWaiter::WaitObjectWrapper* HandleWaiter::getObject()
 	{
-		Object newObj;
+		std::unique_ptr<WaitObjectWrapper> newObj;
 		std::lock_guard lock(m_mutex);
 		if (m_frees.empty())
 		{
-			newObj = std::make_shared<WaitObjectWrapper>();
+			newObj = std::make_unique<WaitObjectWrapper>();
 		}
 		else
 		{
-			newObj = m_frees.back();
+			newObj = std::move(m_frees.back());
 			m_frees.pop_back();
 		}
 
-		m_inUse.push_back(newObj);
+		WaitObjectWrapper* rawPtrReturn = newObj.get();
+		m_inUse.push_back(std::move(newObj));
 		const size_t index = m_inUse.size() - 1;
-		newObj->useIndex = index;
-		return newObj;
+		rawPtrReturn->useIndex = index;
+		return rawPtrReturn;
 	}
 
-	void HandleWaiter::releaseObject(const Object& obj)
+	void HandleWaiter::releaseObject(const WaitObjectWrapper* obj)
 	{
 		std::lock_guard lock(m_mutex);
-		m_frees.push_back(obj);
 
 		const size_t idx = obj->useIndex;
 		if (idx >= m_inUse.size())
@@ -94,6 +94,7 @@ namespace biz
 			std::swap(m_inUse.at(idx), m_inUse.back());
 			m_inUse.at(idx)->useIndex = idx;
 		}
+		m_frees.push_back(std::move(m_inUse.back()));
 		m_inUse.pop_back();
 	}
 

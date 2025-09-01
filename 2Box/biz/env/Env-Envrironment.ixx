@@ -39,14 +39,13 @@ namespace biz
 			size_t useIndex;
 		};
 
-		using Object = std::shared_ptr<WaitObjectWrapper>;
-		Object getObject();
-		void releaseObject(const Object& obj);
+		WaitObjectWrapper* getObject();
+		void releaseObject(const WaitObjectWrapper* obj);
 
 	private:
 		std::mutex m_mutex;
-		std::vector<Object> m_frees;
-		std::vector<Object> m_inUse;
+		std::vector<std::unique_ptr<WaitObjectWrapper>> m_frees;
+		std::vector<std::unique_ptr<WaitObjectWrapper>> m_inUse;
 	};
 
 	class ProcessHandle

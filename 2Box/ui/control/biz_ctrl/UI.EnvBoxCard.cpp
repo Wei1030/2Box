@@ -1,7 +1,15 @@
 module UI.EnvBoxCard;
 
+import "sys_defs.h";
+#ifndef _SYS_DEFS_H_
+#pragma message("Just for IntelliSense. You should not see this message!")
+import "sys_defs.hpp";
+#endif
+
 import MainApp;
 import Scheduler;
+import UI.MainWindow;
+import Biz.Core;
 
 namespace
 {
@@ -12,6 +20,8 @@ namespace
 	constexpr float COUNT_HEIGHT = 21.f;
 	constexpr float START_BTN_WIDTH = 78.f;
 	constexpr float START_BTN_HEIGHT = 33.f;
+	constexpr float DELETE_BTN_WIDTH = 20.f;
+	constexpr float DELETE_BTN_HEIGHT = 20.f;
 }
 
 namespace ui
@@ -45,12 +55,35 @@ namespace ui
 		m_btnStart->setBorderColor(D2D1::ColorF(0x0078d4));
 		m_btnStart->setTextColor(D2D1::ColorF(0x0078d4));
 		m_btnStart->setOnClick([this] { onBtnStartPressed(); });
+
+		m_btnDelete = std::make_unique<Button>(this);
+		m_btnDelete->setText(L"x");
+		m_btnDelete->setBackgroundColor(D2D1::ColorF(0xffebee));
+		m_btnDelete->setBackgroundColor(D2D1::ColorF(0x000000, 0.f), Button::EState::Normal);
+		m_btnDelete->setBorderColor(D2D1::ColorF(0xf44336));
+		m_btnDelete->setBorderColor(D2D1::ColorF(0xe0e0e0), Button::EState::Normal);
+		m_btnDelete->setTextColor(D2D1::ColorF(0x333333));
+		m_btnDelete->setTextFormat(app().textFormat().pToolBtnFormat);
+		m_btnDelete->setOnClick([this]
+		{
+			if (m_procCount)
+			{
+				MessageBoxW(main_wnd().nativeHandle(), L"环境中仍有正在运行的程序时无法删除", MainApp::appName.data(), MB_OK);
+			}
+			else if (MessageBoxW(main_wnd().nativeHandle(), L"确定要删除该环境吗?", MainApp::appName.data(), MB_OKCANCEL) == IDOK)
+			{
+				biz::env_mgr().deleteEnv(m_env);
+			}
+		});
 	}
 
 	void EnvBoxCard::onResize(float width, float height)
 	{
-		constexpr float btnYPos = PADDING + TITLE_HEIGHT + LINE1_GAP + COUNT_HEIGHT + LINE2_GAP;
-		m_btnStart->setBounds(D2D1::RectF(PADDING, btnYPos, PADDING + START_BTN_WIDTH, btnYPos + START_BTN_HEIGHT));
+		const float deleteBtnXPos = width - PADDING - DELETE_BTN_WIDTH;
+		m_btnDelete->setBounds(D2D1::RectF(deleteBtnXPos, PADDING, deleteBtnXPos + DELETE_BTN_WIDTH, PADDING + DELETE_BTN_HEIGHT));
+
+		constexpr float startBtnYPos = PADDING + TITLE_HEIGHT + LINE1_GAP + COUNT_HEIGHT + LINE2_GAP;
+		m_btnStart->setBounds(D2D1::RectF(PADDING, startBtnYPos, PADDING + START_BTN_WIDTH, startBtnYPos + START_BTN_HEIGHT));
 	}
 
 	void EnvBoxCard::onMouseEnter(const MouseEvent& e)
@@ -100,8 +133,9 @@ namespace ui
 		                        static_cast<UINT32>(m_name.length()),
 		                        app().textFormat().pTitleFormat,
 		                        D2D1::RectF(PADDING, PADDING,
-		                                    drawSize.width - PADDING, PADDING + TITLE_HEIGHT),
+		                                    drawSize.width - PADDING - DELETE_BTN_WIDTH - 8.f, PADDING + TITLE_HEIGHT),
 		                        solidBrush);
+		m_btnDelete->draw(renderCtx);
 
 		solidBrush->SetColor(D2D1::ColorF(0x666666));
 		constexpr std::wstring_view countLabel = L"进程数量：";
@@ -127,6 +161,7 @@ namespace ui
 	{
 		// 转到主线程
 		co_await sched::transfer_to(app().get_scheduler());
+		m_procCount = count;
 		m_strProcCount = std::format(L"{}", count);
 
 		if (e == biz::Env::EProcEvent::Create)
