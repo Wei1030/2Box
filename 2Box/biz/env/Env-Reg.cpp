@@ -226,4 +226,22 @@ namespace biz
 			throw std::runtime_error("unknown error in set_env_property_to_reg");
 		}
 	}
+
+	void delete_env_from_reg(std::wstring_view flagName)
+	{
+		const RegKey& appKey = get_app_key();
+		const RegKey rootEnvKey{
+			[&]()-> HKEY
+			{
+				HKEY hRootEnvKey;
+				if (LSTATUS status = RegOpenKeyExW(appKey, ENV_KEY_NAME, 0, KEY_ALL_ACCESS, &hRootEnvKey);
+					status != ERROR_SUCCESS)
+				{
+					throw std::runtime_error(std::format("RegOpenKeyExW failed, error code:{}", status));
+				}
+				return hRootEnvKey;
+			}
+		};
+		RegDeleteTreeW(rootEnvKey, flagName.data());
+	}
 }

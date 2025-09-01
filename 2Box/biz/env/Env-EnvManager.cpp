@@ -43,6 +43,20 @@ namespace
 			fs::rename(tempPath, path64);
 		}
 	}
+
+	void delete_env_dir(std::uint32_t index, std::wstring_view flagName)
+	{
+		namespace fs = std::filesystem;
+		const fs::path envDir{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"})};
+		const fs::path envPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}", index)})};
+		const fs::path tempPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}_{}_to_delete", index, flagName)})};
+
+		if (fs::exists(envPath) && !fs::exists(tempPath))
+		{
+			fs::rename(envPath, tempPath);
+			fs::remove_all(tempPath);
+		}
+	}
 }
 
 namespace biz
@@ -73,7 +87,7 @@ namespace biz
 		std::shared_ptr<Env> envResult;
 		const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
 		auto [flag, flagName] = ensureCreateNewEnvFlag(index);
-		const std::wstring name = std::format(L"环境{}", index + 1);
+		const std::wstring name = std::format(L"环境{}", index);
 		envResult = std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName));
 		add_env_to_reg(flagName, envResult.get());
 		addEnv(envResult);
@@ -111,6 +125,13 @@ namespace biz
 			}
 		}
 		return createEnv();
+	}
+
+	void EnvManager::deleteEnv(const std::shared_ptr<Env>& env)
+	{
+		removeEnv(env->getFlag());
+		delete_env_dir(env->getIndex(), env->getFlagName());
+		delete_env_from_reg(env->getFlagName());
 	}
 
 	std::vector<std::shared_ptr<Env>> EnvManager::getAllEnv() const

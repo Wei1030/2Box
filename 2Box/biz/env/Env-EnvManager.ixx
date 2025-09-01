@@ -15,6 +15,8 @@ namespace biz
 		std::shared_ptr<Env> findEnvByFlag(std::uint64_t flag) const;
 		std::shared_ptr<Env> testFindFirstOrCreate();
 
+		void deleteEnv(const std::shared_ptr<Env>& env);
+
 	public:
 		std::vector<std::shared_ptr<Env>> getAllEnv() const;
 
