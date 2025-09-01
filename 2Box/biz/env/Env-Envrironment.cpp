@@ -141,7 +141,7 @@ namespace biz
 			return false;
 		}
 
-		m_uniqueProcNames.insert(procInfo->getProcessFullPath());
+		m_procNames.insert(std::wstring{procInfo->getProcessFullPath()});
 
 		m_densePids.push_back(pid);
 		procInfo->setDenseIndex(m_densePids.size() - 1);
@@ -157,8 +157,13 @@ namespace biz
 		{
 			return false;
 		}
-		m_uniqueProcNames.erase(it->second->getProcessFullPath());
 
+		const auto itName = m_procNames.find(std::wstring{it->second->getProcessFullPath()});
+		if (itName != m_procNames.end())
+		{
+			m_procNames.erase(itName);
+		}
+		
 		const size_t idx = it->second->getDenseIndex();
 		if (idx < m_densePids.size() - 1)
 		{
@@ -238,7 +243,7 @@ namespace biz
 		return m_processes.getPids();
 	}
 
-	bool Env::contains(std::wstring_view procFullName) const
+	bool Env::contains(const std::wstring& procFullName) const
 	{
 		std::shared_lock lock(m_mutex);
 		return m_processes.contains(procFullName);

@@ -120,10 +120,10 @@ namespace biz
 		std::size_t getCount() const;
 		std::vector<std::shared_ptr<ProcessInfo>> getAllProcesses() const;
 		const std::vector<DWORD>& getPids() const { return m_densePids; }
-		bool contains(std::wstring_view procFullName) const { return m_uniqueProcNames.contains(procFullName); }
+		bool contains(const std::wstring& procFullName) const { return m_procNames.contains(procFullName); }
 
 	private:
-		std::unordered_set<std::wstring_view> m_uniqueProcNames;
+		std::unordered_multiset<std::wstring> m_procNames;
 		std::vector<DWORD> m_densePids;
 		std::unordered_map<DWORD, std::shared_ptr<ProcessInfo>> m_sparse;
 	};
@@ -153,7 +153,7 @@ namespace biz
 		std::size_t getAllProcessesCount() const;
 		std::vector<std::shared_ptr<ProcessInfo>> getAllProcesses() const;
 		std::vector<DWORD> getAllProcessIds() const;
-		bool contains(std::wstring_view procFullName) const;
+		bool contains(const std::wstring& procFullName) const;
 
 		enum class EProcEvent:std::uint8_t
 		{

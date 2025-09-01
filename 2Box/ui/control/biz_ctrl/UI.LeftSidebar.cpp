@@ -90,7 +90,7 @@ namespace ui
 		return procFullPath;
 	}
 
-	void LeftSidebar::launchProcess(std::wstring_view procFullPath)
+	void LeftSidebar::launchProcess(const std::wstring& procFullPath)
 	{
 		for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
 		{

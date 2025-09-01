@@ -21,7 +21,7 @@ namespace ui
 		virtual ~LeftSidebar();
 
 		std::wstring selectProcess() const;
-		void launchProcess(std::wstring_view procFullPath);
+		void launchProcess(const std::wstring& procFullPath);
 		
 	private:
 		void initialize();
