@@ -13,7 +13,6 @@ namespace biz
 		std::shared_ptr<Env> createEnv();
 		std::shared_ptr<Env> findEnvByFlagNoExcept(std::uint64_t flag) const;
 		std::shared_ptr<Env> findEnvByFlag(std::uint64_t flag) const;
-		std::shared_ptr<Env> testFindFirstOrCreate();
 
 		void deleteEnv(const std::shared_ptr<Env>& env);
 
@@ -26,7 +25,7 @@ namespace biz
 			Delete
 		};
 
-		using EnvChangeNotify = std::function<void(EChangeType, const std::shared_ptr<Env> &)>;
+		using EnvChangeNotify = std::function<void(EChangeType, const std::shared_ptr<Env>&)>;
 		void setEnvChangeNotify(EnvChangeNotify envChangeNotify);
 
 	private:

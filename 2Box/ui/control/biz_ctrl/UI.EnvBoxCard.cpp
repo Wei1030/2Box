@@ -9,6 +9,7 @@ import "sys_defs.hpp";
 import MainApp;
 import Scheduler;
 import UI.MainWindow;
+import UI.LeftSidebar;
 import Biz.Core;
 
 namespace
@@ -28,6 +29,7 @@ namespace ui
 {
 	EnvBoxCard::~EnvBoxCard()
 	{
+		m_stopSource.request_stop();
 		// 不再接收通知，且会等待已经通知的回调结束
 		m_env->setProcCountChangeNotify(nullptr);
 		// 之后就绝对不会spawn新的协程，才可以安全等待所有协程结束
@@ -44,6 +46,19 @@ namespace ui
 		{
 			m_asyncScope.spawn(onProcessCountChange(e, proc, count));
 		});
+	}
+
+	void EnvBoxCard::launchProcess(std::wstring_view procFullPath)
+	{
+		// 由于无法保证启动的进程一定能立即反映在env中，所以简单设置一个是否空闲的标志，env在启动任意一个进程后的3s内属于非空闲状态
+		// 非空闲的env无法被 “点击总启动按钮时” 挑选到
+		m_stopSource.request_stop();
+		m_bIdle = false;
+
+		biz::launcher().run(m_env, procFullPath);
+
+		m_stopSource = std::stop_source{};
+		m_asyncScope.spawn(coro::co_with_cancellation(resetToIdleLater(), m_stopSource.get_token()));
 	}
 
 	void EnvBoxCard::initialize()
@@ -157,6 +172,12 @@ namespace ui
 		m_btnStart->draw(renderCtx);
 	}
 
+	coro::LazyTask<void> EnvBoxCard::resetToIdleLater()
+	{
+		co_await sched::transfer_after(std::chrono::seconds{3}, app().get_scheduler());
+		m_bIdle = true;
+	}
+
 	coro::LazyTask<void> EnvBoxCard::onProcessCountChange(biz::Env::EProcEvent e, std::shared_ptr<biz::ProcessInfo> proc, std::size_t count)
 	{
 		// 转到主线程
@@ -175,5 +196,12 @@ namespace ui
 
 	void EnvBoxCard::onBtnStartPressed()
 	{
+		const LeftSidebar* bar = static_cast<LeftSidebar*>(parent());
+		const std::wstring fullPath = bar->selectProcess();
+		if (fullPath.empty())
+		{
+			return;
+		}
+		launchProcess(fullPath);
 	}
 }

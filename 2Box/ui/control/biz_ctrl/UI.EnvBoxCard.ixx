@@ -23,6 +23,9 @@ namespace ui
 	public:
 		void setEnv(const std::shared_ptr<biz::Env>& env);
 		bool isHovered() const noexcept { return m_isHovered; }
+		bool isIdle() const noexcept { return m_bIdle; }
+		bool contains(std::wstring_view procFullPath) const { return m_env->contains(procFullPath); }
+		void launchProcess(std::wstring_view procFullPath);
 
 	private:
 		void initialize();
@@ -36,6 +39,7 @@ namespace ui
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	private:
+		coro::LazyTask<void> resetToIdleLater();
 		coro::LazyTask<void> onProcessCountChange(biz::Env::EProcEvent e, std::shared_ptr<biz::ProcessInfo> proc, std::size_t count);
 		void onBtnStartPressed();
 
@@ -51,6 +55,8 @@ namespace ui
 		std::wstring m_name;
 		std::size_t m_procCount{0};
 		std::wstring m_strProcCount{L"0"};
+		bool m_bIdle{true};
+		std::stop_source m_stopSource{std::nostopstate};
 		// std::map<std::uint32_t, std::shared_ptr<biz::ProcessInfo>> m_processes;
 	};
 }

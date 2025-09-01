@@ -86,6 +86,11 @@ namespace ui
 			return m_ownerWnd;
 		}
 
+		ControlBase* parent() const noexcept
+		{
+			return m_parent;
+		}
+
 		void setBounds(const D2D1_RECT_F& newBounds)
 		{
 			m_bounds = newBounds;

@@ -160,18 +160,6 @@ namespace biz
 		return result;
 	}
 
-	std::shared_ptr<Env> EnvManager::testFindFirstOrCreate()
-	{
-		{
-			std::shared_lock lock(m_mutex);
-			if (m_flagToEnv.size())
-			{
-				return m_flagToEnv.begin()->second;
-			}
-		}
-		return createEnv();
-	}
-
 	void EnvManager::deleteEnv(const std::shared_ptr<Env>& env)
 	{
 		removeEnv(env->getFlag());

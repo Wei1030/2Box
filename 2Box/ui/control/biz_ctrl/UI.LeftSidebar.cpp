@@ -1,3 +1,6 @@
+module;
+#define NOMINMAX
+#include <shobjidl_core.h>
 module UI.LeftSidebar;
 
 import "sys_defs.h";
@@ -25,6 +28,84 @@ namespace ui
 		biz::env_mgr().setEnvChangeNotify(nullptr);
 		// 之后就绝对不会spawn新的协程，才可以安全等待所有协程结束
 		m_asyncScope.join();
+	}
+
+	std::wstring LeftSidebar::selectProcess() const
+	{
+		std::wstring procFullPath;
+		UniqueComPtr<IFileOpenDialog> fileOpen;
+		HResult hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpen));
+		if (FAILED(hr))
+		{
+			MessageBoxW(m_ownerWnd->nativeHandle(),
+			            std::format(L"创建文件选择对话框失败! CoCreateInstance fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
+			            MainApp::appName.data(),
+			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
+			return procFullPath;
+		}
+		COMDLG_FILTERSPEC rgSpec[] =
+		{
+			{L"可执行文件", L"*.exe"},
+			{L"所有文件", L"*.*"}
+		};
+		fileOpen->SetFileTypes(ARRAYSIZE(rgSpec), rgSpec);
+		fileOpen->SetFileTypeIndex(1);
+		DWORD dwOptions = 0;
+		fileOpen->GetOptions(&dwOptions);
+		fileOpen->SetOptions(dwOptions | FOS_STRICTFILETYPES | FOS_FORCEFILESYSTEM);
+		hr = fileOpen->Show(m_ownerWnd->nativeHandle());
+		if (FAILED(hr))
+		{
+			if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+			{
+				MessageBoxW(m_ownerWnd->nativeHandle(),
+				            std::format(L"显示文件选择对话框失败! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
+				            MainApp::appName.data(),
+				            MB_OK | MB_ICONERROR | MB_TASKMODAL);
+			}
+			return procFullPath;
+		}
+		UniqueComPtr<IShellItem> item;
+		hr = fileOpen->GetResult(&item);
+		if (FAILED(hr))
+		{
+			MessageBoxW(m_ownerWnd->nativeHandle(),
+			            std::format(L"无法获取选择的文件! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
+			            MainApp::appName.data(),
+			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
+			return procFullPath;
+		}
+		PWSTR pszFilePath;
+		hr = item->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+		if (FAILED(hr))
+		{
+			MessageBoxW(m_ownerWnd->nativeHandle(),
+			            std::format(L"无法获取选择的文件路径! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
+			            MainApp::appName.data(),
+			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
+			return procFullPath;
+		}
+		procFullPath = pszFilePath;
+		CoTaskMemFree(pszFilePath);
+		return procFullPath;
+	}
+
+	void LeftSidebar::launchProcess(std::wstring_view procFullPath)
+	{
+		for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
+		{
+			EnvBoxCard* box = it->second.get();
+			if (!box->isIdle() || box->contains(procFullPath))
+			{
+				continue;
+			}
+			box->launchProcess(procFullPath);
+			return;
+		}
+		// 没有合适的env，则创建新的
+		std::shared_ptr<biz::Env> env = biz::env_mgr().createEnv();
+		// 这里不考虑m_envs了，env的创建回调中会加入m_envs，这里直接使用launcher接口启动进程
+		biz::launcher().run(env, procFullPath);
 	}
 
 	void LeftSidebar::initialize()

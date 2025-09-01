@@ -20,6 +20,9 @@ namespace ui
 
 		virtual ~LeftSidebar();
 
+		std::wstring selectProcess() const;
+		void launchProcess(std::wstring_view procFullPath);
+		
 	private:
 		void initialize();
 		void initializeAllEnvBoxCard();

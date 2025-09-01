@@ -1,6 +1,3 @@
-module;
-#define NOMINMAX
-#include <shobjidl_core.h>
 module UI.StartAppDiv;
 
 import "sys_defs.h";
@@ -10,6 +7,7 @@ import "sys_defs.hpp";
 #endif
 
 import MainApp;
+import UI.LeftSidebar;
 import Biz.Core;
 
 namespace
@@ -133,69 +131,22 @@ namespace ui
 
 	void StartAppDiv::onBtnStartPressed()
 	{
+		LeftSidebar* bar = static_cast<LeftSidebar*>(parent());
 		if (m_strExePath.size())
 		{
-			biz::launcher().run(m_strExePath);
+			bar->launchProcess(m_strExePath);
 			return;
 		}
 
-		UniqueComPtr<IFileOpenDialog> fileOpen;
-		HResult hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpen));
-		if (FAILED(hr))
+		const std::wstring fullPath = bar->selectProcess();
+		if (fullPath.empty())
 		{
-			MessageBoxW(m_ownerWnd->nativeHandle(),
-			            std::format(L"创建文件选择对话框失败! CoCreateInstance fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-			            MainApp::appName.data(),
-			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
 			return;
 		}
-		COMDLG_FILTERSPEC rgSpec[] =
-		{
-			{L"可执行文件", L"*.exe"},
-			{L"所有文件", L"*.*"}
-		};
-		fileOpen->SetFileTypes(ARRAYSIZE(rgSpec), rgSpec);
-		fileOpen->SetFileTypeIndex(1);
-		DWORD dwOptions = 0;
-		fileOpen->GetOptions(&dwOptions);
-		fileOpen->SetOptions(dwOptions | FOS_STRICTFILETYPES | FOS_FORCEFILESYSTEM);
-		hr = fileOpen->Show(m_ownerWnd->nativeHandle());
-		if (FAILED(hr))
-		{
-			if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
-			{
-				MessageBoxW(m_ownerWnd->nativeHandle(),
-				            std::format(L"显示文件选择对话框失败! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-				            MainApp::appName.data(),
-				            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			}
-			return;
-		}
-		UniqueComPtr<IShellItem> item;
-		hr = fileOpen->GetResult(&item);
-		if (FAILED(hr))
-		{
-			MessageBoxW(m_ownerWnd->nativeHandle(),
-			            std::format(L"无法获取选择的文件! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-			            MainApp::appName.data(),
-			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return;
-		}
-		PWSTR pszFilePath;
-		hr = item->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
-		if (FAILED(hr))
-		{
-			MessageBoxW(m_ownerWnd->nativeHandle(),
-			            std::format(L"无法获取选择的文件路径! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-			            MainApp::appName.data(),
-			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return;
-		}
-		m_strExePath = pszFilePath;
-		CoTaskMemFree(pszFilePath);
+		m_strExePath = fullPath;
 
 		updateBoundsWhenPathChanged();
 
-		biz::launcher().run(m_strExePath);
+		bar->launchProcess(m_strExePath);
 	}
 }
