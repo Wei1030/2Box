@@ -1,5 +1,3 @@
-module;
-#include <aclapi.h>
 export module Hook:Advapi32;
 
 import "sys_defs.h";

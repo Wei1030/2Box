@@ -25,6 +25,10 @@
 #include <d2d1.h>
 #include <dwrite.h>
 
+#include <Nb30.h>
+#include <winsock2.h>
+#include <Iphlpapi.h>
+
 enum class ArchBit
 {
 	Bit32,

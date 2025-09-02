@@ -172,7 +172,7 @@ namespace global
 
 	void Data::initializeKnownFolderPath()
 	{
-		static const std::array rfidArray = {FOLDERID_LocalAppData, FOLDERID_RoamingAppData, FOLDERID_SavedGames/*, FOLDERID_ProgramData*/};
+		static const std::array rfidArray = {FOLDERID_LocalAppData, FOLDERID_RoamingAppData, FOLDERID_SavedGames, FOLDERID_ProgramData};
 
 		for (size_t i = 0; i < rfidArray.size(); ++i)
 		{

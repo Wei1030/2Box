@@ -201,8 +201,12 @@
     <ClCompile Include="hook\Hook-Advapi32.ixx" />
     <ClCompile Include="hook\Hook-All.ixx" />
     <ClCompile Include="hook\Hook-Core.ixx" />
+    <ClCompile Include="hook\Hook-Iphlpapi.ixx" />
     <ClCompile Include="hook\Hook-Kernel32.ixx" />
+    <ClCompile Include="hook\Hook-Netapi32.ixx" />
     <ClCompile Include="hook\Hook-Ntdll.ixx" />
+    <ClCompile Include="hook\Hook-Ole32.ixx" />
+    <ClCompile Include="hook\Hook-User32.ixx" />
     <ClCompile Include="hook\Hook.ixx" />
     <ClCompile Include="load_self\LoadSelf.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
