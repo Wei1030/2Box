@@ -286,155 +286,193 @@ namespace hook
 
 #pragma pack()
 
+
+	template <auto Trampoline>
+	std::optional<BOOL> Proc_SMART_RCV_DRIVE_DATA(HANDLE hDevice, DWORD dwIoControlCode,
+	                                              LPVOID lpInBuffer, DWORD nInBufferSize,
+	                                              LPVOID lpOutBuffer, DWORD nOutBufferSize,
+	                                              LPDWORD lpBytesReturned, LPOVERLAPPED lpOverlapped)
+	{
+		if (nInBufferSize < sizeof(SENDCMDINPARAMS) - 1)
+		{
+			return std::nullopt;
+		}
+		SENDCMDINPARAMS* pIn = static_cast<SENDCMDINPARAMS*>(lpInBuffer);
+		if (IDE_ATAPI_IDENTIFY != pIn->irDriveRegs.bCommandReg && IDE_ATA_IDENTIFY != pIn->irDriveRegs.bCommandReg)
+		{
+			return std::nullopt;
+		}
+		if (nOutBufferSize < sizeof(SENDCMDOUTPARAMS) - 1 + sizeof(MYOUTSMALL))
+		{
+			return std::nullopt;
+		}
+		if (lpOverlapped)
+		{
+			SetLastError(ERROR_ACCESS_DENIED);
+			return FALSE;
+		}
+		BOOL bRet = Trampoline(hDevice, dwIoControlCode,
+		                       lpInBuffer, nInBufferSize,
+		                       lpOutBuffer, nOutBufferSize,
+		                       lpBytesReturned, nullptr);
+		if (!bRet)
+		{
+			return bRet;
+		}
+		MYOUT* pOut = reinterpret_cast<MYOUT*>(static_cast<SENDCMDOUTPARAMS*>(lpOutBuffer)->bBuffer);
+		std::format_to(pOut->struMy.sSerialNumber, "{}", global::Data::get().envFlagNameA());
+		pOut->struMy.sSerialNumber[sizeof(pOut->struMy.sSerialNumber) - 1] = '\0';
+		if (nOutBufferSize >= sizeof(SENDCMDOUTPARAMS) - 1 + sizeof(MYOUT))
+		{
+			std::format_to(pOut->sModelNumber, "{}", global::Data::get().envFlagNameA());
+			pOut->sModelNumber[sizeof(pOut->sModelNumber) - 1] = '\0';
+		}
+		return bRet;
+	}
+
+	template <auto Trampoline>
+	std::optional<BOOL> Proc_IOCTL_SCSI_MINIPORT(HANDLE hDevice, DWORD dwIoControlCode,
+	                                             LPVOID lpInBuffer, DWORD nInBufferSize,
+	                                             LPVOID lpOutBuffer, DWORD nOutBufferSize,
+	                                             LPDWORD lpBytesReturned, LPOVERLAPPED lpOverlapped)
+	{
+		if (nInBufferSize < sizeof(SRB_IO_CONTROL) + sizeof(SENDCMDINPARAMS) - 1)
+		{
+			return std::nullopt;
+		}
+		SRB_IO_CONTROL* p = static_cast<SRB_IO_CONTROL*>(lpInBuffer);
+		SENDCMDINPARAMS* pin = reinterpret_cast<SENDCMDINPARAMS*>(static_cast<char*>(lpInBuffer) + sizeof(SRB_IO_CONTROL));
+		if (sizeof(SRB_IO_CONTROL) != p->HeaderLength
+			&& IOCTL_SCSI_MINIPORT_IDENTIFY != p->ControlCode
+			&& std::string_view{reinterpret_cast<char*>(p->Signature), sizeof(p->Signature)} != std::string_view{"SCSIDISK"}
+			&& IDE_ATA_IDENTIFY != pin->irDriveRegs.bCommandReg
+			&& IDE_ATAPI_IDENTIFY != pin->irDriveRegs.bCommandReg)
+		{
+			return std::nullopt;
+		}
+		if (nOutBufferSize < sizeof(SRB_IO_CONTROL) + sizeof(SENDCMDOUTPARAMS) - 1 + sizeof(MYOUTSMALL))
+		{
+			return std::nullopt;
+		}
+		if (lpOverlapped)
+		{
+			SetLastError(ERROR_ACCESS_DENIED);
+			return FALSE;
+		}
+		BOOL bRet = Trampoline(hDevice, dwIoControlCode,
+		                       lpInBuffer, nInBufferSize,
+		                       lpOutBuffer, nOutBufferSize,
+		                       lpBytesReturned, nullptr);
+		if (!bRet)
+		{
+			return bRet;
+		}
+		SENDCMDOUTPARAMS* pOutParams = reinterpret_cast<SENDCMDOUTPARAMS*>(static_cast<char*>(lpOutBuffer) + sizeof(SRB_IO_CONTROL));
+		MYOUT* pOut = reinterpret_cast<MYOUT*>(pOutParams->bBuffer);
+		std::format_to(pOut->struMy.sSerialNumber, "{}", global::Data::get().envFlagNameA());
+		pOut->struMy.sSerialNumber[sizeof(pOut->struMy.sSerialNumber) - 1] = '\0';
+		if (nOutBufferSize >= sizeof(SRB_IO_CONTROL) + sizeof(SENDCMDOUTPARAMS) - 1 + sizeof(MYOUT))
+		{
+			std::format_to(pOut->sModelNumber, "{}", global::Data::get().envFlagNameA());
+			pOut->sModelNumber[sizeof(pOut->sModelNumber) - 1] = '\0';
+		}
+		return bRet;
+	}
+
+	template <auto Trampoline>
+	std::optional<BOOL> Proc_IOCTL_STORAGE_QUERY_PROPERTY(HANDLE hDevice, DWORD dwIoControlCode,
+	                                                      LPVOID lpInBuffer, DWORD nInBufferSize,
+	                                                      LPVOID lpOutBuffer, DWORD nOutBufferSize,
+	                                                      LPDWORD lpBytesReturned, LPOVERLAPPED lpOverlapped)
+	{
+		if (nInBufferSize < sizeof(STORAGE_PROPERTY_QUERY))
+		{
+			return std::nullopt;
+		}
+		STORAGE_PROPERTY_QUERY* query = static_cast<STORAGE_PROPERTY_QUERY*>(lpInBuffer);
+		if (query->QueryType == PropertyExistsQuery)
+		{
+			return std::nullopt;
+		}
+		if (query->PropertyId != StorageDeviceProperty)
+		{
+			return std::nullopt;
+		}
+		if (nOutBufferSize < sizeof(STORAGE_DESCRIPTOR_HEADER))
+		{
+			return std::nullopt;
+		}
+		if (lpOverlapped)
+		{
+			SetLastError(ERROR_ACCESS_DENIED);
+			return FALSE;
+		}
+		BOOL bRet = Trampoline(hDevice, dwIoControlCode,
+		                       lpInBuffer, nInBufferSize,
+		                       lpOutBuffer, nOutBufferSize,
+		                       lpBytesReturned, nullptr);
+		if (!bRet)
+		{
+			return bRet;
+		}
+		PSTORAGE_DEVICE_DESCRIPTOR sdn = static_cast<PSTORAGE_DEVICE_DESCRIPTOR>(lpOutBuffer);
+		const std::string_view flagName = global::Data::get().envFlagNameA();
+		constexpr DWORD iMinLen = sizeof(STORAGE_DEVICE_DESCRIPTOR);
+		sdn->Size = std::min(sdn->Size, static_cast<DWORD>(flagName.length() + iMinLen));
+
+		if (nOutBufferSize <= iMinLen)
+		{
+			return bRet;
+		}
+		DWORD bytesReturned = std::min(sdn->Size, nOutBufferSize);
+		if (lpBytesReturned)
+		{
+			*lpBytesReturned = bytesReturned;
+		}
+		sdn->RawPropertiesLength = bytesReturned - iMinLen;
+		sdn->VendorIdOffset = 0;
+		sdn->ProductIdOffset = 0;
+		sdn->ProductRevisionOffset = 0;
+		sdn->SerialNumberOffset = iMinLen;
+
+		BYTE* pData = reinterpret_cast<BYTE*>(sdn) + iMinLen;
+		memcpy(pData, flagName.data(), sdn->RawPropertiesLength);
+		pData[sdn->RawPropertiesLength - 1] = 0;
+		return bRet;
+	}
+
 	template <auto Trampoline>
 	BOOL WINAPI DeviceIoControl(__in HANDLE hDevice, __in DWORD dwIoControlCode, __in_bcount_opt(nInBufferSize)
 	                            LPVOID lpInBuffer, __in DWORD nInBufferSize,
 	                            LPVOID lpOutBuffer, __in DWORD nOutBufferSize,
 	                            __out_opt LPDWORD lpBytesReturned, __inout_opt LPOVERLAPPED lpOverlapped)
 	{
-		BOOL bProcessed = FALSE;
+		std::optional<BOOL> result = std::nullopt;
 
-		do
+		if (lpInBuffer && lpOutBuffer)
 		{
-			if (!lpInBuffer || !lpOutBuffer)
-			{
-				break;
-			}
-
 			if (SMART_RCV_DRIVE_DATA == dwIoControlCode)
 			{
-				if (nInBufferSize < sizeof(SENDCMDINPARAMS) - 1)
-				{
-					break;
-				}
-
-				SENDCMDINPARAMS* pIn = static_cast<SENDCMDINPARAMS*>(lpInBuffer);
-
-				if (IDE_ATAPI_IDENTIFY != pIn->irDriveRegs.bCommandReg
-					&& IDE_ATA_IDENTIFY != pIn->irDriveRegs.bCommandReg)
-				{
-					break;
-				}
-
-				if (nOutBufferSize < sizeof(SENDCMDOUTPARAMS) - 1 + sizeof(MYOUTSMALL))
-				{
-					break;
-				}
-				Trampoline(hDevice, dwIoControlCode,
-				           lpInBuffer, nInBufferSize,
-				           lpOutBuffer, nOutBufferSize,
-				           lpBytesReturned, nullptr);
-
-				MYOUT* pOut = reinterpret_cast<MYOUT*>(static_cast<PSENDCMDOUTPARAMS>(lpOutBuffer)->bBuffer);
-				std::format_to(pOut->struMy.sSerialNumber, "{}", global::Data::get().envFlagNameA());
-				pOut->struMy.sSerialNumber[sizeof(pOut->struMy.sSerialNumber) - 1] = '\0';
-				if (nOutBufferSize >= sizeof(SENDCMDOUTPARAMS) - 1 + sizeof(MYOUT))
-				{
-					std::format_to(pOut->sModelNumber, "{}", global::Data::get().envFlagNameA());
-					pOut->sModelNumber[sizeof(pOut->sModelNumber) - 1] = '\0';
-				}
-				bProcessed = TRUE;
-				break;
+				result = Proc_SMART_RCV_DRIVE_DATA<Trampoline>(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped);
 			}
-
-			if (IOCTL_SCSI_MINIPORT == dwIoControlCode)
+			else if (IOCTL_SCSI_MINIPORT == dwIoControlCode)
 			{
-				if (nInBufferSize < sizeof(SRB_IO_CONTROL) + sizeof(SENDCMDINPARAMS) - 1)
-				{
-					break;
-				}
-				SRB_IO_CONTROL* p = static_cast<SRB_IO_CONTROL*>(lpInBuffer);
-				SENDCMDINPARAMS* pin = reinterpret_cast<SENDCMDINPARAMS*>(static_cast<char*>(lpInBuffer) + sizeof(SRB_IO_CONTROL));
-				if (sizeof(SRB_IO_CONTROL) != p->HeaderLength
-					&& IOCTL_SCSI_MINIPORT_IDENTIFY != p->ControlCode
-					&& std::string_view{reinterpret_cast<char*>(p->Signature), sizeof(p->Signature)} != std::string_view{"SCSIDISK"}
-					&& IDE_ATA_IDENTIFY != pin->irDriveRegs.bCommandReg
-					&& IDE_ATAPI_IDENTIFY != pin->irDriveRegs.bCommandReg)
-				{
-					break;
-				}
-				if (nOutBufferSize < (sizeof(SRB_IO_CONTROL) + sizeof(SENDCMDOUTPARAMS) - 1 + sizeof(MYOUTSMALL)))
-				{
-					break;
-				}
-				Trampoline(hDevice, dwIoControlCode,
-				           lpInBuffer, nInBufferSize,
-				           lpOutBuffer, nOutBufferSize,
-				           lpBytesReturned, nullptr);
-				SENDCMDOUTPARAMS* pOutParams = reinterpret_cast<SENDCMDOUTPARAMS*>(static_cast<char*>(lpOutBuffer) + sizeof(SRB_IO_CONTROL));
-				MYOUT* pOut = reinterpret_cast<MYOUT*>(pOutParams->bBuffer);
-				std::format_to(pOut->struMy.sSerialNumber, "{}", global::Data::get().envFlagNameA());
-				pOut->struMy.sSerialNumber[sizeof(pOut->struMy.sSerialNumber) - 1] = '\0';
-				if (nOutBufferSize >= (sizeof(SRB_IO_CONTROL) + sizeof(SENDCMDOUTPARAMS) - 1 + sizeof(MYOUT)))
-				{
-					std::format_to(pOut->sModelNumber, "{}", global::Data::get().envFlagNameA());
-					pOut->sModelNumber[sizeof(pOut->sModelNumber) - 1] = '\0';
-				}
-				bProcessed = TRUE;
-				break;
+				result = Proc_IOCTL_SCSI_MINIPORT<Trampoline>(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped);
 			}
-
-			if (IOCTL_STORAGE_QUERY_PROPERTY == dwIoControlCode)
+			else if (IOCTL_STORAGE_QUERY_PROPERTY == dwIoControlCode)
 			{
-				if (nInBufferSize < sizeof(STORAGE_PROPERTY_QUERY))
-				{
-					break;
-				}
-				STORAGE_PROPERTY_QUERY* query = static_cast<STORAGE_PROPERTY_QUERY*>(lpInBuffer);
-				if (query->QueryType == PropertyExistsQuery)
-				{
-					break;
-				}
-				if (query->PropertyId != StorageDeviceProperty)
-				{
-					break;
-				}
-				if (nOutBufferSize < sizeof(STORAGE_DESCRIPTOR_HEADER))
-				{
-					break;
-				}
-
-				Trampoline(hDevice, dwIoControlCode,
-				           lpInBuffer, nInBufferSize,
-				           lpOutBuffer, nOutBufferSize,
-				           lpBytesReturned, nullptr);
-				PSTORAGE_DEVICE_DESCRIPTOR sdn = static_cast<PSTORAGE_DEVICE_DESCRIPTOR>(lpOutBuffer);
-				const std::string_view flagName = global::Data::get().envFlagNameA();
-				constexpr DWORD iMinLen = sizeof(STORAGE_DEVICE_DESCRIPTOR);
-				sdn->Size = std::min(sdn->Size, static_cast<DWORD>(flagName.length() + iMinLen));
-				bProcessed = TRUE;
-
-				if (nOutBufferSize <= iMinLen)
-				{
-					break;
-				}
-				DWORD bytesReturned = std::min(sdn->Size, nOutBufferSize);
-				if (lpBytesReturned)
-				{
-					*lpBytesReturned = bytesReturned;
-				}
-				sdn->RawPropertiesLength = bytesReturned - iMinLen;
-				sdn->VendorIdOffset = 0;
-				sdn->ProductIdOffset = 0;
-				sdn->ProductRevisionOffset = 0;
-				sdn->SerialNumberOffset = iMinLen;
-
-				BYTE* pData = reinterpret_cast<BYTE*>(sdn) + iMinLen;
-				memcpy(pData, flagName.data(), sdn->RawPropertiesLength);
-				pData[sdn->RawPropertiesLength - 1] = 0;
-				break;
+				result = Proc_IOCTL_STORAGE_QUERY_PROPERTY<Trampoline>(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped);
 			}
 		}
-		while (false);
 
-		if (!bProcessed)
+		if (result.has_value())
 		{
-			return Trampoline(hDevice, dwIoControlCode,
-			                  lpInBuffer, nInBufferSize,
-			                  lpOutBuffer, nOutBufferSize,
-			                  lpBytesReturned, lpOverlapped);
+			return result.value();
 		}
-		return bProcessed;
+		return Trampoline(hDevice, dwIoControlCode,
+		                  lpInBuffer, nInBufferSize,
+		                  lpOutBuffer, nOutBufferSize,
+		                  lpBytesReturned, lpOverlapped);
 	}
 
 	void hook_kernel32()
