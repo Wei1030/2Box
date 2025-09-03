@@ -136,7 +136,8 @@ namespace biz
 	bool ProcessDenseMap::addProcessInfo(const std::shared_ptr<ProcessInfo>& procInfo)
 	{
 		const DWORD pid = procInfo->getProcessId();
-		if (m_sparse.contains(pid))
+		auto [it, success] = m_sparse.insert(std::make_pair(pid, procInfo));
+		if (!success)
 		{
 			return false;
 		}
@@ -145,8 +146,6 @@ namespace biz
 
 		m_densePids.push_back(pid);
 		procInfo->setDenseIndex(m_densePids.size() - 1);
-
-		m_sparse.insert(std::make_pair(pid, procInfo));
 		return true;
 	}
 
@@ -163,7 +162,7 @@ namespace biz
 		{
 			m_procNames.erase(itName);
 		}
-		
+
 		const size_t idx = it->second->getDenseIndex();
 		if (idx < m_densePids.size() - 1)
 		{
@@ -171,7 +170,7 @@ namespace biz
 			if (const auto swapped = m_sparse.find(m_densePids.at(idx)); swapped != m_sparse.end())
 			{
 				swapped->second->setDenseIndex(idx);
-			}			
+			}
 		}
 		m_densePids.pop_back();
 		m_sparse.erase(it);
@@ -191,6 +190,39 @@ namespace biz
 			result.emplace_back(it->second);
 		}
 		return result;
+	}
+
+	bool TopLevelWindowDenseMap::addTopLevelWindow(void* hWnd)
+	{
+		auto [it, success] = m_sparse.insert(std::make_pair(hWnd, TopLevelWindow{hWnd}));
+		if (!success)
+		{
+			return false;
+		}
+		m_denseHandles.push_back(hWnd);
+		it->second.setDenseIndex(m_denseHandles.size() - 1);
+		return true;
+	}
+
+	bool TopLevelWindowDenseMap::removeTopLevelWindow(void* hWnd)
+	{
+		const auto it = m_sparse.find(hWnd);
+		if (it == m_sparse.end())
+		{
+			return false;
+		}
+		const size_t idx = it->second.getDenseIndex();
+		if (idx < m_denseHandles.size() - 1)
+		{
+			std::swap(m_denseHandles.at(idx), m_denseHandles.back());
+			if (const auto swapped = m_sparse.find(m_denseHandles.at(idx)); swapped != m_sparse.end())
+			{
+				swapped->second.setDenseIndex(idx);
+			}
+		}
+		m_denseHandles.pop_back();
+		m_sparse.erase(it);
+		return true;
 	}
 
 	void Env::addProcess(HANDLE handle)
@@ -257,6 +289,30 @@ namespace biz
 	{
 		std::unique_lock lock(m_mutex);
 		m_notify = std::move(notify);
+	}
+
+	void Env::addTopLevelWindow(void* hWnd)
+	{
+		std::unique_lock lock(m_wndMutex);
+		m_topLevelWindows.addTopLevelWindow(hWnd);
+	}
+
+	void Env::removeTopLevelWindow(void* hWnd)
+	{
+		std::unique_lock lock(m_wndMutex);
+		m_topLevelWindows.removeTopLevelWindow(hWnd);
+	}
+
+	bool Env::containsTopLevelWindow(void* hWnd) const
+	{
+		std::shared_lock lock(m_wndMutex);
+		return m_topLevelWindows.contains(hWnd);
+	}
+
+	std::vector<void*> Env::getAllTopLevelWindows() const
+	{
+		std::shared_lock lock(m_wndMutex);
+		return m_topLevelWindows.getAllHandles();
 	}
 
 	bool Env::addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo)
