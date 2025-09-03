@@ -168,6 +168,10 @@ namespace biz
 		if (idx < m_densePids.size() - 1)
 		{
 			std::swap(m_densePids.at(idx), m_densePids.back());
+			if (const auto swapped = m_sparse.find(m_densePids.at(idx)); swapped != m_sparse.end())
+			{
+				swapped->second->setDenseIndex(idx);
+			}			
 		}
 		m_densePids.pop_back();
 		m_sparse.erase(it);
