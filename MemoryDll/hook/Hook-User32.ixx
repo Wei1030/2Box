@@ -12,7 +12,7 @@ namespace hook
 		try
 		{
 			const rpc::ClientDefault c;
-			c.addToplevelWindow(hWnd, global::Data::get().envFlag());
+			c.addToplevelWindow(hWnd, GetCurrentProcessId(), global::Data::get().envFlag());
 		}
 		catch (...)
 		{
@@ -24,7 +24,7 @@ namespace hook
 		try
 		{
 			const rpc::ClientDefault c;
-			c.removeToplevelWindow(hWnd, global::Data::get().envFlag());
+			c.removeToplevelWindow(hWnd, GetCurrentProcessId(), global::Data::get().envFlag());
 		}
 		catch (...)
 		{
@@ -42,27 +42,6 @@ namespace hook
 		{
 		}
 		return false;
-	}
-
-	std::vector<HWND> get_all_toplevel_windows()
-	{
-		std::vector<HWND> result;
-		try
-		{
-			const rpc::ClientDefault c;
-			std::uint64_t wnds[rpc::MAX_TOPLEVEL_WND_COUNT]{};
-			std::uint32_t count = rpc::MAX_TOPLEVEL_WND_COUNT;
-			c.getAllToplevelWindow(global::Data::get().envFlag(), wnds, &count);
-			result.reserve(count);
-			for (std::uint32_t i = 0; i < count; ++i)
-			{
-				result.push_back(reinterpret_cast<HWND>(wnds[i]));
-			}
-		}
-		catch (...)
-		{
-		}
-		return result;
 	}
 
 	template <auto Trampoline>

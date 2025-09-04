@@ -11,12 +11,7 @@ interface service
 		[out, length_is(*count), size_is(MAX_PIDS)] unsigned long long pids[],
 		[out] unsigned int* count);
 
-	void add_toplevel_window([in] unsigned long long hWnd, [in] unsigned long long envFlag);
-	void remove_toplevel_window([in] unsigned long long hWnd, [in] unsigned long long envFlag);
+	void add_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
+	void remove_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
 	int contains_toplevel_window([in] unsigned long long hWnd, [in] unsigned long long envFlag);
-
-	inline const unsigned int MAX_TOPLEVEL_WINDOW = 2048;
-	void get_all_toplevel_window([in] unsigned long long envFlag,
-		[out, length_is(*count), size_is(MAX_TOPLEVEL_WINDOW)] unsigned long long hWnds[],
-		[out] unsigned int* count);
 }

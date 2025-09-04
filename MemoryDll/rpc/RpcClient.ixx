@@ -8,7 +8,6 @@ import std;
 namespace rpc
 {
 	export constexpr unsigned int MAX_PID_COUNT = MAX_PIDS;
-	export constexpr unsigned int MAX_TOPLEVEL_WND_COUNT = MAX_TOPLEVEL_WINDOW;
 
 	class ClientBindingString
 	{
@@ -173,24 +172,19 @@ namespace rpc
 			return get_all_process_id_in_env(handle(), envFlag, pids, count);
 		}
 
-		decltype(auto) addToplevelWindow(void* hWnd, unsigned long long envFlag) const
+		decltype(auto) addToplevelWindow(void* hWnd, unsigned int pid, unsigned long long envFlag) const
 		{
-			return add_toplevel_window(handle(), reinterpret_cast<unsigned long long>(hWnd), envFlag);
+			return add_toplevel_window(handle(), reinterpret_cast<unsigned long long>(hWnd), pid, envFlag);
 		}
 
-		decltype(auto) removeToplevelWindow(void* hWnd, unsigned long long envFlag) const
+		decltype(auto) removeToplevelWindow(void* hWnd, unsigned int pid, unsigned long long envFlag) const
 		{
-			return remove_toplevel_window(handle(), reinterpret_cast<unsigned long long>(hWnd), envFlag);
+			return remove_toplevel_window(handle(), reinterpret_cast<unsigned long long>(hWnd), pid, envFlag);
 		}
 
 		decltype(auto) containsToplevelWindow(void* hWnd, unsigned long long envFlag) const
 		{
 			return contains_toplevel_window(handle(), reinterpret_cast<unsigned long long>(hWnd), envFlag) ? true : false;
-		}
-		
-		decltype(auto) getAllToplevelWindow(unsigned long long envFlag, unsigned long long hWnds[], unsigned int* count) const
-		{
-			return get_all_toplevel_window(handle(), envFlag, hWnds, count);
 		}
 	};
 

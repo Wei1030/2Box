@@ -80,12 +80,12 @@ void get_all_process_id_in_env(handle_t /*IDL_handle*/, unsigned long long envFl
 	}
 }
 
-void add_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned long long envFlag)
+void add_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned int pid, unsigned long long envFlag)
 {
 	try
 	{
 		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
-		pEnv->addTopLevelWindow(reinterpret_cast<void*>(hWnd));
+		pEnv->addToplevelWindow(pid, reinterpret_cast<void*>(hWnd));
 	}
 	catch (...)
 	{
@@ -93,12 +93,12 @@ void add_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, unsig
 	}
 }
 
-void remove_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned long long envFlag)
+void remove_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned int pid, unsigned long long envFlag)
 {
 	try
 	{
 		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
-		pEnv->removeTopLevelWindow(reinterpret_cast<void*>(hWnd));
+		pEnv->removeToplevelWindow(pid, reinterpret_cast<void*>(hWnd));
 	}
 	catch (...)
 	{
@@ -116,27 +116,7 @@ int contains_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, u
 			return 1;
 		}
 		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
-		return pEnv->containsTopLevelWindow(reinterpret_cast<void*>(hWnd)) ? 1 : 0;
-	}
-	catch (...)
-	{
-		RpcRaiseException(0xE06D7363);
-	}
-}
-
-
-void get_all_toplevel_window(handle_t /*IDL_handle*/, unsigned long long envFlag, unsigned long long hWnds[], unsigned int* count)
-{
-	try
-	{
-		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
-		std::vector<void*> allHandles = pEnv->getAllTopLevelWindows();
-		const unsigned int allCount = allHandles.size() > MAX_TOPLEVEL_WINDOW ? MAX_TOPLEVEL_WINDOW : static_cast<unsigned int>(allHandles.size());
-		for (unsigned int i = 0; i < allCount; ++i)
-		{
-			hWnds[i] = reinterpret_cast<unsigned long long>(allHandles[i]);
-		}
-		*count = allCount;
+		return pEnv->containsToplevelWindow(reinterpret_cast<void*>(hWnd)) ? 1 : 0;
 	}
 	catch (...)
 	{

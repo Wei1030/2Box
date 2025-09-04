@@ -122,6 +122,16 @@ namespace biz
 		initializeFullPath();
 	}
 
+	void ProcessInfo::addToplevelWindow(void* hWnd)
+	{
+		m_toplevelWindows.insert(hWnd);
+	}
+
+	void ProcessInfo::removeToplevelWindow(void* hWnd)
+	{
+		m_toplevelWindows.erase(hWnd);
+	}
+
 	void ProcessInfo::initializeFullPath()
 	{
 		DWORD pathLength = std::numeric_limits<short>::max();
@@ -192,37 +202,14 @@ namespace biz
 		return result;
 	}
 
-	bool TopLevelWindowDenseMap::addTopLevelWindow(void* hWnd)
+	std::shared_ptr<ProcessInfo> ProcessDenseMap::getProcessInfo(DWORD pid) const
 	{
-		auto [it, success] = m_sparse.insert(std::make_pair(hWnd, TopLevelWindow{hWnd}));
-		if (!success)
-		{
-			return false;
-		}
-		m_denseHandles.push_back(hWnd);
-		it->second.setDenseIndex(m_denseHandles.size() - 1);
-		return true;
-	}
-
-	bool TopLevelWindowDenseMap::removeTopLevelWindow(void* hWnd)
-	{
-		const auto it = m_sparse.find(hWnd);
+		const auto it = m_sparse.find(pid);
 		if (it == m_sparse.end())
 		{
-			return false;
+			return nullptr;
 		}
-		const size_t idx = it->second.getDenseIndex();
-		if (idx < m_denseHandles.size() - 1)
-		{
-			std::swap(m_denseHandles.at(idx), m_denseHandles.back());
-			if (const auto swapped = m_sparse.find(m_denseHandles.at(idx)); swapped != m_sparse.end())
-			{
-				swapped->second.setDenseIndex(idx);
-			}
-		}
-		m_denseHandles.pop_back();
-		m_sparse.erase(it);
-		return true;
+		return it->second;
 	}
 
 	void Env::addProcess(HANDLE handle)
@@ -233,6 +220,7 @@ namespace biz
 			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
 			{
 				removeProcessInternal(newProcInfo);
+				removeToplevelWindowWhenProcessTerminate(newProcInfo);
 			});
 		}
 	}
@@ -245,6 +233,7 @@ namespace biz
 			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
 			{
 				removeProcessInternal(newProcInfo);
+				removeToplevelWindowWhenProcessTerminate(newProcInfo);
 			});
 		}
 	}
@@ -257,6 +246,7 @@ namespace biz
 			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
 			{
 				removeProcessInternal(newProcInfo);
+				removeToplevelWindowWhenProcessTerminate(newProcInfo);
 			});
 		}
 	}
@@ -271,6 +261,12 @@ namespace biz
 	{
 		std::shared_lock lock(m_mutex);
 		return m_processes.getAllProcesses();
+	}
+
+	std::shared_ptr<ProcessInfo> Env::getProcess(DWORD pid) const
+	{
+		std::shared_lock lock(m_mutex);
+		return m_processes.getProcessInfo(pid);
 	}
 
 	std::vector<DWORD> Env::getAllProcessIds() const
@@ -291,28 +287,34 @@ namespace biz
 		m_notify = std::move(notify);
 	}
 
-	void Env::addTopLevelWindow(void* hWnd)
+	void Env::addToplevelWindow(DWORD pid, void* hWnd)
 	{
+		std::shared_ptr<ProcessInfo> proc = getProcess(pid);
+		if (!proc)
+		{
+			return;
+		}
 		std::unique_lock lock(m_wndMutex);
-		m_topLevelWindows.addTopLevelWindow(hWnd);
+		m_toplevelWindows.insert(hWnd);
+		proc->addToplevelWindow(hWnd);
 	}
 
-	void Env::removeTopLevelWindow(void* hWnd)
+	void Env::removeToplevelWindow(DWORD pid, void* hWnd)
 	{
+		std::shared_ptr<ProcessInfo> proc = getProcess(pid);
+		if (!proc)
+		{
+			return;
+		}
 		std::unique_lock lock(m_wndMutex);
-		m_topLevelWindows.removeTopLevelWindow(hWnd);
+		m_toplevelWindows.erase(hWnd);
+		proc->removeToplevelWindow(hWnd);
 	}
 
-	bool Env::containsTopLevelWindow(void* hWnd) const
+	bool Env::containsToplevelWindow(void* hWnd) const
 	{
 		std::shared_lock lock(m_wndMutex);
-		return m_topLevelWindows.contains(hWnd);
-	}
-
-	std::vector<void*> Env::getAllTopLevelWindows() const
-	{
-		std::shared_lock lock(m_wndMutex);
-		return m_topLevelWindows.getAllHandles();
+		return m_toplevelWindows.contains(hWnd);
 	}
 
 	bool Env::addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo)
@@ -341,5 +343,15 @@ namespace biz
 			return true;
 		}
 		return false;
+	}
+
+	void Env::removeToplevelWindowWhenProcessTerminate(const std::shared_ptr<ProcessInfo>& procInfo)
+	{
+		std::unique_lock lock(m_wndMutex);
+		const std::unordered_set<void*>& allToplevelWindows = procInfo->getToplevelWindows();
+		for (void* hWnd : allToplevelWindows)
+		{
+			m_toplevelWindows.erase(hWnd);
+		}
 	}
 }

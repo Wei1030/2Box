@@ -100,6 +100,10 @@ namespace biz
 		void setDenseIndex(size_t index) noexcept { m_indexInDense = index; }
 		size_t getDenseIndex() const noexcept { return m_indexInDense; }
 
+		void addToplevelWindow(void* hWnd);
+		void removeToplevelWindow(void* hWnd);
+		const std::unordered_set<void*>& getToplevelWindows() const noexcept { return m_toplevelWindows; }
+
 	private:
 		void initializeFullPath();
 
@@ -108,6 +112,7 @@ namespace biz
 		std::wstring m_fullPath;
 		size_t m_indexInDense{0};
 		DWORD m_processId;
+		std::unordered_set<void*> m_toplevelWindows;
 	};
 
 	class ProcessDenseMap
@@ -119,6 +124,7 @@ namespace biz
 	public:
 		std::size_t getCount() const;
 		std::vector<std::shared_ptr<ProcessInfo>> getAllProcesses() const;
+		std::shared_ptr<ProcessInfo> getProcessInfo(DWORD pid) const;
 		const std::vector<DWORD>& getPids() const { return m_densePids; }
 		bool contains(const std::wstring& procFullName) const { return m_procNames.contains(procFullName); }
 
@@ -127,40 +133,6 @@ namespace biz
 		std::vector<DWORD> m_densePids;
 		std::unordered_map<DWORD, std::shared_ptr<ProcessInfo>> m_sparse;
 	};
-
-	export class TopLevelWindow
-	{
-	public:
-		explicit TopLevelWindow(void* hWnd) noexcept : m_hWnd(hWnd)
-		{
-		}
-
-	public:
-		void* getHandle() const noexcept { return m_hWnd; }
-
-		void setDenseIndex(size_t index) noexcept { m_indexInDense = index; }
-		size_t getDenseIndex() const noexcept { return m_indexInDense; }
-
-	private:
-		void* m_hWnd;
-		size_t m_indexInDense{0};
-	};
-
-	class TopLevelWindowDenseMap
-	{
-	public:
-		bool addTopLevelWindow(void* hWnd);
-		bool removeTopLevelWindow(void* hWnd);
-
-	public:
-		const std::vector<void*>& getAllHandles() const { return m_denseHandles; }
-		bool contains(void* handle) const { return m_sparse.contains(handle); }
-
-	private:
-		std::vector<void*> m_denseHandles;
-		std::unordered_map<void*, TopLevelWindow> m_sparse;
-	};
-
 
 	export class Env
 	{
@@ -185,6 +157,7 @@ namespace biz
 
 		std::size_t getAllProcessesCount() const;
 		std::vector<std::shared_ptr<ProcessInfo>> getAllProcesses() const;
+		std::shared_ptr<ProcessInfo> getProcess(DWORD pid) const;
 		std::vector<DWORD> getAllProcessIds() const;
 		bool contains(const std::wstring& procFullName) const;
 
@@ -197,14 +170,14 @@ namespace biz
 		using ProcCountChangeNotify = std::function<void(EProcEvent, const std::shared_ptr<ProcessInfo>&, std::size_t)>;
 		void setProcCountChangeNotify(ProcCountChangeNotify notify);
 
-		void addTopLevelWindow(void* hWnd);
-		void removeTopLevelWindow(void* hWnd);
-		bool containsTopLevelWindow(void* hWnd) const;
-		std::vector<void*> getAllTopLevelWindows() const;
+		void addToplevelWindow(DWORD pid, void* hWnd);
+		void removeToplevelWindow(DWORD pid, void* hWnd);
+		bool containsToplevelWindow(void* hWnd) const;
 
 	private:
 		bool addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo);
 		bool removeProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo);
+		void removeToplevelWindowWhenProcessTerminate(const std::shared_ptr<ProcessInfo>& procInfo);
 
 	private:
 		std::uint32_t m_index{0};
@@ -219,6 +192,6 @@ namespace biz
 		ProcCountChangeNotify m_notify;
 
 		mutable std::shared_mutex m_wndMutex;
-		TopLevelWindowDenseMap m_topLevelWindows;
+		std::unordered_set<void*> m_toplevelWindows;
 	};
 }
