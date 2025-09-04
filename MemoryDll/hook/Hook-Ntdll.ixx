@@ -154,18 +154,22 @@ namespace hook
 		                                                                          OutboundQuota, DefaultTimeout);
 	}
 
-	template <auto trampoline>
-	NTSTATUS NTAPI NtCreateFile(OUT PHANDLE FileHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes,
-	                            OUT PIO_STATUS_BLOCK IoStatusBlock, IN PLARGE_INTEGER AllocationSize OPTIONAL, IN ULONG FileAttributes,
-	                            IN ULONG ShareAccess, IN ULONG CreateDisposition, IN ULONG CreateOptions,
-	                            IN PVOID EaBuffer OPTIONAL, IN ULONG EaLength)
+	template <auto trampoline, typename... Args>
+	NTSTATUS NTAPI MyCreateOrOpenFile(POBJECT_ATTRIBUTES ObjectAttributes, Args&&... args)
 	{
 		NTSTATUS ret = STATUS_ACCESS_DENIED;
-
 		do
 		{
-			if (!ObjectAttributes
-				|| !ObjectAttributes->ObjectName
+			if (!ObjectAttributes)
+			{
+				break;
+			}
+			if (ObjectAttributes->RootDirectory)
+			{
+				// 需要考虑吗?
+				break;
+			}
+			if (!ObjectAttributes->ObjectName
 				|| !ObjectAttributes->ObjectName->Buffer
 				|| !ObjectAttributes->ObjectName->Length)
 			{
@@ -173,9 +177,8 @@ namespace hook
 			}
 
 			std::wstring_view strCmpName(ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t));
-
 			//管道;
-			if (strCmpName.find(L"\\??\\pipe\\") != std::wstring::npos)
+			if (strCmpName.starts_with(L"\\??\\pipe\\"))
 			{
 				/* \??\pipe\ */
 				std::wstring strNewName = std::format(L"{}{}", strCmpName, global::Data::get().envFlagName());
@@ -184,12 +187,11 @@ namespace hook
 				newObjName.Buffer = strNewName.data();
 				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(strNewName.length() * sizeof(wchar_t));
 				ObjectAttributes->ObjectName = &newObjName;
-				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
-				                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+				ret = trampoline(std::forward<Args>(args)...);
 				ObjectAttributes->ObjectName = pOldName;
 				break;
 			}
-
+			// 符合条件的特定路径重定向
 			if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(strCmpName))
 			{
 				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
@@ -197,8 +199,7 @@ namespace hook
 				newObjName.Buffer = result.value().data();
 				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
 				ObjectAttributes->ObjectName = &newObjName;
-				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
-				                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+				ret = trampoline(std::forward<Args>(args)...);
 				ObjectAttributes->ObjectName = pOldName;
 				return ret;
 			}
@@ -207,10 +208,20 @@ namespace hook
 
 		if (!NT_SUCCESS(ret))
 		{
-			ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize,
-			                 FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+			ret = trampoline(std::forward<Args>(args)...);
 		}
 		return ret;
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtCreateFile(OUT PHANDLE FileHandle, IN ACCESS_MASK DesiredAccess, IN POBJECT_ATTRIBUTES ObjectAttributes,
+	                            OUT PIO_STATUS_BLOCK IoStatusBlock, IN PLARGE_INTEGER AllocationSize OPTIONAL, IN ULONG FileAttributes,
+	                            IN ULONG ShareAccess, IN ULONG CreateDisposition, IN ULONG CreateOptions,
+	                            IN PVOID EaBuffer OPTIONAL, IN ULONG EaLength)
+	{
+		return MyCreateOrOpenFile<trampoline>(ObjectAttributes, FileHandle, DesiredAccess, ObjectAttributes,
+		                                      IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+		                                      CreateDisposition, CreateOptions, EaBuffer, EaLength);
 	}
 
 	template <auto trampoline>
@@ -218,37 +229,8 @@ namespace hook
 	                          IN POBJECT_ATTRIBUTES ObjectAttributes, OUT PIO_STATUS_BLOCK IoStatusBlock,
 	                          IN ULONG ShareAccess, IN ULONG OpenOptions)
 	{
-		NTSTATUS ret = STATUS_ACCESS_DENIED;
-		do
-		{
-			if (!ObjectAttributes
-				|| !ObjectAttributes->ObjectName
-				|| !ObjectAttributes->ObjectName->Buffer
-				|| !ObjectAttributes->ObjectName->Length)
-			{
-				break;
-			}
-
-			std::wstring_view strCmpName(ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t));
-			if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(strCmpName))
-			{
-				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
-				UNICODE_STRING newObjName;
-				newObjName.Buffer = result.value().data();
-				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
-				ObjectAttributes->ObjectName = &newObjName;
-				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
-				ObjectAttributes->ObjectName = pOldName;
-				return ret;
-			}
-		}
-		while (false);
-
-		if (!NT_SUCCESS(ret))
-		{
-			ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
-		}
-		return ret;
+		return MyCreateOrOpenFile<trampoline>(ObjectAttributes, FileHandle, DesiredAccess, ObjectAttributes,
+		                                      IoStatusBlock, ShareAccess, OpenOptions);
 	}
 
 	std::unordered_set<std::uint64_t> GetAllProcessInEnv()
@@ -392,34 +374,6 @@ namespace hook
 		}
 		const KEY_NAME_INFORMATION* ni = reinterpret_cast<KEY_NAME_INFORMATION*>(buffer.data());
 		fullName = std::wstring_view{ni->Name, ni->NameLength / sizeof(wchar_t)};
-		return fullName;
-	}
-
-	std::wstring GetObjectName(POBJECT_ATTRIBUTES ObjectAttributes)
-	{
-		std::wstring fullName;
-		if (!ObjectAttributes)
-		{
-			return fullName;
-		}
-
-		std::vector<std::byte> buffer = GetKeyNameInformation(ObjectAttributes->RootDirectory);
-		if (buffer.empty())
-		{
-			return fullName;
-		}
-		const KEY_NAME_INFORMATION* ni = reinterpret_cast<KEY_NAME_INFORMATION*>(buffer.data());
-		std::wstring_view rootName = std::wstring_view{ni->Name, ni->NameLength / sizeof(wchar_t)};
-		std::wstring_view objName;
-		if (ObjectAttributes->ObjectName && ObjectAttributes->ObjectName->Buffer && ObjectAttributes->ObjectName->Length)
-		{
-			objName = std::wstring_view{ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t)};
-		}
-		if (rootName.empty() && objName.empty())
-		{
-			return fullName;
-		}
-		fullName = std::format(L"{}\\{}", rootName, objName);
 		return fullName;
 	}
 
