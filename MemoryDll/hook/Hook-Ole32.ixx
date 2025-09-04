@@ -15,6 +15,10 @@ namespace hook
 		{
 			return REGDB_E_CLASSNOTREG;
 		}
+		if (memcmp(&rclsid, &CLSID_WbemAdministrativeLocator, sizeof(CLSID)) == 0)
+		{
+			return REGDB_E_CLASSNOTREG;
+		}
 		return Trampoline(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 	}
 
@@ -29,7 +33,29 @@ namespace hook
 			}
 			return REGDB_E_CLASSNOTREG;
 		}
+		if (memcmp(&Clsid, &CLSID_WbemAdministrativeLocator, sizeof(CLSID)) == 0)
+		{
+			if (pResults)
+			{
+				pResults->hr = REGDB_E_CLASSNOTREG;
+			}
+			return REGDB_E_CLASSNOTREG;
+		}
 		return Trampoline(Clsid, punkOuter, dwClsCtx, pServerInfo, dwCount, pResults);
+	}
+
+	template <auto Trampoline>
+	HRESULT STDAPICALLTYPE CoGetClassObject(_In_ REFCLSID rclsid, _In_ DWORD dwClsContext, _In_opt_ LPVOID pvReserved, _In_ REFIID riid, _Outptr_ LPVOID FAR * ppv)
+	{
+		if (memcmp(&rclsid, &CLSID_WbemLocator, sizeof(CLSID)) == 0)
+		{
+			return REGDB_E_CLASSNOTREG;
+		}
+		if (memcmp(&rclsid, &CLSID_WbemAdministrativeLocator, sizeof(CLSID)) == 0)
+		{
+			return REGDB_E_CLASSNOTREG;
+		}
+		return Trampoline(rclsid, dwClsContext, pvReserved, riid, ppv);
 	}
 
 	void hook_ole32()
@@ -41,6 +67,10 @@ namespace hook
 		create_hook_by_func_ptr<&::CoCreateInstanceEx>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&CoCreateInstanceEx<trampolineConst.value>};
+		});
+		create_hook_by_func_ptr<&::CoGetClassObject>().setHookFromGetter([&](auto trampolineConst)
+		{
+			return HookInfo{&CoGetClassObject<trampolineConst.value>};
 		});
 	}
 }
