@@ -13,6 +13,7 @@ namespace
 {
 	constexpr float CARD_HEIGHT = 132.f;
 	constexpr float CARD_MARGIN_BOTTOM = 12.f;
+	constexpr float WHEEL_SCROLL_SIZE = 36.f;
 }
 
 namespace ui
@@ -43,6 +44,20 @@ namespace ui
 		biz::launcher().run(env, procFullPath);
 	}
 
+	void EnvBoxCardArea::onResize(float width, float height)
+	{
+		m_scrollBar->setVisibleSize(height);
+	}
+
+	void EnvBoxCardArea::onMouseWheel(const MouseWheelEvent& e)
+	{
+		e.accept = true;
+
+		const short wheelCount = e.zDelta / 120;
+		m_scrollBar->scroll(-wheelCount * WHEEL_SCROLL_SIZE);
+		update();
+	}
+
 	void EnvBoxCardArea::initialize()
 	{
 		std::vector<std::shared_ptr<biz::Env>> allEnv = biz::env_mgr().getAllEnv();
@@ -52,6 +67,9 @@ namespace ui
 			card->setEnv(*it);
 			m_envs.insert(std::make_pair((*it)->getIndex(), std::move(card)));
 		}
+
+		m_scrollBar = std::make_unique<ScrollBar>(this);
+		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
 
 		biz::env_mgr().setEnvChangeNotify([this](biz::EnvManager::EChangeType changeType, const std::shared_ptr<biz::Env>& env)
 		{
@@ -75,6 +93,8 @@ namespace ui
 			m_envs.erase(env->getIndex());
 		}
 
+		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
+
 		updateWholeWnd();
 	}
 
@@ -84,12 +104,25 @@ namespace ui
 		{
 			return;
 		}
+
+		constexpr float itemHeight = CARD_HEIGHT + CARD_MARGIN_BOTTOM;
+		const float scrollOffset = m_scrollBar->getThumbOffset();
+		const std::uint32_t startIndex = static_cast<std::uint32_t>(scrollOffset / itemHeight);
+		const std::uint32_t endIndex = std::min(
+			static_cast<std::uint32_t>((scrollOffset + m_scrollBar->getVisibleSize()) / itemHeight),
+			static_cast<std::uint32_t>(m_envs.size() - 1));
 		
+		const std::uint32_t startDrawOffsetY = static_cast<std::uint32_t>(scrollOffset) % static_cast<std::uint32_t>(itemHeight);
+		float startYPos = shadowSize - shadowOffsetY - startDrawOffsetY;
 		const auto drawSize = size();
-		
-		float startYPos = shadowSize - shadowOffsetY;
-		for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
+		std::size_t index = 0;
+		for (auto it = m_envs.begin(); it != m_envs.end() && index <= endIndex; ++it, ++index)
 		{
+			if (index < startIndex)
+			{
+				continue;
+			}
+
 			EnvBoxCard* card = it->second.get();
 			card->setBounds(D2D1::RectF(shadowSize, startYPos, drawSize.width - shadowSize, startYPos + CARD_HEIGHT));
 			if (card->isHovered())
@@ -109,7 +142,7 @@ namespace ui
 			}
 			card->draw(renderCtx);
 
-			startYPos += CARD_HEIGHT + CARD_MARGIN_BOTTOM;
+			startYPos += itemHeight;
 		}
 	}
 }
