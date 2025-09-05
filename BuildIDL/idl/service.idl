@@ -14,4 +14,5 @@ interface service
 	void add_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
 	void remove_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
 	int contains_toplevel_window([in] unsigned long long hWnd, [in] unsigned long long envFlag);
+	int contains_toplevel_window_excluding_by_flag([in] unsigned long long hWnd, [in] unsigned long long excludeEnvFlag);
 }

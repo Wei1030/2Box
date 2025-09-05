@@ -123,6 +123,18 @@ int contains_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, u
 		RpcRaiseException(0xE06D7363);
 	}
 }
+
+int contains_toplevel_window_excluding_by_flag(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned long long excludeEnvFlag)
+{
+	try
+	{
+		return biz::env_mgr().containsToplevelWindowExcludingByFlag(reinterpret_cast<void*>(hWnd), excludeEnvFlag) ? 1 : 0;
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
+}
 }
 
 extern "C" {

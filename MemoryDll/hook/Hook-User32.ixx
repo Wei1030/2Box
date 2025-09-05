@@ -44,6 +44,19 @@ namespace hook
 		return false;
 	}
 
+	bool contains_toplevel_window_in_other_env(void* hWnd)
+	{
+		try
+		{
+			const rpc::ClientDefault c;
+			return c.containsToplevelWindowExcludingByFlag(hWnd, global::Data::get().envFlag());
+		}
+		catch (...)
+		{
+		}
+		return true;
+	}
+
 	template <auto Trampoline>
 	HWND WINAPI CreateWindowExA(_In_ DWORD dwExStyle, _In_opt_ LPCSTR lpClassName, _In_opt_ LPCSTR lpWindowName,
 	                            _In_ DWORD dwStyle, _In_ int X, _In_ int Y, _In_ int nWidth, _In_ int nHeight,
@@ -101,22 +114,22 @@ namespace hook
 	HWND WINAPI FindWindowA(_In_opt_ LPCSTR lpClassName, _In_opt_ LPCSTR lpWindowName)
 	{
 		HWND hWnd = Trampoline(lpClassName, lpWindowName);
-		if (hWnd && contains_toplevel_window(hWnd))
+		if (!hWnd || contains_toplevel_window_in_other_env(hWnd))
 		{
-			return hWnd;
+			return nullptr;
 		}
-		return nullptr;
+		return hWnd;
 	}
 
 	template <auto Trampoline>
 	HWND WINAPI FindWindowW(_In_opt_ LPCWSTR lpClassName, _In_opt_ LPCWSTR lpWindowName)
 	{
 		HWND hWnd = Trampoline(lpClassName, lpWindowName);
-		if (hWnd && contains_toplevel_window(hWnd))
+		if (!hWnd || contains_toplevel_window_in_other_env(hWnd))
 		{
-			return hWnd;
+			return nullptr;
 		}
-		return nullptr;
+		return hWnd;
 	}
 
 	HWND get_desktop_window()
@@ -134,11 +147,11 @@ namespace hook
 		}
 
 		HWND hWnd = Trampoline(hWndParent, hWndChildAfter, lpszClass, lpszWindow);
-		if (hWnd && contains_toplevel_window(hWnd))
+		if (!hWnd || contains_toplevel_window_in_other_env(hWnd))
 		{
-			return hWnd;
+			return nullptr;
 		}
-		return nullptr;
+		return hWnd;
 	}
 
 	template <auto Trampoline>
@@ -150,11 +163,11 @@ namespace hook
 		}
 
 		HWND hWnd = Trampoline(hWndParent, hWndChildAfter, lpszClass, lpszWindow);
-		if (hWnd && contains_toplevel_window(hWnd))
+		if (!hWnd || contains_toplevel_window_in_other_env(hWnd))
 		{
-			return hWnd;
+			return nullptr;
 		}
-		return nullptr;
+		return hWnd;
 	}
 
 	struct MyEnumWndParams
@@ -166,11 +179,11 @@ namespace hook
 	BOOL CALLBACK my_enum_windows_proc(HWND hWnd, LPARAM lParam)
 	{
 		const MyEnumWndParams* myParam = reinterpret_cast<MyEnumWndParams*>(lParam);
-		if (!hWnd || contains_toplevel_window(hWnd))
+		if (hWnd && contains_toplevel_window_in_other_env(hWnd))
 		{
-			return myParam->lpEnumFunc(hWnd, myParam->lParam);
+			return TRUE;
 		}
-		return TRUE;
+		return myParam->lpEnumFunc(hWnd, myParam->lParam);
 	}
 
 	template <auto Trampoline>
@@ -204,80 +217,37 @@ namespace hook
 		return Trampoline(hDesktop, &my_enum_windows_proc, reinterpret_cast<LPARAM>(&myParam));
 	}
 
-	BOOL CALLBACK enum_wnd_helper(HWND hWnd, LPARAM lParam)
+	template <auto Trampoline>
+	HWND ensure_not_in_other_env(HWND hWnd, UINT uCmd)
 	{
-		std::vector<HWND>& allWnd = *reinterpret_cast<std::vector<HWND>*>(lParam);
-		allWnd.push_back(hWnd);
-		return TRUE;
-	}
-
-	std::vector<HWND> get_all_toplevel_windows_by_enum()
-	{
-		std::vector<HWND> allToplevelWindows;
-		allToplevelWindows.reserve(32);
-		::EnumWindows(&enum_wnd_helper, reinterpret_cast<LPARAM>(&allToplevelWindows));
-		return allToplevelWindows;
-	}
-
-	BOOL CALLBACK get_first_toplevel_wnd_helper(HWND hWnd, LPARAM lParam)
-	{
-		HWND* hWndResult = reinterpret_cast<HWND*>(lParam);
-		*hWndResult = hWnd;
-		return FALSE;
-	}
-
-	HWND get_first_toplevel_window()
-	{
-		HWND hWnd{nullptr};
-		::EnumWindows(&get_first_toplevel_wnd_helper, reinterpret_cast<LPARAM>(&hWnd));
-		return hWnd;
-	}
-
-	HWND get_next_toplevel_window(HWND hWnd, UINT uCmd)
-	{
-		if (uCmd == GW_HWNDFIRST)
+		if (!contains_toplevel_window_in_other_env(hWnd))
 		{
-			return get_first_toplevel_window();
+			return hWnd;
 		}
 
-		std::vector<HWND> allToplevelWindows = get_all_toplevel_windows_by_enum();
-		if (allToplevelWindows.empty())
+		if (uCmd != GW_HWNDNEXT || uCmd != GW_HWNDPREV)
 		{
 			return nullptr;
 		}
-		if (uCmd == GW_HWNDLAST)
-		{
-			return allToplevelWindows.back();
-		}
 
-		for (size_t i = 0; i < allToplevelWindows.size(); ++i)
+		HWND hResult = Trampoline(hWnd, uCmd);
+		int tryCount = 1000;
+		while (hResult && tryCount > 0 && contains_toplevel_window_in_other_env(hResult))
 		{
-			if (allToplevelWindows[i] == hWnd)
-			{
-				if (uCmd == GW_HWNDPREV)
-				{
-					if (i == 0)
-					{
-						return nullptr;
-					}
-					return allToplevelWindows[i - 1];
-				}
-				if (uCmd == GW_HWNDNEXT)
-				{
-					if (i == allToplevelWindows.size() - 1)
-					{
-						return nullptr;
-					}
-					return allToplevelWindows[i + 1];
-				}
-			}
+			hResult = Trampoline(hWnd, uCmd);
+			tryCount--;
 		}
-		return allToplevelWindows.front();
+		return hResult;
 	}
 
 	template <auto Trampoline>
 	HWND WINAPI GetWindow(_In_ HWND hWnd, _In_ UINT uCmd)
 	{
+		if (!hWnd)
+		{
+			return Trampoline(hWnd, uCmd);
+		}
+
 		if (uCmd == GW_ENABLEDPOPUP || uCmd == GW_OWNER)
 		{
 			HWND hResult = Trampoline(hWnd, uCmd);
@@ -285,7 +255,7 @@ namespace hook
 			{
 				return hResult;
 			}
-			if (contains_toplevel_window(hResult))
+			if (!contains_toplevel_window_in_other_env(hResult))
 			{
 				return hResult;
 			}
@@ -296,7 +266,7 @@ namespace hook
 		{
 			if (hWnd == get_desktop_window())
 			{
-				return get_first_toplevel_window();
+				return ensure_not_in_other_env<Trampoline>(Trampoline(hWnd, uCmd), GW_HWNDNEXT);
 			}
 			return Trampoline(hWnd, uCmd);
 		}
@@ -305,7 +275,16 @@ namespace hook
 		{
 			return Trampoline(hWnd, uCmd);
 		}
-		return get_next_toplevel_window(hWnd, uCmd);
+
+		if (uCmd == GW_HWNDFIRST)
+		{
+			return ensure_not_in_other_env<Trampoline>(Trampoline(hWnd, uCmd), GW_HWNDNEXT);
+		}
+		if (uCmd == GW_HWNDLAST)
+		{
+			return ensure_not_in_other_env<Trampoline>(Trampoline(hWnd, uCmd), GW_HWNDPREV);
+		}
+		return ensure_not_in_other_env<Trampoline>(Trampoline(hWnd, uCmd), uCmd);
 	}
 
 	template <auto Trampoline>
@@ -315,7 +294,7 @@ namespace hook
 		{
 			return Trampoline(hWnd);
 		}
-		return get_first_toplevel_window();
+		return ::GetWindow(get_desktop_window(), GW_CHILD);
 	}
 
 	void hook_user32()

@@ -167,6 +167,23 @@ namespace biz
 		delete_env_from_reg(env->getFlagName());
 	}
 
+	bool EnvManager::containsToplevelWindowExcludingByFlag(void* hWnd, std::uint64_t excludeEnvFlag) const
+	{
+		std::vector<std::shared_ptr<Env>> allEnv = getAllEnv();
+		for (const std::shared_ptr<Env>& env : allEnv)
+		{
+			if (env->getFlag() == excludeEnvFlag)
+			{
+				continue;
+			}
+			if (env->containsToplevelWindow(hWnd))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	std::vector<std::shared_ptr<Env>> EnvManager::getAllEnv() const
 	{
 		std::vector<std::shared_ptr<Env>> result;
