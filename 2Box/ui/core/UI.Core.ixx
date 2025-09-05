@@ -177,8 +177,16 @@ namespace ui
 
 		bool hitTest(D2D1_POINT_2F point) const
 		{
-			return point.x >= m_boundsInOwner.left && point.x <= m_boundsInOwner.right &&
-				point.y >= m_boundsInOwner.top && point.y <= m_boundsInOwner.bottom;
+			const ControlBase* current = this;
+			while (current)
+			{
+				if (!current->hitTestInternal(point))
+				{
+					return false;
+				}
+				current = current->m_parent;
+			}
+			return true;
 		}
 
 		virtual void onMouseEnter(const MouseEvent& e)
@@ -208,6 +216,13 @@ namespace ui
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx)
 		{
+		}
+
+	private:
+		bool hitTestInternal(D2D1_POINT_2F point) const
+		{
+			return point.x >= m_boundsInOwner.left && point.x <= m_boundsInOwner.right &&
+				point.y >= m_boundsInOwner.top && point.y <= m_boundsInOwner.bottom;
 		}
 
 	protected:
