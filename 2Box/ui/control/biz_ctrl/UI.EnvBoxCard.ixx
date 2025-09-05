@@ -55,8 +55,8 @@ namespace ui
 		std::wstring m_name;
 		std::size_t m_procCount{0};
 		std::wstring m_strProcCount{L"0"};
-		bool m_bIdle{true};
-		std::stop_source m_stopSource{std::nostopstate};
+		bool m_bIdle{false};
+		std::stop_source m_stopSource;
 		// std::map<std::uint32_t, std::shared_ptr<biz::ProcessInfo>> m_processes;
 	};
 }

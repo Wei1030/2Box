@@ -8,6 +8,7 @@ import "sys_defs.hpp";
 
 import MainApp;
 import UI.LeftSidebar;
+import UI.EnvBoxCardArea;
 import Biz.Core;
 
 namespace
@@ -57,6 +58,11 @@ namespace ui
 
 		const float startBtnYPos = get_path_area_height(m_pathTextHeight);
 		m_btnStart->setBounds(D2D1::RectF(0, startBtnYPos, width, startBtnYPos + START_BTN_HEIGHT));
+
+		if (m_sizeChangeNotify)
+		{
+			m_sizeChangeNotify(width, height);
+		}
 	}
 
 	void StartAppDiv::updateBoundsWhenPathChanged()
@@ -131,22 +137,23 @@ namespace ui
 
 	void StartAppDiv::onBtnStartPressed()
 	{
-		LeftSidebar* bar = static_cast<LeftSidebar*>(parent());
+		const LeftSidebar* bar = static_cast<LeftSidebar*>(parent());
+		EnvBoxCardArea* envCardArea = bar->getEnvBoxCardArea();
 		if (m_strExePath.size())
 		{
-			bar->launchProcess(m_strExePath);
+			envCardArea->launchProcess(m_strExePath);
 			return;
 		}
 
-		const std::wstring fullPath = bar->selectProcess();
-		if (fullPath.empty())
+		const std::optional<std::wstring> fullPath = bar->selectProcess();
+		if (!fullPath.has_value())
 		{
 			return;
 		}
-		m_strExePath = fullPath;
+		m_strExePath = fullPath.value();
 
 		updateBoundsWhenPathChanged();
 
-		bar->launchProcess(m_strExePath);
+		envCardArea->launchProcess(m_strExePath);
 	}
 }

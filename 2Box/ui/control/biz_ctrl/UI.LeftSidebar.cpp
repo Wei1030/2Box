@@ -10,29 +10,17 @@ import "sys_defs.hpp";
 #endif
 
 import MainApp;
-import Scheduler;
 
 namespace
 {
 	constexpr float PADDING = 24.f;
 	constexpr float MARGIN_BOTTOM = 24.f;
-	constexpr float CARD_HEIGHT = 132.f;
-	constexpr float CARD_MARGIN_BOTTOM = 12.f;
 }
 
 namespace ui
 {
-	LeftSidebar::~LeftSidebar()
+	std::optional<std::wstring> LeftSidebar::selectProcess() const
 	{
-		// 不再接收通知，且会等待已经通知的回调结束
-		biz::env_mgr().setEnvChangeNotify(nullptr);
-		// 之后就绝对不会spawn新的协程，才可以安全等待所有协程结束
-		m_asyncScope.join();
-	}
-
-	std::wstring LeftSidebar::selectProcess() const
-	{
-		std::wstring procFullPath;
 		UniqueComPtr<IFileOpenDialog> fileOpen;
 		HResult hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpen));
 		if (FAILED(hr))
@@ -41,7 +29,7 @@ namespace ui
 			            std::format(L"创建文件选择对话框失败! CoCreateInstance fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
 			            MainApp::appName.data(),
 			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return procFullPath;
+			return std::nullopt;
 		}
 		COMDLG_FILTERSPEC rgSpec[] =
 		{
@@ -63,7 +51,7 @@ namespace ui
 				            MainApp::appName.data(),
 				            MB_OK | MB_ICONERROR | MB_TASKMODAL);
 			}
-			return procFullPath;
+			return std::nullopt;
 		}
 		UniqueComPtr<IShellItem> item;
 		hr = fileOpen->GetResult(&item);
@@ -73,7 +61,7 @@ namespace ui
 			            std::format(L"无法获取选择的文件! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
 			            MainApp::appName.data(),
 			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return procFullPath;
+			return std::nullopt;
 		}
 		PWSTR pszFilePath;
 		hr = item->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
@@ -83,72 +71,38 @@ namespace ui
 			            std::format(L"无法获取选择的文件路径! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
 			            MainApp::appName.data(),
 			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return procFullPath;
+			return std::nullopt;
 		}
-		procFullPath = pszFilePath;
+		std::wstring procFullPath{pszFilePath};
 		CoTaskMemFree(pszFilePath);
 		return procFullPath;
 	}
 
-	void LeftSidebar::launchProcess(const std::wstring& procFullPath)
+	void LeftSidebar::onResize(float width, float height)
 	{
-		for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
-		{
-			EnvBoxCard* box = it->second.get();
-			if (!box->isIdle() || box->contains(procFullPath))
-			{
-				continue;
-			}
-			box->launchProcess(procFullPath);
-			return;
-		}
-		// 没有合适的env，则创建新的
-		std::shared_ptr<biz::Env> env = biz::env_mgr().createEnv();
-		// 这里不考虑m_envs了，env的创建回调中会加入m_envs，这里直接使用launcher接口启动进程
-		biz::launcher().run(env, procFullPath);
+		resizeEnvCardsArea();
 	}
 
 	void LeftSidebar::initialize()
 	{
 		m_startAppDiv = std::make_unique<StartAppDiv>(this);
 		m_startAppDiv->setBounds(D2D1::RectF(PADDING, PADDING, PADDING + 232.f, PADDING + 36.f));
-
-		initializeAllEnvBoxCard();
-	}
-
-	void LeftSidebar::initializeAllEnvBoxCard()
-	{
-		std::vector<std::shared_ptr<biz::Env>> allEnv = biz::env_mgr().getAllEnv();
-		for (auto it = allEnv.begin(); it != allEnv.end(); ++it)
+		m_startAppDiv->setSizeChangeNotify([this](float, float)
 		{
-			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
-			card->setEnv(*it);
-			m_envs.insert(std::make_pair((*it)->getIndex(), std::move(card)));
-		}
-
-		biz::env_mgr().setEnvChangeNotify([this](biz::EnvManager::EChangeType changeType, const std::shared_ptr<biz::Env>& env)
-		{
-			m_asyncScope.spawn(onEnvCountChange(changeType, env));
+			resizeEnvCardsArea();
 		});
+
+		m_envCardsArea = std::make_unique<EnvBoxCardArea>(this);
 	}
 
-	coro::LazyTask<void> LeftSidebar::onEnvCountChange(biz::EnvManager::EChangeType changeType, std::shared_ptr<biz::Env> env)
+	void LeftSidebar::resizeEnvCardsArea() const
 	{
-		// 转到主线程
-		co_await sched::transfer_to(app().get_scheduler());
-
-		if (changeType == biz::EnvManager::EChangeType::Create)
-		{
-			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
-			card->setEnv(env);
-			m_envs.insert(std::make_pair(env->getIndex(), std::move(card)));
-		}
-		else if (changeType == biz::EnvManager::EChangeType::Delete)
-		{
-			m_envs.erase(env->getIndex());
-		}
-
-		update();
+		const auto contentSize = size();
+		const float startYPos = m_startAppDiv->getBounds().bottom + MARGIN_BOTTOM * 2;
+		m_envCardsArea->setBounds(D2D1::RectF(PADDING - EnvBoxCardArea::shadowSize,
+		                                      startYPos - EnvBoxCardArea::shadowSize + EnvBoxCardArea::shadowOffsetY,
+		                                      contentSize.width - PADDING + EnvBoxCardArea::shadowSize,
+		                                      contentSize.height));
 	}
 
 	void LeftSidebar::drawImpl(const RenderContext& renderCtx)
@@ -165,37 +119,15 @@ namespace ui
 
 		m_startAppDiv->draw(renderCtx);
 
-		if (m_envs.size())
+		if (m_envCardsArea->isNoEnvs())
 		{
-			float startYPos = m_startAppDiv->getBounds().bottom + MARGIN_BOTTOM;
-			solidBrush->SetColor(D2D1::ColorF(0xe0e0e0));
-			renderTarget->DrawLine(D2D1::Point2F(PADDING, startYPos), D2D1::Point2F(drawSize.width, startYPos), solidBrush);
-
-			startYPos += MARGIN_BOTTOM;
-
-			for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
-			{
-				EnvBoxCard* card = it->second.get();
-				card->setBounds(D2D1::RectF(PADDING, startYPos, drawSize.width - PADDING, startYPos + CARD_HEIGHT));
-				if (card->isHovered())
-				{
-					draw_box_shadow(renderCtx, card->getBounds(),
-					                {
-						                .offset = D2D1::Point2F(0.f, 4.f),
-						                .size = 6.f,
-						                .layers = 6,
-						                .color = D2D1::ColorF{0x000000, 0.03f},
-						                .radius = 12.f
-					                });
-				}
-				else
-				{
-					draw_box_shadow(renderCtx, card->getBounds(), {.offset = D2D1::Point2F(0.f, 1.f), .radius = 12.f});
-				}
-				card->draw(renderCtx);
-
-				startYPos += CARD_HEIGHT + CARD_MARGIN_BOTTOM;
-			}
+			return;
 		}
+
+		const float startYPos = m_startAppDiv->getBounds().bottom + MARGIN_BOTTOM;
+		solidBrush->SetColor(D2D1::ColorF(0xe0e0e0));
+		renderTarget->DrawLine(D2D1::Point2F(PADDING, startYPos), D2D1::Point2F(drawSize.width - PADDING, startYPos), solidBrush);
+
+		m_envCardsArea->draw(renderCtx);
 	}
 }

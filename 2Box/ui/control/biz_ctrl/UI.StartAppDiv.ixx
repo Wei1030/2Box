@@ -16,6 +16,9 @@ namespace ui
 			initialize();
 		}
 
+		using SizeChangeNotify = std::function<void(float, float)>;
+		void setSizeChangeNotify(SizeChangeNotify notify) noexcept { m_sizeChangeNotify = std::move(notify); }
+
 	private:
 		void initialize();
 
@@ -35,5 +38,6 @@ namespace ui
 		float m_pathTextHeight{0};
 		std::unique_ptr<Button> m_btnClear;
 		std::unique_ptr<Button> m_btnStart;
+		SizeChangeNotify m_sizeChangeNotify;
 	};
 }

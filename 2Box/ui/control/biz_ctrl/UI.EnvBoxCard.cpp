@@ -90,6 +90,8 @@ namespace ui
 				biz::env_mgr().deleteEnv(m_env);
 			}
 		});
+
+		m_asyncScope.spawn(coro::co_with_cancellation(resetToIdleLater(), m_stopSource.get_token()));
 	}
 
 	void EnvBoxCard::onResize(float width, float height)
@@ -199,11 +201,9 @@ namespace ui
 	void EnvBoxCard::onBtnStartPressed()
 	{
 		const LeftSidebar* bar = static_cast<LeftSidebar*>(parent());
-		const std::wstring fullPath = bar->selectProcess();
-		if (fullPath.empty())
+		if (const std::optional<std::wstring> fullPath = bar->selectProcess())
 		{
-			return;
+			launchProcess(fullPath.value());
 		}
-		launchProcess(fullPath);
 	}
 }

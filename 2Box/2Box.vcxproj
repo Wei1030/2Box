@@ -53,6 +53,8 @@
     <ClCompile Include="biz\symbols\SymbolLoader.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.ixx" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.cpp" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.cpp" />

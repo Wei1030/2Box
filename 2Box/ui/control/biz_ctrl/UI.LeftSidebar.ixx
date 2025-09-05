@@ -3,9 +3,7 @@ export module UI.LeftSidebar;
 import std;
 import UI.Core;
 import UI.StartAppDiv;
-import UI.EnvBoxCard;
-import Biz.Core;
-import Coroutine;
+import UI.EnvBoxCardArea;
 
 namespace ui
 {
@@ -18,24 +16,21 @@ namespace ui
 			initialize();
 		}
 
-		virtual ~LeftSidebar();
+		std::optional<std::wstring> selectProcess() const;
+		EnvBoxCardArea* getEnvBoxCardArea() const noexcept { return m_envCardsArea.get(); }
 
-		std::wstring selectProcess() const;
-		void launchProcess(const std::wstring& procFullPath);
-		
+	protected:
+		virtual void onResize(float width, float height) override;
+
 	private:
 		void initialize();
-		void initializeAllEnvBoxCard();
-		coro::LazyTask<void> onEnvCountChange(biz::EnvManager::EChangeType changeType, std::shared_ptr<biz::Env> env);
+		void resizeEnvCardsArea() const;
 
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	private:
-		coro::AsyncScope m_asyncScope;
-
-	private:
 		std::unique_ptr<StartAppDiv> m_startAppDiv;
-		std::map<std::uint32_t, std::unique_ptr<EnvBoxCard>> m_envs;
+		std::unique_ptr<EnvBoxCardArea> m_envCardsArea;
 	};
 }

@@ -186,6 +186,12 @@
     <ClCompile Include="biz\core\Biz.Core.ixx">
       <Filter>src\biz\core</Filter>
     </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\embed_dll.rc">
