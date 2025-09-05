@@ -14,8 +14,13 @@ namespace ui
 		UniqueComPtr<ID2D1SolidColorBrush> brush;
 	};
 
+	export struct Event
+	{
+		bool accept = true;
+		bool bubble = false;
+	};
 
-	export struct MouseEvent
+	export struct MouseEvent : public Event
 	{
 		D2D1_POINT_2F point;
 
@@ -43,6 +48,11 @@ namespace ui
 		};
 
 		std::size_t downState;
+
+		MouseEvent(D2D1_POINT_2F pt, ButtonType btn, std::size_t down)
+			: point(pt), button(btn), downState(down)
+		{
+		}
 	};
 
 	export class RendererInterface
@@ -243,11 +253,11 @@ namespace ui
 			{
 				if (m_currentHovered)
 				{
-					m_currentHovered->onMouseLeave(e);
+					processEvent(m_currentHovered, &ControlBase::onMouseLeave, e, false);
 				}
 				if (hovered)
 				{
-					hovered->onMouseEnter(e);
+					processEvent(hovered, &ControlBase::onMouseEnter, e);
 				}
 				m_currentHovered = hovered;
 			}
@@ -259,7 +269,7 @@ namespace ui
 		{
 			if (m_currentHovered)
 			{
-				m_currentHovered->onMouseDown(e);
+				processEvent(m_currentHovered, &ControlBase::onMouseDown, e);
 				if (e.button == MouseEvent::ButtonType::Left)
 				{
 					m_currentPressed = m_currentHovered;
@@ -271,17 +281,52 @@ namespace ui
 		{
 			if (m_currentPressed)
 			{
-				m_currentPressed->onMouseUp(e);
+				processEvent(m_currentPressed, &ControlBase::onMouseUp, e);
 				if (e.button == MouseEvent::ButtonType::Left)
 				{
 					if (m_currentPressed == m_currentHovered)
 					{
-						m_currentPressed->onClick(e);
+						processEvent(m_currentPressed, &ControlBase::onClick, e);
 					}
 					else
 					{
 						m_currentPressed = nullptr;
 					}
+				}
+			}
+		}
+
+		void onMouseLeave()
+		{
+			if (m_currentHovered)
+			{
+				processEvent(m_currentHovered, &ControlBase::onMouseLeave, MouseEvent{D2D1::Point2F(-1.f, -1.f), MouseEvent::ButtonType::NotInvolved, 0}, false);
+				m_currentHovered = nullptr;
+			}
+			if (m_currentPressed)
+			{
+				m_currentPressed = nullptr;
+			}
+		}
+
+	private:
+		template <typename Fn, typename E>
+		void processEvent(ControlBase* ctrl, Fn&& fn, const E& e, bool defaultAccept = true)
+		{
+			const_cast<E&>(e).accept = defaultAccept;
+			std::invoke(std::forward<Fn>(fn), ctrl, e);
+			if (!e.accept)
+			{
+				const_cast<E&>(e).bubble = true;
+				ControlBase* current = ctrl->parent();
+				while (current)
+				{
+					std::invoke(std::forward<Fn>(fn), current, e);
+					if (e.accept)
+					{
+						break;
+					}
+					current = current->parent();
 				}
 			}
 		}
@@ -330,6 +375,8 @@ namespace ui
 		void show(int nCmdShow = SW_SHOW) const;
 		void destroyWindow();
 		void setExitAppWhenWindowDestroyed(bool exit) { m_bIsExitAppWhenWindowDestroyed = exit; }
+		bool setMouseTracking();
+		bool isMouseTracking() const { return m_bIsMouseTracking; }
 		HWND nativeHandle() const { return m_hWnd; }
 		const DpiInfo& dpiInfo() const { return m_dpiInfo; }
 		D2D_RECT_F rect() const;
@@ -369,6 +416,7 @@ namespace ui
 		void mouseMove(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
 		void mouseDown(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
 		void mouseUp(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
+		void mouseLeave();
 		// 这个不做成虚函数，因为窗口有可能在基类析构中销毁，此时无法调用到子类的虚函数。索性不要这个时机了，反正有子类析构可以用
 		void onDestroy();
 
@@ -379,6 +427,7 @@ namespace ui
 	private:
 		HWND m_hWnd{nullptr};
 		bool m_bIsExitAppWhenWindowDestroyed{false};
+		bool m_bIsMouseTracking{false};
 		DpiInfo m_dpiInfo{};
 		RenderContext m_renderCtx{};
 		std::vector<RendererInterface*> m_renderersExcludeControls;

@@ -109,7 +109,8 @@ namespace ui
 
 	void EnvBoxCard::onMouseLeave(const MouseEvent& e)
 	{
-		// 鼠标有可能还在子控件中
+		// 1.进入子控件会触发leave
+		// 2.离开子控件也会触发leave(冒泡，除非子控件拦截)
 		if (!hitTest(e.point))
 		{
 			m_isHovered = false;

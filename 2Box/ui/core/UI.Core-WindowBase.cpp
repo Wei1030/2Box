@@ -66,6 +66,20 @@ namespace ui
 		}
 	}
 
+	bool WindowBase::setMouseTracking()
+	{
+		TRACKMOUSEEVENT tme{sizeof(tme)};
+		tme.dwFlags = TME_LEAVE;
+		tme.hwndTrack = m_hWnd;
+		tme.dwHoverTime = HOVER_DEFAULT;
+		if (TrackMouseEvent(&tme))
+		{
+			m_bIsMouseTracking = true;
+			return true;
+		}
+		return false;
+	}
+
 	D2D_RECT_F WindowBase::rect() const
 	{
 		RECT rc;
@@ -315,6 +329,10 @@ namespace ui
 
 	void WindowBase::mouseMove(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState)
 	{
+		if (!m_bIsMouseTracking)
+		{
+			setMouseTracking();
+		}
 		const float physicalToDevice = m_dpiInfo.physicalToDevice;
 		const MouseEvent e{
 			D2D1::Point2F(physicalX * physicalToDevice, physicalY * physicalToDevice),
@@ -344,6 +362,12 @@ namespace ui
 			downState
 		};
 		m_controlManager.onMouseUp(e);
+	}
+
+	void WindowBase::mouseLeave()
+	{
+		m_bIsMouseTracking = false;
+		m_controlManager.onMouseLeave();
 	}
 
 	void WindowBase::onDestroy()
@@ -481,6 +505,9 @@ namespace ui
 							const MouseEvent::ButtonType xButton = fwButton == XBUTTON1 ? MouseEvent::ButtonType::X1 : MouseEvent::ButtonType::X2;
 							pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), xButton, fwKeys);
 						}
+						break;
+					case WM_MOUSELEAVE:
+						pWnd->mouseLeave();
 						break;
 					case WM_DPICHANGED:
 						{

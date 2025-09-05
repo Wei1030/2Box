@@ -154,6 +154,52 @@ namespace hook
 		                                                                          OutboundQuota, DefaultTimeout);
 	}
 
+	// enum OBJECT_INFORMATION_CLASS
+	// {
+	// 	ObjectBasicInformation, // q: OBJECT_BASIC_INFORMATION
+	// 	ObjectNameInformation, // q: OBJECT_NAME_INFORMATION
+	// 	ObjectTypeInformation, // q: OBJECT_TYPE_INFORMATION
+	// 	ObjectTypesInformation, // q: OBJECT_TYPES_INFORMATION
+	// 	ObjectHandleFlagInformation, // qs: OBJECT_HANDLE_FLAG_INFORMATION
+	// 	ObjectSessionInformation, // s: void // change object session // (requires SeTcbPrivilege)
+	// 	ObjectSessionObjectInformation, // s: void // change object session // (requires SeTcbPrivilege)
+	// 	ObjectSetRefTraceInformation, // since 25H2
+	// 	MaxObjectInfoClass
+	// };
+	//
+	// struct OBJECT_NAME_INFORMATION
+	// {
+	// 	UNICODE_STRING Name; // The object name (when present) includes a NULL-terminator and all path separators "\" in the name.
+	// };
+	//
+	// inline win32_api::ApiProxy<utils::make_literal_name<L"ntdll">(), utils::make_literal_name<"NtQueryObject">(), NTSTATUS (NTAPI)(
+	// 	                           _In_opt_ HANDLE Handle,
+	// 	                           _In_ OBJECT_INFORMATION_CLASS ObjectInformationClass,
+	// 	                           _Out_writes_bytes_opt_(ObjectInformationLength) PVOID ObjectInformation,
+	// 	                           _In_ ULONG ObjectInformationLength,
+	// 	                           _Out_opt_ PULONG ReturnLength)> NtQueryObject;
+	//
+	// std::wstring get_object_name(HANDLE object)
+	// {
+	// 	std::wstring result;
+	// 	if (NtQueryObject)
+	// 	{
+	// 		std::vector<std::byte> buffer;
+	// 		ULONG ReturnLength{0};
+	// 		NtQueryObject(object, ObjectNameInformation, nullptr, 0, &ReturnLength);
+	// 		if (ReturnLength)
+	// 		{
+	// 			buffer.resize(ReturnLength);
+	// 			if (NT_SUCCESS(NtQueryObject(object, ObjectNameInformation, buffer.data(), ReturnLength, nullptr)))
+	// 			{
+	// 				OBJECT_NAME_INFORMATION& info = *reinterpret_cast<OBJECT_NAME_INFORMATION*>(buffer.data());
+	// 				result = std::wstring_view{info.Name.Buffer, info.Name.Length / sizeof(wchar_t)};
+	// 			}
+	// 		}
+	// 	}
+	// 	return result;
+	// }
+
 	template <auto trampoline, typename... Args>
 	NTSTATUS NTAPI MyCreateOrOpenFile(POBJECT_ATTRIBUTES ObjectAttributes, Args&&... args)
 	{
@@ -167,6 +213,7 @@ namespace hook
 			if (ObjectAttributes->RootDirectory)
 			{
 				// 需要考虑吗?
+				// std::wcout << std::format(L"====================> {}\n", get_object_name(ObjectAttributes->RootDirectory));
 				break;
 			}
 			if (!ObjectAttributes->ObjectName
@@ -414,7 +461,7 @@ namespace hook
 		{
 			return retStatus;
 		}
-		// 额外往app env key写入，已供后续优先查询，这样每个环境中都有一份自己的虚拟注册表了
+		// 额外往app env key写入，以供后续优先查询，这样每个环境中都有一份自己的虚拟注册表了
 		const std::wstring keyName = GetKeyName(KeyHandle);
 		if (keyName.size() && !global::is_app_key_name(keyName))
 		{
