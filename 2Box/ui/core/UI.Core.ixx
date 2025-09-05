@@ -16,8 +16,19 @@ namespace ui
 
 	export struct Event
 	{
-		bool accept = true;
+		mutable bool accept = true;
 		bool bubble = false;
+	};
+
+	enum ButtonDownState
+	{
+		LeftButtonDown = 0x0001,
+		RightButtonDown = 0x0002,
+		ShiftDown = 0x0004,
+		ControlDown = 0x0008,
+		MiddleButtonDown = 0x0010,
+		XButton1Down = 0x0020,
+		XButton2Down = 0x0040,
 	};
 
 	export struct MouseEvent : public Event
@@ -36,21 +47,22 @@ namespace ui
 
 		ButtonType button;
 
-		enum DownState
-		{
-			LeftButtonDown = 0x0001,
-			RightButtonDown = 0x0002,
-			ShiftDown = 0x0004,
-			ControlDown = 0x0008,
-			MiddleButtonDown = 0x0010,
-			XButton1Down = 0x0020,
-			XButton2Down = 0x0040,
-		};
-
 		std::size_t downState;
 
 		MouseEvent(D2D1_POINT_2F pt, ButtonType btn, std::size_t down)
 			: point(pt), button(btn), downState(down)
+		{
+		}
+	};
+
+	export struct MouseWheelEvent : public Event
+	{
+		D2D1_POINT_2F point;
+		short zDelta;
+		std::size_t downState;
+
+		MouseWheelEvent(D2D1_POINT_2F pt, short zd, std::size_t down)
+			: point(pt), zDelta(zd), downState(down)
 		{
 		}
 	};
@@ -189,6 +201,10 @@ namespace ui
 		{
 		}
 
+		virtual void onMouseWheel(const MouseWheelEvent& e)
+		{
+		}
+
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx)
 		{
@@ -309,11 +325,19 @@ namespace ui
 			}
 		}
 
+		void onMouseWheel(const MouseWheelEvent& e)
+		{
+			if (m_currentHovered)
+			{
+				processEvent(m_currentHovered, &ControlBase::onMouseWheel, e, false);
+			}
+		}
+
 	private:
 		template <typename Fn, typename E>
 		void processEvent(ControlBase* ctrl, Fn&& fn, const E& e, bool defaultAccept = true)
 		{
-			const_cast<E&>(e).accept = defaultAccept;
+			e.accept = defaultAccept;
 			std::invoke(std::forward<Fn>(fn), ctrl, e);
 			if (!e.accept)
 			{
@@ -417,6 +441,7 @@ namespace ui
 		void mouseDown(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
 		void mouseUp(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
 		void mouseLeave();
+		void mouseWheel(int physicalScreenX, int physicalScreenY, short zDelta, std::size_t downState);
 		// 这个不做成虚函数，因为窗口有可能在基类析构中销毁，此时无法调用到子类的虚函数。索性不要这个时机了，反正有子类析构可以用
 		void onDestroy();
 

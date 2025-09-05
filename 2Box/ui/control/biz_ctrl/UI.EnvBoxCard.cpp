@@ -116,6 +116,7 @@ namespace ui
 			m_isHovered = false;
 			updateWholeWnd();
 		}
+		e.accept = true;
 	}
 
 	void EnvBoxCard::drawImpl(const RenderContext& renderCtx)

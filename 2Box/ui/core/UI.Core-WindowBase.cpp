@@ -370,6 +370,20 @@ namespace ui
 		m_controlManager.onMouseLeave();
 	}
 
+	void WindowBase::mouseWheel(int physicalScreenX, int physicalScreenY, short zDelta, std::size_t downState)
+	{
+		POINT point{physicalScreenX, physicalScreenY};
+		ScreenToClient(nativeHandle(), &point);
+
+		const float physicalToDevice = m_dpiInfo.physicalToDevice;
+		const MouseWheelEvent e{
+			D2D1::Point2F(point.x * physicalToDevice, point.y * physicalToDevice),
+			zDelta,
+			downState
+		};
+		m_controlManager.onMouseWheel(e);
+	}
+
 	void WindowBase::onDestroy()
 	{
 		m_hWnd = nullptr;
@@ -497,6 +511,13 @@ namespace ui
 						break;
 					case WM_MBUTTONUP:
 						pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::Middle, wParam);
+						break;
+					case WM_MOUSEWHEEL:
+						{
+							const WORD fwKeys = GET_KEYSTATE_WPARAM(wParam);
+							const short zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+							pWnd->mouseWheel(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), zDelta, fwKeys);
+						}
 						break;
 					case WM_XBUTTONUP:
 						{
