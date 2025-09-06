@@ -14,6 +14,8 @@ namespace ui
 	public:
 		static constexpr float shadowSize = 6.f;
 		static constexpr float shadowOffsetY = 4.f;
+		static constexpr float scrollWidth = 8.f;
+		static constexpr float scrollAreaWidth = scrollWidth + 8.f;
 
 		template <typename... Args>
 		explicit EnvBoxCardArea(Args&&... args) noexcept : ControlBase(std::forward<Args>(args)...)
@@ -28,6 +30,8 @@ namespace ui
 
 	protected:
 		virtual void onResize(float width, float height) override;
+		virtual void onMouseEnter(const MouseEvent& e) override;
+		virtual void onMouseLeave(const MouseEvent& e) override;
 		virtual void onMouseWheel(const MouseWheelEvent& e) override;
 
 	private:
@@ -43,5 +47,6 @@ namespace ui
 	private:
 		std::map<std::uint32_t, std::unique_ptr<EnvBoxCard>> m_envs;
 		std::unique_ptr<ScrollBar> m_scrollBar;
+		bool m_isHovered = false;
 	};
 }

@@ -101,7 +101,7 @@ namespace ui
 		const float startYPos = m_startAppDiv->getBounds().bottom + MARGIN_BOTTOM * 2;
 		m_envCardsArea->setBounds(D2D1::RectF(PADDING - EnvBoxCardArea::shadowSize,
 		                                      startYPos - EnvBoxCardArea::shadowSize + EnvBoxCardArea::shadowOffsetY,
-		                                      contentSize.width - PADDING + EnvBoxCardArea::shadowSize,
+		                                      contentSize.width - PADDING + EnvBoxCardArea::scrollAreaWidth + EnvBoxCardArea::shadowSize,
 		                                      contentSize.height));
 	}
 

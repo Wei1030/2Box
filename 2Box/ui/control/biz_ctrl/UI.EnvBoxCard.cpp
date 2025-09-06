@@ -112,13 +112,12 @@ namespace ui
 	void EnvBoxCard::onMouseLeave(const MouseEvent& e)
 	{
 		// 1.进入子控件会触发leave
-		// 2.离开子控件也会触发leave(冒泡，除非子控件拦截)
+		// 2.离开子控件也会触发leave(除非子控件拦截)
 		if (!hitTest(e.point))
 		{
 			m_isHovered = false;
 			updateWholeWnd();
 		}
-		e.accept = true;
 	}
 
 	void EnvBoxCard::drawImpl(const RenderContext& renderCtx)

@@ -13,7 +13,7 @@ namespace
 {
 	constexpr float CARD_HEIGHT = 132.f;
 	constexpr float CARD_MARGIN_BOTTOM = 12.f;
-	constexpr float WHEEL_SCROLL_SIZE = 36.f;
+	constexpr float WHEEL_SCROLL_SIZE = 24.f;
 }
 
 namespace ui
@@ -47,13 +47,33 @@ namespace ui
 	void EnvBoxCardArea::onResize(float width, float height)
 	{
 		m_scrollBar->setVisibleSize(height);
+		m_scrollBar->setBounds(D2D1::RectF(width - shadowSize - scrollWidth, 0.f,
+		                                   width - shadowSize, height));
+	}
+
+	void EnvBoxCardArea::onMouseEnter(const MouseEvent& e)
+	{
+		m_isHovered = true;
+		update();
+	}
+
+	void EnvBoxCardArea::onMouseLeave(const MouseEvent& e)
+	{
+		// 1.进入子控件会触发leave
+		// 2.离开子控件也会触发leave(除非子控件拦截)
+		if (!hitTest(e.point))
+		{
+			m_isHovered = false;
+			update();
+		}
+		e.accept = true;
 	}
 
 	void EnvBoxCardArea::onMouseWheel(const MouseWheelEvent& e)
 	{
 		e.accept = true;
 
-		const short wheelCount = e.zDelta / 120;
+		const float wheelCount = e.zDelta / 120.f;
 		m_scrollBar->scroll(-wheelCount * WHEEL_SCROLL_SIZE);
 		update();
 	}
@@ -106,12 +126,12 @@ namespace ui
 		}
 
 		constexpr float itemHeight = CARD_HEIGHT + CARD_MARGIN_BOTTOM;
-		const float scrollOffset = m_scrollBar->getThumbOffset();
+		const float scrollOffset = m_scrollBar->getScrollOffset();
 		const std::uint32_t startIndex = static_cast<std::uint32_t>(scrollOffset / itemHeight);
 		const std::uint32_t endIndex = std::min(
 			static_cast<std::uint32_t>((scrollOffset + m_scrollBar->getVisibleSize()) / itemHeight),
 			static_cast<std::uint32_t>(m_envs.size() - 1));
-		
+
 		const std::uint32_t startDrawOffsetY = static_cast<std::uint32_t>(scrollOffset) % static_cast<std::uint32_t>(itemHeight);
 		float startYPos = shadowSize - shadowOffsetY - startDrawOffsetY;
 		const auto drawSize = size();
@@ -124,7 +144,8 @@ namespace ui
 			}
 
 			EnvBoxCard* card = it->second.get();
-			card->setBounds(D2D1::RectF(shadowSize, startYPos, drawSize.width - shadowSize, startYPos + CARD_HEIGHT));
+			card->setBounds(D2D1::RectF(shadowSize, startYPos,
+			                            drawSize.width - shadowSize - scrollAreaWidth, startYPos + CARD_HEIGHT));
 			if (card->isHovered())
 			{
 				draw_box_shadow(renderCtx, card->getBounds(),
@@ -143,6 +164,11 @@ namespace ui
 			card->draw(renderCtx);
 
 			startYPos += itemHeight;
+		}
+
+		if (m_isHovered)
+		{
+			m_scrollBar->draw(renderCtx);
 		}
 	}
 }

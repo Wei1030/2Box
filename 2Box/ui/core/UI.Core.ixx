@@ -288,12 +288,10 @@ namespace ui
 				}
 				if (hovered)
 				{
-					processEvent(hovered, &ControlBase::onMouseEnter, e);
+					processEvent(hovered, &ControlBase::onMouseEnter, e, false);
 				}
 				m_currentHovered = hovered;
 			}
-
-			m_lastMousePos = e.point;
 		}
 
 		void onMouseDown(const MouseEvent& e)
@@ -374,7 +372,6 @@ namespace ui
 		std::vector<ControlBase*> m_controls;
 		ControlBase* m_currentHovered{nullptr};
 		ControlBase* m_currentPressed{nullptr};
-		D2D1_POINT_2F m_lastMousePos{};
 	};
 
 	export struct DpiInfo
