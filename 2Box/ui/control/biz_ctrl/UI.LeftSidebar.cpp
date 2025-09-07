@@ -1,6 +1,3 @@
-module;
-#define NOMINMAX
-#include <shobjidl_core.h>
 module UI.LeftSidebar;
 
 import "sys_defs.h";
@@ -19,65 +16,6 @@ namespace
 
 namespace ui
 {
-	std::optional<std::wstring> LeftSidebar::selectProcess() const
-	{
-		UniqueComPtr<IFileOpenDialog> fileOpen;
-		HResult hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpen));
-		if (FAILED(hr))
-		{
-			MessageBoxW(m_ownerWnd->nativeHandle(),
-			            std::format(L"创建文件选择对话框失败! CoCreateInstance fail, HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-			            MainApp::appName.data(),
-			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return std::nullopt;
-		}
-		COMDLG_FILTERSPEC rgSpec[] =
-		{
-			{L"可执行文件", L"*.exe"},
-			{L"所有文件", L"*.*"}
-		};
-		fileOpen->SetFileTypes(ARRAYSIZE(rgSpec), rgSpec);
-		fileOpen->SetFileTypeIndex(1);
-		DWORD dwOptions = 0;
-		fileOpen->GetOptions(&dwOptions);
-		fileOpen->SetOptions(dwOptions | FOS_STRICTFILETYPES | FOS_FORCEFILESYSTEM);
-		hr = fileOpen->Show(m_ownerWnd->nativeHandle());
-		if (FAILED(hr))
-		{
-			if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
-			{
-				MessageBoxW(m_ownerWnd->nativeHandle(),
-				            std::format(L"显示文件选择对话框失败! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-				            MainApp::appName.data(),
-				            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			}
-			return std::nullopt;
-		}
-		UniqueComPtr<IShellItem> item;
-		hr = fileOpen->GetResult(&item);
-		if (FAILED(hr))
-		{
-			MessageBoxW(m_ownerWnd->nativeHandle(),
-			            std::format(L"无法获取选择的文件! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-			            MainApp::appName.data(),
-			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return std::nullopt;
-		}
-		PWSTR pszFilePath;
-		hr = item->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
-		if (FAILED(hr))
-		{
-			MessageBoxW(m_ownerWnd->nativeHandle(),
-			            std::format(L"无法获取选择的文件路径! HRESULT:{:#08x}", static_cast<std::uint32_t>(hr)).c_str(),
-			            MainApp::appName.data(),
-			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return std::nullopt;
-		}
-		std::wstring procFullPath{pszFilePath};
-		CoTaskMemFree(pszFilePath);
-		return procFullPath;
-	}
-
 	void LeftSidebar::onResize(float width, float height)
 	{
 		resizeEnvCardsArea();

@@ -145,7 +145,7 @@ namespace ui
 			return;
 		}
 
-		const std::optional<std::wstring> fullPath = bar->selectProcess();
+		const std::optional<std::wstring> fullPath = select_file(m_ownerWnd);
 		if (!fullPath.has_value())
 		{
 			return;

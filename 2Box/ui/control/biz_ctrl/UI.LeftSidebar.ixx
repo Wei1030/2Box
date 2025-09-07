@@ -16,7 +16,6 @@ namespace ui
 			initialize();
 		}
 
-		std::optional<std::wstring> selectProcess() const;
 		EnvBoxCardArea* getEnvBoxCardArea() const noexcept { return m_envCardsArea.get(); }
 
 	protected:

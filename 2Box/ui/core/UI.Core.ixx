@@ -563,4 +563,6 @@ namespace ui
 			}
 		}
 	}
+
+	export std::optional<std::wstring> select_file(const WindowBase* owner);
 }

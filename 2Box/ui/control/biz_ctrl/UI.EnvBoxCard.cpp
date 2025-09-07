@@ -8,8 +8,6 @@ import "sys_defs.hpp";
 
 import MainApp;
 import Scheduler;
-import UI.MainWindow;
-import UI.LeftSidebar;
 import Biz.Core;
 
 namespace
@@ -83,9 +81,9 @@ namespace ui
 		{
 			if (m_procCount)
 			{
-				MessageBoxW(main_wnd().nativeHandle(), L"环境中仍有正在运行的程序时无法删除", MainApp::appName.data(), MB_OK);
+				MessageBoxW(m_ownerWnd->nativeHandle(), L"环境中仍有正在运行的程序时无法删除", MainApp::appName.data(), MB_OK);
 			}
-			else if (MessageBoxW(main_wnd().nativeHandle(), L"确定要删除该环境吗?", MainApp::appName.data(), MB_OKCANCEL) == IDOK)
+			else if (MessageBoxW(m_ownerWnd->nativeHandle(), L"确定要删除该环境吗?", MainApp::appName.data(), MB_OKCANCEL) == IDOK)
 			{
 				biz::env_mgr().deleteEnv(m_env);
 			}
@@ -199,8 +197,7 @@ namespace ui
 
 	void EnvBoxCard::onBtnStartPressed()
 	{
-		const LeftSidebar* bar = static_cast<LeftSidebar*>(parent());
-		if (const std::optional<std::wstring> fullPath = bar->selectProcess())
+		if (const std::optional<std::wstring> fullPath = select_file(m_ownerWnd))
 		{
 			launchProcess(fullPath.value());
 		}

@@ -69,6 +69,7 @@
     <ClCompile Include="ui\control\UI.LoadingIndicator.ixx" />
     <ClCompile Include="ui\control\UI.ScrollBar.cpp" />
     <ClCompile Include="ui\control\UI.ScrollBar.ixx" />
+    <ClCompile Include="ui\core\UI.Core-CommonDlg.cpp" />
     <ClCompile Include="ui\core\UI.Core-WindowBase.cpp" />
     <ClCompile Include="ui\core\UI.Core.ixx" />
     <ClCompile Include="ui\page\UI.Page-Download.ixx" />
