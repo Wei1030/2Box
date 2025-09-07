@@ -84,6 +84,7 @@ namespace ui
 		{
 			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
 			card->setEnv(*it);
+			card->setOnSelect([this, rawPtr = card.get()] { onEnvSelected(rawPtr); });
 			m_envs.insert(std::make_pair((*it)->getIndex(), std::move(card)));
 		}
 
@@ -106,14 +107,32 @@ namespace ui
 		{
 			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
 			card->setEnv(env);
+			card->setOnSelect([this, rawPtr = card.get()] { onEnvSelected(rawPtr); });
 			m_envs.insert(std::make_pair(env->getIndex(), std::move(card)));
 		}
 		else if (changeType == biz::EnvManager::EChangeType::Delete)
 		{
-			m_envs.erase(env->getIndex());
+			if (const auto it = m_envs.find(env->getIndex()); it != m_envs.end())
+			{
+				if (m_currentSelectedEnv == it->second.get())
+				{
+					m_currentSelectedEnv = nullptr;
+				}
+				m_envs.erase(it);
+			}
 		}
 
 		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
+	}
+
+	void EnvBoxCardArea::onEnvSelected(EnvBoxCard* selected)
+	{
+		if (m_currentSelectedEnv)
+		{
+			m_currentSelectedEnv->unselect();
+		}
+		m_currentSelectedEnv = selected;
+		update();
 	}
 
 	void EnvBoxCardArea::updateAllEnvPos()

@@ -19,6 +19,9 @@ namespace ui
 		using SizeChangeNotify = std::function<void(float, float)>;
 		void setSizeChangeNotify(SizeChangeNotify notify) noexcept { m_sizeChangeNotify = std::move(notify); }
 
+		using LaunchProcessFunc = std::function<void(const std::wstring&)>;
+		void setLaunchProcess(LaunchProcessFunc fn) noexcept { m_launchProcessFunc = std::move(fn); }
+
 	private:
 		void initialize();
 
@@ -39,5 +42,6 @@ namespace ui
 		std::unique_ptr<Button> m_btnClear;
 		std::unique_ptr<Button> m_btnStart;
 		SizeChangeNotify m_sizeChangeNotify;
+		LaunchProcessFunc m_launchProcessFunc;
 	};
 }

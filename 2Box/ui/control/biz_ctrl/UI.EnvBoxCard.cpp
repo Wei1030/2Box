@@ -59,6 +59,11 @@ namespace ui
 		m_asyncScope.spawn(coro::co_with_cancellation(resetToIdleLater(), m_stopSource.get_token()));
 	}
 
+	void EnvBoxCard::unselect()
+	{
+		m_isSelected = false;
+	}
+
 	void EnvBoxCard::initialize()
 	{
 		m_btnStart = std::make_unique<Button>(this);
@@ -118,6 +123,20 @@ namespace ui
 		}
 	}
 
+	void EnvBoxCard::onClick(const MouseEvent& e)
+	{
+		if (m_isSelected)
+		{
+			m_isSelected = false;
+			return;
+		}
+		m_isSelected = true;
+		if (m_onSelectFunc)
+		{
+			m_onSelectFunc();
+		}
+	}
+
 	void EnvBoxCard::drawImpl(const RenderContext& renderCtx)
 	{
 		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
@@ -127,7 +146,7 @@ namespace ui
 		const D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(
 			D2D1::RectF(0.f, 0.f, drawSize.width, drawSize.height),
 			12.0f, 12.0f);
-		if (m_isHovered || m_isPressed)
+		if (m_isHovered || m_isSelected)
 		{
 			solidBrush->SetColor(D2D1::ColorF(0xf0f8ff));
 			renderTarget->FillRoundedRectangle(roundedRect, solidBrush);

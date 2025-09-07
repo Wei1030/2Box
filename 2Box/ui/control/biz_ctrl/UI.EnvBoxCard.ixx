@@ -27,6 +27,10 @@ namespace ui
 		bool contains(const std::wstring& procFullPath) const { return m_env->contains(procFullPath); }
 		void launchProcess(std::wstring_view procFullPath);
 
+		using OnSelectedFunc = std::function<void()>;
+		void setOnSelect(OnSelectedFunc fn) { m_onSelectFunc = std::move(fn); }
+		void unselect();
+
 	private:
 		void initialize();
 
@@ -34,6 +38,7 @@ namespace ui
 		virtual void onResize(float width, float height) override;
 		virtual void onMouseEnter(const MouseEvent& e) override;
 		virtual void onMouseLeave(const MouseEvent& e) override;
+		virtual void onClick(const MouseEvent& e) override;
 
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override;
@@ -47,7 +52,7 @@ namespace ui
 		std::unique_ptr<Button> m_btnStart;
 		std::unique_ptr<Button> m_btnDelete;
 		bool m_isHovered = false;
-		bool m_isPressed = false;
+		bool m_isSelected = false;
 		coro::AsyncScope m_asyncScope;
 
 	private:
@@ -57,6 +62,7 @@ namespace ui
 		std::wstring m_strProcCount{L"0"};
 		bool m_bIdle{false};
 		std::stop_source m_stopSource;
+		OnSelectedFunc m_onSelectFunc;
 		// std::map<std::uint32_t, std::shared_ptr<biz::ProcessInfo>> m_processes;
 	};
 }

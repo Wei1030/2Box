@@ -7,8 +7,6 @@ import "sys_defs.hpp";
 #endif
 
 import MainApp;
-import UI.LeftSidebar;
-import UI.EnvBoxCardArea;
 import Biz.Core;
 
 namespace
@@ -137,11 +135,9 @@ namespace ui
 
 	void StartAppDiv::onBtnStartPressed()
 	{
-		const LeftSidebar* bar = static_cast<LeftSidebar*>(parent());
-		EnvBoxCardArea* envCardArea = bar->getEnvBoxCardArea();
-		if (m_strExePath.size())
+		if (m_strExePath.size() && m_launchProcessFunc)
 		{
-			envCardArea->launchProcess(m_strExePath);
+			m_launchProcessFunc(m_strExePath);
 			return;
 		}
 
@@ -154,6 +150,9 @@ namespace ui
 
 		updateBoundsWhenPathChanged();
 
-		envCardArea->launchProcess(m_strExePath);
+		if (m_launchProcessFunc)
+		{
+			m_launchProcessFunc(m_strExePath);
+		}
 	}
 }
