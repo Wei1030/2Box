@@ -11,17 +11,21 @@ namespace ui
 	public:
 		using ControlBase::ControlBase;
 
+		bool isPressed() const { return m_isPressed; }
+
 	protected:
-		// virtual void onMouseMove(const MouseEvent& e) override;
+		virtual void onMouseMove(const MouseEvent& e) override;
 		virtual void onMouseEnter(const MouseEvent& e) override;
 		virtual void onMouseLeave(const MouseEvent& e) override;
 		virtual void onMouseDown(const MouseEvent& e) override;
+		virtual void onMouseUp(const MouseEvent& e) override;
 
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	private:
 		bool m_isHovered{false};
+		bool m_isPressed{false};
 		D2D1_POINT_2F m_lastMousePos{};
 	};
 
@@ -38,8 +42,14 @@ namespace ui
 		float getVisibleSize() const { return m_visibleSize; }
 		float getScrollOffset() const { return m_scrollOffset; }
 
+		bool isThumbPressed() const { return m_thumb.isPressed(); }
+
+		using ThumbPosChange = std::function<void()>;
+		void setThumbPosChangeNotify(ThumbPosChange fn) { m_thumbPosChangeNotify = std::move(fn); }
+
 	protected:
 		virtual void onResize(float width, float height) override;
+		virtual void onMouseDown(const MouseEvent& e) override;
 
 	private:
 		void updateThumbSize();
@@ -49,6 +59,7 @@ namespace ui
 
 	private:
 		ScrollBarThumb m_thumb{this};
+		ThumbPosChange m_thumbPosChangeNotify;
 
 	private:
 		float m_visibleSize{0.f};

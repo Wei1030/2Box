@@ -123,6 +123,7 @@ namespace ui
 		}
 
 		const D2D1_RECT_F& getBounds() const noexcept { return m_bounds; }
+		const D2D1_RECT_F& getBoundsInOwner() const noexcept { return m_boundsInOwner; }
 
 		D2D1_SIZE_F size() const
 		{
@@ -187,6 +188,10 @@ namespace ui
 				current = current->m_parent;
 			}
 			return true;
+		}
+
+		virtual void onMouseMove(const MouseEvent& e)
+		{
 		}
 
 		virtual void onMouseEnter(const MouseEvent& e)
@@ -292,6 +297,10 @@ namespace ui
 				}
 				m_currentHovered = hovered;
 			}
+			if (m_currentPressed)
+			{
+				processEvent(m_currentPressed, &ControlBase::onMouseMove, e, false);
+			}
 		}
 
 		void onMouseDown(const MouseEvent& e)
@@ -308,20 +317,21 @@ namespace ui
 
 		void onMouseUp(const MouseEvent& e)
 		{
-			if (m_currentPressed)
+			if (m_currentHovered)
 			{
-				processEvent(m_currentPressed, &ControlBase::onMouseUp, e);
-				if (e.button == MouseEvent::ButtonType::Left)
+				processEvent(m_currentHovered, &ControlBase::onMouseUp, e);
+			}
+			if (m_currentPressed && e.button == MouseEvent::ButtonType::Left)
+			{
+				if (m_currentPressed == m_currentHovered)
 				{
-					if (m_currentPressed == m_currentHovered)
-					{
-						processEvent(m_currentPressed, &ControlBase::onClick, e);
-					}
-					else
-					{
-						m_currentPressed = nullptr;
-					}
+					processEvent(m_currentPressed, &ControlBase::onClick, e);
 				}
+				else
+				{
+					processEvent(m_currentPressed, &ControlBase::onMouseUp, e);
+				}
+				m_currentPressed = nullptr;
 			}
 		}
 
@@ -334,6 +344,7 @@ namespace ui
 			}
 			if (m_currentPressed)
 			{
+				processEvent(m_currentPressed, &ControlBase::onMouseUp, MouseEvent{D2D1::Point2F(-1.f, -1.f), MouseEvent::ButtonType::Left, 0});
 				m_currentPressed = nullptr;
 			}
 		}

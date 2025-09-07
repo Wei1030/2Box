@@ -8,14 +8,13 @@ import "sys_defs.hpp";
 
 namespace ui
 {
-	// void ScrollBarThumb::onMouseMove(const MouseEvent& e)
-	// {
-	// 	const float yDelta = e.point.y - m_lastMousePos.y;
-	// 	ScrollBar* bar = static_cast<ScrollBar*>(parent());
-	// 	bar->moveThumb(yDelta);
-	//
-	// 	m_lastMousePos = e.point;
-	// }
+	void ScrollBarThumb::onMouseMove(const MouseEvent& e)
+	{
+		const float yDelta = e.point.y - m_lastMousePos.y;
+		ScrollBar* bar = static_cast<ScrollBar*>(parent());
+		bar->moveThumb(yDelta);
+		m_lastMousePos = e.point;
+	}
 
 	void ScrollBarThumb::onMouseEnter(const MouseEvent& e)
 	{
@@ -31,9 +30,22 @@ namespace ui
 
 	void ScrollBarThumb::onMouseDown(const MouseEvent& e)
 	{
-		m_lastMousePos = e.point;
+		if (e.button == MouseEvent::ButtonType::Left)
+		{
+			m_isPressed = true;
+			m_lastMousePos = e.point;
 
-		e.accept = false;
+			update();
+		}
+	}
+
+	void ScrollBarThumb::onMouseUp(const MouseEvent& e)
+	{
+		if (e.button == MouseEvent::ButtonType::Left)
+		{
+			m_isPressed = false;
+			update();
+		}
 	}
 
 	void ScrollBarThumb::drawImpl(const RenderContext& renderCtx)
@@ -41,7 +53,7 @@ namespace ui
 		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
 		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		const auto drawSize = size();
-		if (m_isHovered)
+		if (m_isHovered || m_isPressed)
 		{
 			solidBrush->SetColor(D2D1::ColorF(0xe8e8e8));
 		}
@@ -91,6 +103,20 @@ namespace ui
 		adjustThumbPos();
 	}
 
+	void ScrollBar::onMouseDown(const MouseEvent& e)
+	{
+		if (e.button == MouseEvent::ButtonType::Left)
+		{
+			if (m_thumbSize < 1.f)
+			{
+				return;
+			}
+			const float targetThumbPos = e.point.y - m_thumbSize * 0.5f;
+			const float currentThumbPos = m_thumb.getBoundsInOwner().top;
+			moveThumb(targetThumbPos - currentThumbPos);
+		}
+	}
+
 	void ScrollBar::updateThumbSize()
 	{
 		if (m_totalSize <= m_visibleSize || m_visibleSize < 5.f)
@@ -124,6 +150,10 @@ namespace ui
 		const auto [width , height] = size();
 		const float thumbOffset = m_scrollOffset * m_thumbMoveFactor;
 		m_thumb.setBounds(D2D1::RectF(0.f, thumbOffset, width, thumbOffset + m_thumbSize));
+		if (m_thumbPosChangeNotify)
+		{
+			m_thumbPosChangeNotify();
+		}
 	}
 
 	void ScrollBar::drawImpl(const RenderContext& renderCtx)

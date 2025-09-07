@@ -75,7 +75,6 @@ namespace ui
 
 		const float wheelCount = e.zDelta / 120.f;
 		m_scrollBar->scroll(-wheelCount * WHEEL_SCROLL_SIZE);
-		update();
 	}
 
 	void EnvBoxCardArea::initialize()
@@ -89,6 +88,7 @@ namespace ui
 		}
 
 		m_scrollBar = std::make_unique<ScrollBar>(this);
+		m_scrollBar->setThumbPosChangeNotify([this] { updateAllEnvPos(); });
 		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
 
 		biz::env_mgr().setEnvChangeNotify([this](biz::EnvManager::EChangeType changeType, const std::shared_ptr<biz::Env>& env)
@@ -114,14 +114,14 @@ namespace ui
 		}
 
 		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
-
-		updateWholeWnd();
 	}
 
-	void EnvBoxCardArea::drawImpl(const RenderContext& renderCtx)
+	void EnvBoxCardArea::updateAllEnvPos()
 	{
 		if (m_envs.empty())
 		{
+			m_envsToDraw.clear();
+			updateWholeWnd();
 			return;
 		}
 
@@ -131,21 +131,45 @@ namespace ui
 		const std::uint32_t endIndex = std::min(
 			static_cast<std::uint32_t>((scrollOffset + m_scrollBar->getVisibleSize()) / itemHeight),
 			static_cast<std::uint32_t>(m_envs.size() - 1));
+		m_envsToDraw.clear();
+
+		if (startIndex > endIndex)
+		{
+			updateWholeWnd();
+			return;
+		}
+
+		m_envsToDraw.reserve(endIndex - startIndex);
 
 		const std::uint32_t startDrawOffsetY = static_cast<std::uint32_t>(scrollOffset) % static_cast<std::uint32_t>(itemHeight);
 		float startYPos = shadowSize - shadowOffsetY - startDrawOffsetY;
 		const auto drawSize = size();
 		std::size_t index = 0;
-		for (auto it = m_envs.begin(); it != m_envs.end() && index <= endIndex; ++it, ++index)
+		for (auto it = m_envs.begin(); it != m_envs.end(); ++it, ++index)
 		{
-			if (index < startIndex)
+			if (index < startIndex || index > endIndex)
 			{
+				it->second->setBounds({});
 				continue;
 			}
-
 			EnvBoxCard* card = it->second.get();
 			card->setBounds(D2D1::RectF(shadowSize, startYPos,
 			                            drawSize.width - shadowSize - scrollAreaWidth, startYPos + CARD_HEIGHT));
+			m_envsToDraw.push_back(card);
+			startYPos += itemHeight;
+		}
+		updateWholeWnd();
+	}
+
+	void EnvBoxCardArea::drawImpl(const RenderContext& renderCtx)
+	{
+		if (m_envsToDraw.empty())
+		{
+			return;
+		}
+		for (auto it = m_envsToDraw.begin(); it != m_envsToDraw.end(); ++it)
+		{
+			EnvBoxCard* card = *it;
 			if (card->isHovered())
 			{
 				draw_box_shadow(renderCtx, card->getBounds(),
@@ -162,11 +186,9 @@ namespace ui
 				draw_box_shadow(renderCtx, card->getBounds(), {.offset = D2D1::Point2F(0.f, 1.f), .radius = 12.f});
 			}
 			card->draw(renderCtx);
-
-			startYPos += itemHeight;
 		}
 
-		if (m_isHovered)
+		if (m_isHovered || m_scrollBar->isThumbPressed())
 		{
 			m_scrollBar->draw(renderCtx);
 		}

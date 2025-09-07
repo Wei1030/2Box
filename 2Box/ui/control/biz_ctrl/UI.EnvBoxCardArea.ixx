@@ -37,6 +37,7 @@ namespace ui
 	private:
 		void initialize();
 		coro::LazyTask<void> onEnvCountChange(biz::EnvManager::EChangeType changeType, std::shared_ptr<biz::Env> env);
+		void updateAllEnvPos();
 
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override;
@@ -46,6 +47,7 @@ namespace ui
 
 	private:
 		std::map<std::uint32_t, std::unique_ptr<EnvBoxCard>> m_envs;
+		std::vector<EnvBoxCard*> m_envsToDraw;
 		std::unique_ptr<ScrollBar> m_scrollBar;
 		bool m_isHovered = false;
 	};
