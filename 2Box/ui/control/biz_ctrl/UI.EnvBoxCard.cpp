@@ -59,7 +59,7 @@ namespace ui
 		m_asyncScope.spawn(coro::co_with_cancellation(resetToIdleLater(), m_stopSource.get_token()));
 	}
 
-	void EnvBoxCard::unselect()
+	void EnvBoxCard::programmaticDeselect()
 	{
 		m_isSelected = false;
 	}
@@ -125,15 +125,11 @@ namespace ui
 
 	void EnvBoxCard::onClick(const MouseEvent& e)
 	{
-		if (m_isSelected)
+		m_isSelected = !m_isSelected;
+
+		if (m_pfnOnSelect)
 		{
-			m_isSelected = false;
-			return;
-		}
-		m_isSelected = true;
-		if (m_onSelectFunc)
-		{
-			m_onSelectFunc();
+			m_pfnOnSelect(m_isSelected);
 		}
 	}
 
@@ -205,12 +201,14 @@ namespace ui
 		m_procCount = count;
 		m_strProcCount = std::format(L"{}", count);
 
-		if (e == biz::Env::EProcEvent::Create)
+		if (m_isSelected)
 		{
+			if (m_pfnOnProcCountChange)
+			{
+				m_pfnOnProcCountChange(e, proc);
+			}
 		}
-		else if (e == biz::Env::EProcEvent::Terminate)
-		{
-		}
+
 		update();
 	}
 

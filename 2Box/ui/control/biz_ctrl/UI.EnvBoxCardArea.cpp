@@ -79,23 +79,19 @@ namespace ui
 
 	void EnvBoxCardArea::initialize()
 	{
+		biz::env_mgr().setEnvChangeNotify([this](biz::EnvManager::EChangeType changeType, const std::shared_ptr<biz::Env>& env)
+		{
+			m_asyncScope.spawn(onEnvCountChange(changeType, env));
+		});
 		std::vector<std::shared_ptr<biz::Env>> allEnv = biz::env_mgr().getAllEnv();
 		for (auto it = allEnv.begin(); it != allEnv.end(); ++it)
 		{
-			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
-			card->setEnv(*it);
-			card->setOnSelect([this, rawPtr = card.get()] { onEnvSelected(rawPtr); });
-			m_envs.insert(std::make_pair((*it)->getIndex(), std::move(card)));
+			addEnv(*it);
 		}
 
 		m_scrollBar = std::make_unique<ScrollBar>(this);
 		m_scrollBar->setThumbPosChangeNotify([this] { updateAllEnvPos(); });
 		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
-
-		biz::env_mgr().setEnvChangeNotify([this](biz::EnvManager::EChangeType changeType, const std::shared_ptr<biz::Env>& env)
-		{
-			m_asyncScope.spawn(onEnvCountChange(changeType, env));
-		});
 	}
 
 	coro::LazyTask<void> EnvBoxCardArea::onEnvCountChange(biz::EnvManager::EChangeType changeType, std::shared_ptr<biz::Env> env)
@@ -105,33 +101,67 @@ namespace ui
 
 		if (changeType == biz::EnvManager::EChangeType::Create)
 		{
-			std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
-			card->setEnv(env);
-			card->setOnSelect([this, rawPtr = card.get()] { onEnvSelected(rawPtr); });
-			m_envs.insert(std::make_pair(env->getIndex(), std::move(card)));
+			addEnv(env);
 		}
 		else if (changeType == biz::EnvManager::EChangeType::Delete)
 		{
-			if (const auto it = m_envs.find(env->getIndex()); it != m_envs.end())
-			{
-				if (m_currentSelectedEnv == it->second.get())
-				{
-					m_currentSelectedEnv = nullptr;
-				}
-				m_envs.erase(it);
-			}
+			removeEnv(env->getIndex());
 		}
 
 		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
 	}
 
-	void EnvBoxCardArea::onEnvSelected(EnvBoxCard* selected)
+	void EnvBoxCardArea::addEnv(const std::shared_ptr<biz::Env>& env)
 	{
-		if (m_currentSelectedEnv)
+		if (m_envs.contains(env->getIndex()))
 		{
-			m_currentSelectedEnv->unselect();
+			return;
 		}
-		m_currentSelectedEnv = selected;
+		std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
+		card->setEnv(env);
+		card->setOnSelect([this, rawPtr = card.get()](bool b) { onEnvSelected(rawPtr, b); });
+		m_envs.insert(std::make_pair(env->getIndex(), std::move(card)));
+	}
+
+	void EnvBoxCardArea::removeEnv(std::uint32_t envIndex)
+	{
+		if (const auto it = m_envs.find(envIndex); it != m_envs.end())
+		{
+			onEnvSelected(it->second.get(), false);
+			m_envs.erase(it);
+		}
+	}
+
+	void EnvBoxCardArea::onEnvSelected(EnvBoxCard* card, bool bSelected)
+	{
+		if (bSelected)
+		{
+			if (m_currentSelectedEnv)
+			{
+				m_currentSelectedEnv->programmaticDeselect();
+				m_currentSelectedEnv->setOnProcCountChange(nullptr);
+			}
+			m_currentSelectedEnv = card;
+			m_currentSelectedEnv->setOnProcCountChange(m_pfnOnProcCountChange);
+			if (m_pfnOnSelect)
+			{
+				m_pfnOnSelect(card->getEnv(), true);
+			}
+		}
+		else
+		{
+			if (m_currentSelectedEnv == card)
+			{
+				m_currentSelectedEnv = nullptr;
+
+				card->setOnProcCountChange(nullptr);
+				if (m_pfnOnSelect)
+				{
+					m_pfnOnSelect(card->getEnv(), false);
+				}
+			}
+		}
+
 		update();
 	}
 

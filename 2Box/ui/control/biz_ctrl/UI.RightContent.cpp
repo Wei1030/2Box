@@ -8,6 +8,39 @@ import "sys_defs.hpp";
 
 namespace ui
 {
+	void RightContent::showEnvInfo(const std::shared_ptr<biz::Env>& env)
+	{
+		m_env = env;
+		std::vector<std::shared_ptr<biz::ProcessInfo>> allProc = env->getAllProcesses();
+		for (const std::shared_ptr<biz::ProcessInfo>& proc : allProc)
+		{
+			m_processes.insert(std::make_pair(proc->getProcessId(), proc));
+		}
+	}
+
+	void RightContent::hideEnvInfo()
+	{
+		m_env.reset();
+		m_processes.clear();
+	}
+
+	void RightContent::procCountChange(biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& proc)
+	{
+		if (e == biz::Env::EProcEvent::Create)
+		{
+			if (m_processes.contains(proc->getProcessId()))
+			{
+				return;
+			}
+			m_processes.insert(std::make_pair(proc->getProcessId(), proc));
+		}
+		else if (e == biz::Env::EProcEvent::Terminate)
+		{
+			m_processes.erase(proc->getProcessId());
+		}
+		update();
+	}
+
 	void RightContent::drawImpl(const RenderContext& renderCtx)
 	{
 		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;

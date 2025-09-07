@@ -22,14 +22,18 @@ namespace ui
 
 	public:
 		void setEnv(const std::shared_ptr<biz::Env>& env);
+		std::shared_ptr<biz::Env> getEnv() const { return m_env; }
 		bool isHovered() const noexcept { return m_isHovered; }
 		bool isIdle() const noexcept { return m_bIdle; }
 		bool contains(const std::wstring& procFullPath) const { return m_env->contains(procFullPath); }
 		void launchProcess(std::wstring_view procFullPath);
 
-		using OnSelectedFunc = std::function<void()>;
-		void setOnSelect(OnSelectedFunc fn) { m_onSelectFunc = std::move(fn); }
-		void unselect();
+		using OnSelected = std::function<void(bool)>;
+		void setOnSelect(OnSelected fn) { m_pfnOnSelect = std::move(fn); }
+		void programmaticDeselect();
+
+		using OnProcCountChange = std::function<void(biz::Env::EProcEvent, const std::shared_ptr<biz::ProcessInfo>&)>;
+		void setOnProcCountChange(OnProcCountChange fn) { m_pfnOnProcCountChange = std::move(fn); }
 
 	private:
 		void initialize();
@@ -62,7 +66,7 @@ namespace ui
 		std::wstring m_strProcCount{L"0"};
 		bool m_bIdle{false};
 		std::stop_source m_stopSource;
-		OnSelectedFunc m_onSelectFunc;
-		// std::map<std::uint32_t, std::shared_ptr<biz::ProcessInfo>> m_processes;
+		OnSelected m_pfnOnSelect;
+		OnProcCountChange m_pfnOnProcCountChange;
 	};
 }

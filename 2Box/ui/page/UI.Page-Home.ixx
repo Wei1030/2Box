@@ -5,6 +5,7 @@ import std;
 import UI.Core;
 import UI.LeftSidebar;
 import UI.RightContent;
+import Biz.Core;
 
 namespace ui
 {
@@ -23,6 +24,22 @@ namespace ui
 			const D2D_RECT_F ownerRc = owner->rect();
 			m_leftSidebar->setBounds(D2D1::RectF(0.f, 0.f, sidebarWidth, ownerRc.bottom));
 			m_rightContent->setBounds(D2D1::RectF(sidebarWidth, 0, ownerRc.right, ownerRc.bottom));
+
+			m_leftSidebar->getEnvBoxCardArea()->setOnSelect([this](const std::shared_ptr<biz::Env>& env, bool bSelected)
+			{
+				if (bSelected)
+				{
+					m_rightContent->showEnvInfo(env);
+				}
+				else
+				{
+					m_rightContent->hideEnvInfo();
+				}
+			});
+			m_leftSidebar->getEnvBoxCardArea()->setOnProcCountChange([this](biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& p)
+			{
+				m_rightContent->procCountChange(e, p);
+			});
 		}
 
 		virtual ~HomePage()
@@ -39,7 +56,7 @@ namespace ui
 		virtual void draw(const RenderContext& renderCtx) override
 		{
 			m_rightContent->draw(renderCtx);
-			
+
 			draw_box_shadow(renderCtx, m_leftSidebar->getBounds(), {.offset = D2D1::Point2F(0.f, 1.f)});
 			m_leftSidebar->draw(renderCtx);
 		}

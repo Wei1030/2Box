@@ -3,7 +3,7 @@ export module UI.LeftSidebar;
 import std;
 import UI.Core;
 import UI.StartAppDiv;
-import UI.EnvBoxCardArea;
+export import UI.EnvBoxCardArea;
 
 namespace ui
 {
