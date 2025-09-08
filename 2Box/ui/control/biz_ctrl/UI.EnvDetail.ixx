@@ -88,6 +88,8 @@ namespace ui
 		UniqueComPtr<IDWriteTextLayout> m_procPathTextLayout;
 		std::wstring m_strProcPath;
 		float m_pathTextHeight{0};
+		UniqueComPtr<IDWriteTextLayout> m_noProcTextLayout;
+		float m_noProcTextHeight{0};
 		Button m_btnClear{this};
 		Button m_btnLaunch{this};
 		ProcessList m_processList{this};

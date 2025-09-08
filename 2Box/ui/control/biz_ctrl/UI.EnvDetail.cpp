@@ -24,6 +24,8 @@ namespace
 	constexpr float LIST_ITEM_GAP = 4.f;
 	constexpr float LIST_ITEM_TITLE_HEIGHT = 24.f;
 	constexpr float LIST_ITEM_TIPS_HEIGHT = 20.f;
+
+	constexpr std::wstring_view NO_PROC_TEXT = L"暂无进程";
 }
 
 namespace ui
@@ -211,6 +213,21 @@ namespace ui
 		m_btnLaunch.setBorderColor(D2D1::ColorF(0x0078d4));
 		m_btnLaunch.setTextColor(D2D1::ColorF(0x0078d4));
 		m_btnLaunch.setOnClick([this] { onLaunchBtnClick(); });
+
+		m_noProcTextHeight = LIST_ITEM_TITLE_HEIGHT;
+		if (SUCCEEDED(app().dWriteFactory()->CreateTextLayout(NO_PROC_TEXT.data(),
+			static_cast<UINT32>(NO_PROC_TEXT.size()),
+			app().textFormat().pMainFormat,
+			std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+			&m_noProcTextLayout)))
+		{
+			m_noProcTextLayout->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+			DWRITE_TEXT_METRICS textMetrics;
+			if (SUCCEEDED(m_noProcTextLayout->GetMetrics(&textMetrics)))
+			{
+				m_noProcTextHeight = textMetrics.height;
+			}
+		}
 	}
 
 	void EnvDetail::onResize(float width, float height)
@@ -281,6 +298,23 @@ namespace ui
 		}
 		else
 		{
+			solidBrush->SetColor(D2D1::ColorF(0x333333));
+			const float listAreaHeight = height - PADDING - LIST_Y_POS_START - PADDING;
+			const float textYPos = (listAreaHeight - m_noProcTextHeight) * 0.5f;
+			if (m_noProcTextLayout)
+			{
+				m_noProcTextLayout->SetMaxWidth(width - PADDING - PADDING);
+				m_noProcTextLayout->SetMaxHeight(listAreaHeight);
+				renderTarget->DrawTextLayout(D2D1::Point2F(PADDING, textYPos), m_noProcTextLayout, solidBrush);
+			}
+			else
+			{
+				DWRITE_TEXT_ALIGNMENT oldAlignment = app().textFormat().pMainFormat->GetTextAlignment();
+				app().textFormat().pMainFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+				renderTarget->DrawTextW(NO_PROC_TEXT.data(), static_cast<UINT32>(NO_PROC_TEXT.size()), app().textFormat().pMainFormat,
+				                        D2D1::RectF(PADDING, textYPos, width - PADDING, height - PADDING), solidBrush);
+				app().textFormat().pMainFormat->SetTextAlignment(oldAlignment);
+			}
 		}
 	}
 
