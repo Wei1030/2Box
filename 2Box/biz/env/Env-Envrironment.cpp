@@ -317,6 +317,18 @@ namespace biz
 		return m_toplevelWindows.contains(hWnd);
 	}
 
+	std::vector<void*> Env::getAllToplevelWindows() const
+	{
+		std::vector<void*> result;
+		std::shared_lock lock(m_wndMutex);
+		result.reserve(m_toplevelWindows.size());
+		for (auto it = m_toplevelWindows.begin(); it != m_toplevelWindows.end(); ++it)
+		{
+			result.emplace_back(*it);
+		}
+		return result;
+	}
+
 	bool Env::addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo)
 	{
 		std::unique_lock lock(m_mutex);

@@ -29,16 +29,16 @@ namespace ui
 			{
 				if (bSelected)
 				{
-					m_rightContent->showEnvInfo(env);
+					m_rightContent->getProcessList().setEnv(env);
 				}
 				else
 				{
-					m_rightContent->hideEnvInfo();
+					m_rightContent->getProcessList().clearEnv();
 				}
 			});
 			m_leftSidebar->getEnvBoxCardArea()->setOnProcCountChange([this](biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& p)
 			{
-				m_rightContent->procCountChange(e, p);
+				m_rightContent->getProcessList().procCountChange(e, p);
 			});
 		}
 

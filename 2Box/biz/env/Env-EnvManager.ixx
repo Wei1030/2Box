@@ -17,6 +17,7 @@ namespace biz
 		void deleteEnv(const std::shared_ptr<Env>& env);
 
 		bool containsToplevelWindowExcludingByFlag(void* hWnd, std::uint64_t excludeEnvFlag) const;
+		std::vector<void*> getAllToplevelWindows() const;
 
 	public:
 		std::vector<std::shared_ptr<Env>> getAllEnv() const;

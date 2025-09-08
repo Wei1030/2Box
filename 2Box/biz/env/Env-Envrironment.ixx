@@ -173,6 +173,7 @@ namespace biz
 		void addToplevelWindow(DWORD pid, void* hWnd);
 		void removeToplevelWindow(DWORD pid, void* hWnd);
 		bool containsToplevelWindow(void* hWnd) const;
+		std::vector<void*> getAllToplevelWindows() const;
 
 	private:
 		bool addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo);

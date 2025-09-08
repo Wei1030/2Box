@@ -184,6 +184,20 @@ namespace biz
 		return false;
 	}
 
+	std::vector<void*> EnvManager::getAllToplevelWindows() const
+	{
+		std::vector<std::shared_ptr<Env>> allEnv = getAllEnv();
+		std::vector<void*> result;
+		result.reserve(allEnv.size() * 4);
+		for (const std::shared_ptr<Env>& env : allEnv)
+		{
+			std::vector<void*> temp = env->getAllToplevelWindows();
+			result.reserve(result.size() + temp.size());
+			result.insert(result.end(), temp.begin(), temp.end());
+		}
+		return result;
+	}
+
 	std::vector<std::shared_ptr<Env>> EnvManager::getAllEnv() const
 	{
 		std::vector<std::shared_ptr<Env>> result;
