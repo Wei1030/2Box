@@ -27,9 +27,12 @@ namespace ui
 		void setEnv(const std::shared_ptr<biz::Env>& env);
 		void clearEnv();
 		void procCountChange(biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& proc);
+		bool hasAnyProcesses() const noexcept { return m_processes.size() > 0; }
 
 	protected:
 		virtual void onResize(float width, float height) override;
+		virtual void onMouseEnter(const MouseEvent& e) override;
+		virtual void onMouseLeave(const MouseEvent& e) override;
 		virtual void onMouseWheel(const MouseWheelEvent& e) override;
 
 	private:
@@ -44,8 +47,15 @@ namespace ui
 
 	private:
 		std::shared_ptr<biz::Env> m_env;
-		std::map<std::uint32_t, std::shared_ptr<biz::ProcessInfo>> m_processes;
-		std::vector<biz::ProcessInfo*> m_processesToDraw;
+
+		struct ListItem
+		{
+			std::shared_ptr<biz::ProcessInfo> process;
+			D2D1_RECT_F rect;
+		};
+
+		std::map<std::uint32_t, ListItem> m_processes;
+		std::vector<ListItem*> m_processesToDraw;
 	};
 
 	export class EnvDetail final : public ControlBase

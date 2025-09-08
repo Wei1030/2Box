@@ -35,6 +35,7 @@ namespace ui
 				{
 					m_rightContent->getProcessList().clearEnv();
 				}
+				m_rightContent->getEnvDetail().update();
 			});
 			m_leftSidebar->getEnvBoxCardArea()->setOnProcCountChange([this](biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& p)
 			{

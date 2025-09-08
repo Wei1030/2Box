@@ -14,6 +14,7 @@ namespace ui
 		using ControlBase::ControlBase;
 
 	public:
+		EnvDetail& getEnvDetail() { return m_envDetail; }
 		ProcessList& getProcessList() { return m_envDetail.getProcessList(); }
 
 	protected:

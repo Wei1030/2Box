@@ -20,6 +20,10 @@ namespace
 	constexpr float WHEEL_SCROLL_SIZE = 24.f;
 	constexpr float LIST_Y_POS_START = PADDING + BUTTON_HEIGHT + GAP;
 	constexpr float LIST_ITEM_HEIGHT = 94.f;
+
+	constexpr float LIST_ITEM_GAP = 4.f;
+	constexpr float LIST_ITEM_TITLE_HEIGHT = 24.f;
+	constexpr float LIST_ITEM_TIPS_HEIGHT = 20.f;
 }
 
 namespace ui
@@ -32,10 +36,11 @@ namespace ui
 	void ProcessList::setEnv(const std::shared_ptr<biz::Env>& env)
 	{
 		m_env = env;
+		m_processes.clear();
 		std::vector<std::shared_ptr<biz::ProcessInfo>> allProc = env->getAllProcesses();
 		for (const std::shared_ptr<biz::ProcessInfo>& proc : allProc)
 		{
-			m_processes.insert(std::make_pair(proc->getProcessId(), proc));
+			m_processes.insert(std::make_pair(proc->getProcessId(), ListItem{proc}));
 		}
 		m_scrollBar.setTotalSize(m_processes.size() * LIST_ITEM_HEIGHT);
 	}
@@ -55,7 +60,7 @@ namespace ui
 			{
 				return;
 			}
-			m_processes.insert(std::make_pair(proc->getProcessId(), proc));
+			m_processes.insert(std::make_pair(proc->getProcessId(), ListItem{proc}));
 		}
 		else if (e == biz::Env::EProcEvent::Terminate)
 		{
@@ -70,6 +75,22 @@ namespace ui
 		m_scrollBar.setBounds(D2D1::RectF(width - SCROLL_WIDTH - 4.f, 0, width - 4.f, height));
 	}
 
+	void ProcessList::onMouseEnter(const MouseEvent& e)
+	{
+		e.accept = true;
+
+		m_isHovered = true;
+		update();
+	}
+
+	void ProcessList::onMouseLeave(const MouseEvent& e)
+	{
+		e.accept = true;
+
+		m_isHovered = false;
+		update();
+	}
+
 	void ProcessList::onMouseWheel(const MouseWheelEvent& e)
 	{
 		e.accept = true;
@@ -80,10 +101,95 @@ namespace ui
 
 	void ProcessList::drawImpl(const RenderContext& renderCtx)
 	{
+		if (m_processesToDraw.empty())
+		{
+			return;
+		}
+
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
+
+		namespace fs = std::filesystem;
+		app().textFormat().setTitleEllipsisTrimming();
+		app().textFormat().setTipsEllipsisTrimming();
+		for (auto it = m_processesToDraw.begin(); it != m_processesToDraw.end(); ++it)
+		{
+			ListItem* item = *it;
+			biz::ProcessInfo* processInfo = item->process.get();
+			const D2D1_RECT_F& rc = item->rect;
+			const fs::path fullPath{processInfo->getProcessFullPath()};
+			const fs::path procName = fullPath.stem();
+			float yPos = rc.top + PADDING;
+			solidBrush->SetColor(D2D1::ColorF(0x1a1a1a));
+			renderTarget->DrawTextW(procName.native().c_str(),
+			                        static_cast<UINT32>(procName.native().size()),
+			                        app().textFormat().pTitleFormat,
+			                        D2D1::RectF(0.f, yPos, rc.right, yPos + LIST_ITEM_TITLE_HEIGHT), solidBrush);
+			yPos += LIST_ITEM_TITLE_HEIGHT + LIST_ITEM_GAP;
+			const std::wstring pid = std::format(L"PID: {}", processInfo->getProcessId());
+			solidBrush->SetColor(D2D1::ColorF(0x666666));
+			renderTarget->DrawTextW(pid.c_str(),
+			                        static_cast<UINT32>(pid.size()),
+			                        app().textFormat().pTipsFormat,
+			                        D2D1::RectF(0.f, yPos, rc.right, yPos + LIST_ITEM_TIPS_HEIGHT), solidBrush);
+			yPos += LIST_ITEM_TIPS_HEIGHT + LIST_ITEM_GAP;
+			renderTarget->DrawTextW(fullPath.native().c_str(),
+			                        static_cast<UINT32>(fullPath.native().size()),
+			                        app().textFormat().pTipsFormat,
+			                        D2D1::RectF(0.f, yPos, rc.right, yPos + LIST_ITEM_TIPS_HEIGHT), solidBrush);
+
+			solidBrush->SetColor(D2D1::ColorF(0xf0f0f0));
+			renderTarget->DrawLine(D2D1::Point2F(rc.left, rc.bottom), D2D1::Point2F(rc.right, rc.bottom), solidBrush);
+		}
+		app().textFormat().clearTitleTrimming();
+		app().textFormat().clearTipsEllipsisTrimming();
+
+		if (m_isHovered || m_scrollBar.isThumbPressed())
+		{
+			m_scrollBar.draw(renderCtx);
+		}
 	}
 
 	void ProcessList::updateAllItemPos()
 	{
+		if (m_processes.empty())
+		{
+			m_processesToDraw.clear();
+			update();
+			return;
+		}
+
+		const float scrollOffset = m_scrollBar.getScrollOffset();
+		const std::uint32_t startIndex = static_cast<std::uint32_t>(scrollOffset / LIST_ITEM_HEIGHT);
+		const std::uint32_t endIndex = std::min(
+			static_cast<std::uint32_t>((scrollOffset + m_scrollBar.getVisibleSize()) / LIST_ITEM_HEIGHT),
+			static_cast<std::uint32_t>(m_processes.size() - 1));
+		m_processesToDraw.clear();
+
+		if (startIndex > endIndex)
+		{
+			update();
+			return;
+		}
+
+		m_processesToDraw.reserve(endIndex - startIndex);
+
+		const std::uint32_t startDrawOffsetY = static_cast<std::uint32_t>(scrollOffset) % static_cast<std::uint32_t>(LIST_ITEM_HEIGHT);
+		float startYPos = 0.f - startDrawOffsetY;
+		const auto drawSize = size();
+		std::size_t index = 0;
+		for (auto it = m_processes.begin(); it != m_processes.end(); ++it, ++index)
+		{
+			if (index < startIndex || index > endIndex)
+			{
+				continue;
+			}
+			ListItem& item = it->second;
+			item.rect = D2D1::RectF(0.f, startYPos, drawSize.width - PADDING, startYPos + LIST_ITEM_HEIGHT);
+			m_processesToDraw.push_back(&item);
+			startYPos += LIST_ITEM_HEIGHT;
+		}
+		update();
 	}
 
 	void EnvDetail::initialize()
@@ -116,7 +222,7 @@ namespace ui
 		constexpr float clearBtnYPos = PADDING + (BUTTON_HEIGHT - CLEAR_BTN_HEIGHT) * 0.5f;
 		m_btnClear.setBounds(D2D1::RectF(clearBtnXPos, clearBtnYPos, clearBtnXPos + CLEAR_BTN_WIDTH, clearBtnYPos + CLEAR_BTN_HEIGHT));
 
-		m_processList.setBounds(D2D1::RectF(PADDING, LIST_Y_POS_START, width, height));
+		m_processList.setBounds(D2D1::RectF(PADDING, LIST_Y_POS_START, width, height - PADDING));
 	}
 
 	void EnvDetail::drawImpl(const RenderContext& renderCtx)
@@ -165,6 +271,17 @@ namespace ui
 		}
 
 		m_btnLaunch.draw(renderCtx);
+
+		solidBrush->SetColor(D2D1::ColorF(0xf0f0f0));
+		renderTarget->DrawLine(D2D1::Point2F(PADDING, LIST_Y_POS_START), D2D1::Point2F(width - PADDING, LIST_Y_POS_START), solidBrush);
+
+		if (m_processList.hasAnyProcesses())
+		{
+			m_processList.draw(renderCtx);
+		}
+		else
+		{
+		}
 	}
 
 	void EnvDetail::setProcPath(std::wstring_view path)
