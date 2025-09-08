@@ -3,7 +3,7 @@ export module UI.RightContent;
 import std;
 import UI.Core;
 import UI.FeaturesArea;
-export import UI.ProcessList;
+export import UI.EnvDetail;
 import Biz.Core;
 
 namespace ui

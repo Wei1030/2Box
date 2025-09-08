@@ -61,8 +61,8 @@
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.ixx" />
-    <ClCompile Include="ui\control\biz_ctrl\UI.ProcessList.cpp" />
-    <ClCompile Include="ui\control\biz_ctrl\UI.ProcessList.ixx" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvDetail.cpp" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvDetail.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.cpp" />

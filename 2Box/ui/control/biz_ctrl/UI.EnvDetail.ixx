@@ -1,4 +1,4 @@
-export module UI.ProcessList;
+export module UI.EnvDetail;
 
 import "sys_defs.h";
 import std;

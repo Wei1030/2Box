@@ -207,10 +207,10 @@
     <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.cpp">
       <Filter>src\ui\control\biz_ctrl</Filter>
     </ClCompile>
-    <ClCompile Include="ui\control\biz_ctrl\UI.ProcessList.ixx">
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvDetail.ixx">
       <Filter>src\ui\control\biz_ctrl</Filter>
     </ClCompile>
-    <ClCompile Include="ui\control\biz_ctrl\UI.ProcessList.cpp">
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvDetail.cpp">
       <Filter>src\ui\control\biz_ctrl</Filter>
     </ClCompile>
   </ItemGroup>

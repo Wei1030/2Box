@@ -1,4 +1,4 @@
-module UI.ProcessList;
+module UI.EnvDetail;
 
 import "sys_defs.h";
 #ifndef _SYS_DEFS_H_
