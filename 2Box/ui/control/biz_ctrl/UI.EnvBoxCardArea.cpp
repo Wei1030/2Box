@@ -86,7 +86,7 @@ namespace ui
 		std::vector<std::shared_ptr<biz::Env>> allEnv = biz::env_mgr().getAllEnv();
 		for (auto it = allEnv.begin(); it != allEnv.end(); ++it)
 		{
-			addEnv(*it);
+			addEnv(*it, true);
 		}
 
 		m_scrollBar = std::make_unique<ScrollBar>(this);
@@ -111,13 +111,13 @@ namespace ui
 		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
 	}
 
-	void EnvBoxCardArea::addEnv(const std::shared_ptr<biz::Env>& env)
+	void EnvBoxCardArea::addEnv(const std::shared_ptr<biz::Env>& env, bool initialIdle /*= false*/)
 	{
 		if (m_envs.contains(env->getIndex()))
 		{
 			return;
 		}
-		std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(this);
+		std::unique_ptr<EnvBoxCard> card = std::make_unique<EnvBoxCard>(initialIdle, this);
 		card->setEnv(env);
 		card->setOnSelect([this, rawPtr = card.get()](bool b) { onEnvSelected(rawPtr, b); });
 		m_envs.insert(std::make_pair(env->getIndex(), std::move(card)));

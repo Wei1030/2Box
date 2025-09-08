@@ -43,7 +43,7 @@ namespace ui
 	private:
 		void initialize();
 		coro::LazyTask<void> onEnvCountChange(biz::EnvManager::EChangeType changeType, std::shared_ptr<biz::Env> env);
-		void addEnv(const std::shared_ptr<biz::Env>& env);
+		void addEnv(const std::shared_ptr<biz::Env>& env, bool initialIdle = false);
 		void removeEnv(std::uint32_t envIndex);
 		void onEnvSelected(EnvBoxCard* card, bool bSelected);
 		void updateAllEnvPos();

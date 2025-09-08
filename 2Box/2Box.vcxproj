@@ -55,10 +55,14 @@
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.ixx" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.cpp" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.ixx" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.ProcessList.cpp" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.ProcessList.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.cpp" />

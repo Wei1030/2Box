@@ -94,7 +94,11 @@ namespace ui
 			}
 		});
 
-		m_asyncScope.spawn(coro::co_with_cancellation(resetToIdleLater(), m_stopSource.get_token()));
+		if (!m_bIdle)
+		{
+			m_stopSource = std::stop_source{};
+			m_asyncScope.spawn(coro::co_with_cancellation(resetToIdleLater(), m_stopSource.get_token()));
+		}
 	}
 
 	void EnvBoxCard::onResize(float width, float height)

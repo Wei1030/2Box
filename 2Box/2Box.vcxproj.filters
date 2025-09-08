@@ -201,6 +201,18 @@
     <ClCompile Include="ui\core\UI.Core-CommonDlg.cpp">
       <Filter>src\ui\core</Filter>
     </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.ProcessList.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.ProcessList.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\embed_dll.rc">

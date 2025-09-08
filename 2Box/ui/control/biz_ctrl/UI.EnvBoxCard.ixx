@@ -13,7 +13,8 @@ namespace ui
 	{
 	public:
 		template <typename... Args>
-		explicit EnvBoxCard(Args&&... args) noexcept : ControlBase(std::forward<Args>(args)...)
+		explicit EnvBoxCard(bool initialIdle, Args&&... args) noexcept : ControlBase(std::forward<Args>(args)...)
+		                                                                 , m_bIdle(initialIdle)
 		{
 			initialize();
 		}
@@ -64,8 +65,8 @@ namespace ui
 		std::wstring m_name;
 		std::size_t m_procCount{0};
 		std::wstring m_strProcCount{L"0"};
-		bool m_bIdle{false};
-		std::stop_source m_stopSource;
+		bool m_bIdle;
+		std::stop_source m_stopSource{std::nostopstate};
 		OnSelected m_pfnOnSelect;
 		OnProcCountChange m_pfnOnProcCountChange;
 	};
