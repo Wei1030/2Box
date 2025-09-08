@@ -14,7 +14,7 @@ namespace ui
 		using ControlBase::ControlBase;
 
 	public:
-		ProcessList& getProcessList() { return m_processList; }
+		ProcessList& getProcessList() { return m_envDetail.getProcessList(); }
 
 	protected:
 		virtual void onResize(float width, float height) override;
@@ -24,6 +24,6 @@ namespace ui
 
 	private:
 		FeaturesArea m_featuresArea{this};
-		ProcessList m_processList{this};
+		EnvDetail m_envDetail{this};
 	};
 }

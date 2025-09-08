@@ -16,11 +16,77 @@ namespace
 	constexpr float BUTTON_HEIGHT = 36.f;
 	constexpr float CLEAR_BTN_WIDTH = 24.f;
 	constexpr float CLEAR_BTN_HEIGHT = CLEAR_BTN_WIDTH;
+	constexpr float SCROLL_WIDTH = 8.f;
+	constexpr float WHEEL_SCROLL_SIZE = 24.f;
+	constexpr float LIST_Y_POS_START = PADDING + BUTTON_HEIGHT + GAP;
+	constexpr float LIST_ITEM_HEIGHT = 94.f;
 }
 
 namespace ui
 {
 	void ProcessList::initialize()
+	{
+		m_scrollBar.setThumbPosChangeNotify([this] { updateAllItemPos(); });
+	}
+
+	void ProcessList::setEnv(const std::shared_ptr<biz::Env>& env)
+	{
+		m_env = env;
+		std::vector<std::shared_ptr<biz::ProcessInfo>> allProc = env->getAllProcesses();
+		for (const std::shared_ptr<biz::ProcessInfo>& proc : allProc)
+		{
+			m_processes.insert(std::make_pair(proc->getProcessId(), proc));
+		}
+		m_scrollBar.setTotalSize(m_processes.size() * LIST_ITEM_HEIGHT);
+	}
+
+	void ProcessList::clearEnv()
+	{
+		m_env.reset();
+		m_processes.clear();
+		m_scrollBar.setTotalSize(0.f);
+	}
+
+	void ProcessList::procCountChange(biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& proc)
+	{
+		if (e == biz::Env::EProcEvent::Create)
+		{
+			if (m_processes.contains(proc->getProcessId()))
+			{
+				return;
+			}
+			m_processes.insert(std::make_pair(proc->getProcessId(), proc));
+		}
+		else if (e == biz::Env::EProcEvent::Terminate)
+		{
+			m_processes.erase(proc->getProcessId());
+		}
+		m_scrollBar.setTotalSize(m_processes.size() * LIST_ITEM_HEIGHT);
+	}
+
+	void ProcessList::onResize(float width, float height)
+	{
+		m_scrollBar.setVisibleSize(height);
+		m_scrollBar.setBounds(D2D1::RectF(width - SCROLL_WIDTH - 4.f, 0, width - 4.f, height));
+	}
+
+	void ProcessList::onMouseWheel(const MouseWheelEvent& e)
+	{
+		e.accept = true;
+
+		const float wheelCount = e.zDelta / 120.f;
+		m_scrollBar.scroll(-wheelCount * WHEEL_SCROLL_SIZE);
+	}
+
+	void ProcessList::drawImpl(const RenderContext& renderCtx)
+	{
+	}
+
+	void ProcessList::updateAllItemPos()
+	{
+	}
+
+	void EnvDetail::initialize()
 	{
 		m_btnClear.setText(L"x");
 		m_btnClear.setBackgroundColor(D2D1::ColorF(0xe0e0e0));
@@ -41,42 +107,7 @@ namespace ui
 		m_btnLaunch.setOnClick([this] { onLaunchBtnClick(); });
 	}
 
-	void ProcessList::setEnv(const std::shared_ptr<biz::Env>& env)
-	{
-		m_env = env;
-		std::vector<std::shared_ptr<biz::ProcessInfo>> allProc = env->getAllProcesses();
-		for (const std::shared_ptr<biz::ProcessInfo>& proc : allProc)
-		{
-			m_processes.insert(std::make_pair(proc->getProcessId(), proc));
-		}
-		update();
-	}
-
-	void ProcessList::clearEnv()
-	{
-		m_env.reset();
-		m_processes.clear();
-		update();
-	}
-
-	void ProcessList::procCountChange(biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& proc)
-	{
-		if (e == biz::Env::EProcEvent::Create)
-		{
-			if (m_processes.contains(proc->getProcessId()))
-			{
-				return;
-			}
-			m_processes.insert(std::make_pair(proc->getProcessId(), proc));
-		}
-		else if (e == biz::Env::EProcEvent::Terminate)
-		{
-			m_processes.erase(proc->getProcessId());
-		}
-		update();
-	}
-
-	void ProcessList::onResize(float width, float height)
+	void EnvDetail::onResize(float width, float height)
 	{
 		const float launchBtnXPos = width - PADDING - BUTTON_WIDTH;
 		m_btnLaunch.setBounds(D2D1::RectF(launchBtnXPos, PADDING, launchBtnXPos + BUTTON_WIDTH, PADDING + BUTTON_HEIGHT));
@@ -84,9 +115,11 @@ namespace ui
 		const float clearBtnXPos = launchBtnXPos - GAP * 2.f - CLEAR_BTN_WIDTH;
 		constexpr float clearBtnYPos = PADDING + (BUTTON_HEIGHT - CLEAR_BTN_HEIGHT) * 0.5f;
 		m_btnClear.setBounds(D2D1::RectF(clearBtnXPos, clearBtnYPos, clearBtnXPos + CLEAR_BTN_WIDTH, clearBtnYPos + CLEAR_BTN_HEIGHT));
+
+		m_processList.setBounds(D2D1::RectF(PADDING, LIST_Y_POS_START, width, height));
 	}
 
-	void ProcessList::drawImpl(const RenderContext& renderCtx)
+	void EnvDetail::drawImpl(const RenderContext& renderCtx)
 	{
 		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
 		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
@@ -134,7 +167,7 @@ namespace ui
 		m_btnLaunch.draw(renderCtx);
 	}
 
-	void ProcessList::setProcPath(std::wstring_view path)
+	void EnvDetail::setProcPath(std::wstring_view path)
 	{
 		m_strProcPath = path;
 		if (m_strProcPath.size())
@@ -159,15 +192,15 @@ namespace ui
 		update();
 	}
 
-	void ProcessList::onLaunchBtnClick()
+	void EnvDetail::onLaunchBtnClick()
 	{
-		if (!m_env)
+		if (!m_processList.hasEnv())
 		{
 			return;
 		}
 		if (m_strProcPath.size())
 		{
-			biz::launcher().run(m_env, m_strProcPath);
+			biz::launcher().run(m_processList.getEnv(), m_strProcPath);
 			return;
 		}
 
@@ -178,6 +211,6 @@ namespace ui
 		}
 		setProcPath(fullPath.value());
 
-		biz::launcher().run(m_env, m_strProcPath);
+		biz::launcher().run(m_processList.getEnv(), m_strProcPath);
 	}
 }

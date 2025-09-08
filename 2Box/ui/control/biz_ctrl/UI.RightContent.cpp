@@ -18,7 +18,7 @@ namespace ui
 	void RightContent::onResize(float width, float height)
 	{
 		m_featuresArea.setBounds(D2D1::RectF(PADDING, PADDING, width - PADDING, PADDING + FEATURES_AREA_HEIGHT));
-		m_processList.setBounds(D2D1::RectF(PADDING, PADDING + FEATURES_AREA_HEIGHT + MARGIN, width - PADDING, height - PADDING));
+		m_envDetail.setBounds(D2D1::RectF(PADDING, PADDING + FEATURES_AREA_HEIGHT + MARGIN, width - PADDING, height - PADDING));
 	}
 
 	void RightContent::drawImpl(const RenderContext& renderCtx)
@@ -32,9 +32,9 @@ namespace ui
 
 		m_featuresArea.draw(renderCtx);
 
-		if (m_processList.hasEnv())
+		if (m_envDetail.hasDetail())
 		{
-			m_processList.draw(renderCtx);
+			m_envDetail.draw(renderCtx);
 		}
 		else
 		{
