@@ -14,11 +14,11 @@ namespace
 {
 	constexpr float PADDING = 16.f;
 	constexpr float LINE1_GAP = 8.f;
-	constexpr float LINE2_GAP = 12.f;
+	// constexpr float LINE2_GAP = 12.f;
 	constexpr float TITLE_HEIGHT = 24.f;
 	constexpr float COUNT_HEIGHT = 21.f;
-	constexpr float START_BTN_WIDTH = 78.f;
-	constexpr float START_BTN_HEIGHT = 33.f;
+	// constexpr float START_BTN_WIDTH = 78.f;
+	// constexpr float START_BTN_HEIGHT = 33.f;
 	constexpr float DELETE_BTN_WIDTH = 20.f;
 	constexpr float DELETE_BTN_HEIGHT = 20.f;
 }
@@ -66,13 +66,13 @@ namespace ui
 
 	void EnvBoxCard::initialize()
 	{
-		m_btnStart = std::make_unique<Button>(this);
-		m_btnStart->setText(L"添加进程");
-		m_btnStart->setBackgroundColor(D2D1::ColorF(0xe3f2fd));
-		m_btnStart->setBackgroundColor(D2D1::ColorF(0x000000, 0.f), Button::EState::Normal);
-		m_btnStart->setBorderColor(D2D1::ColorF(0x0078d4));
-		m_btnStart->setTextColor(D2D1::ColorF(0x0078d4));
-		m_btnStart->setOnClick([this] { onBtnStartPressed(); });
+		// m_btnStart = std::make_unique<Button>(this);
+		// m_btnStart->setText(L"添加进程");
+		// m_btnStart->setBackgroundColor(D2D1::ColorF(0xe3f2fd));
+		// m_btnStart->setBackgroundColor(D2D1::ColorF(0x000000, 0.f), Button::EState::Normal);
+		// m_btnStart->setBorderColor(D2D1::ColorF(0x0078d4));
+		// m_btnStart->setTextColor(D2D1::ColorF(0x0078d4));
+		// m_btnStart->setOnClick([this] { onBtnStartPressed(); });
 
 		m_btnDelete = std::make_unique<Button>(this);
 		m_btnDelete->setText(L"x");
@@ -106,8 +106,8 @@ namespace ui
 		const float deleteBtnXPos = width - PADDING - DELETE_BTN_WIDTH;
 		m_btnDelete->setBounds(D2D1::RectF(deleteBtnXPos, PADDING, deleteBtnXPos + DELETE_BTN_WIDTH, PADDING + DELETE_BTN_HEIGHT));
 
-		constexpr float startBtnYPos = PADDING + TITLE_HEIGHT + LINE1_GAP + COUNT_HEIGHT + LINE2_GAP;
-		m_btnStart->setBounds(D2D1::RectF(PADDING, startBtnYPos, PADDING + START_BTN_WIDTH, startBtnYPos + START_BTN_HEIGHT));
+		// constexpr float startBtnYPos = PADDING + TITLE_HEIGHT + LINE1_GAP + COUNT_HEIGHT + LINE2_GAP;
+		// m_btnStart->setBounds(D2D1::RectF(PADDING, startBtnYPos, PADDING + START_BTN_WIDTH, startBtnYPos + START_BTN_HEIGHT));
 	}
 
 	void EnvBoxCard::onMouseEnter(const MouseEvent& e)
@@ -189,7 +189,7 @@ namespace ui
 		                                    drawSize.width - PADDING, countLabelTop + COUNT_HEIGHT),
 		                        solidBrush);
 
-		m_btnStart->draw(renderCtx);
+		// m_btnStart->draw(renderCtx);
 	}
 
 	coro::LazyTask<void> EnvBoxCard::resetToIdleLater()
@@ -216,11 +216,11 @@ namespace ui
 		update();
 	}
 
-	void EnvBoxCard::onBtnStartPressed()
-	{
-		if (const std::optional<std::wstring> fullPath = select_file(m_ownerWnd))
-		{
-			launchProcess(fullPath.value());
-		}
-	}
+	// void EnvBoxCard::onBtnStartPressed()
+	// {
+	// 	if (const std::optional<std::wstring> fullPath = select_file(m_ownerWnd))
+	// 	{
+	// 		launchProcess(fullPath.value());
+	// 	}
+	// }
 }

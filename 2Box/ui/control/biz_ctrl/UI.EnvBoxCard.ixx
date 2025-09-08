@@ -51,10 +51,10 @@ namespace ui
 	private:
 		coro::LazyTask<void> resetToIdleLater();
 		coro::LazyTask<void> onProcessCountChange(biz::Env::EProcEvent e, std::shared_ptr<biz::ProcessInfo> proc, std::size_t count);
-		void onBtnStartPressed();
+		// void onBtnStartPressed();
 
 	private:
-		std::unique_ptr<Button> m_btnStart;
+		//std::unique_ptr<Button> m_btnStart;
 		std::unique_ptr<Button> m_btnDelete;
 		bool m_isHovered = false;
 		bool m_isSelected = false;

@@ -11,7 +11,7 @@ import Scheduler;
 
 namespace
 {
-	constexpr float CARD_HEIGHT = 132.f;
+	constexpr float CARD_HEIGHT = 97.f; //132.f;
 	constexpr float CARD_MARGIN_BOTTOM = 12.f;
 	constexpr float WHEEL_SCROLL_SIZE = 24.f;
 }
