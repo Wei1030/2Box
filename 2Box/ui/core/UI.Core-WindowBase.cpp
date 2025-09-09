@@ -240,7 +240,7 @@ namespace ui
 		);
 
 		HResult hr = app().d2d1Factory()->CreateHwndRenderTarget(
-			D2D1::RenderTargetProperties(),
+			D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(), m_dpiInfo.dpi, m_dpiInfo.dpi),
 			D2D1::HwndRenderTargetProperties(m_hWnd, size),
 			&m_renderCtx.renderTarget
 		);
