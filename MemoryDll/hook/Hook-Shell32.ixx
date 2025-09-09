@@ -3,6 +3,7 @@ export module Hook:Shell32;
 import "sys_defs.h";
 import std;
 import :Core;
+import GlobalData;
 
 namespace hook
 {
@@ -26,10 +27,14 @@ namespace hook
 
 	void hook_shell32()
 	{
-		// ShellExecuteA ShellExecuteW ShellExecuteExA 测试发现全部会调用ShellExecuteExW 只hook这一个就行
-		create_hook_by_func_ptr<&::ShellExecuteExW>().setHookFromGetter([&](auto trampolineConst)
+		// 如何当前进程是未提升的，就需要hook ShellExecuteExW禁止创建管理员进程
+		if (!global::Data::get().isNonLimitedAdmin())
 		{
-			return HookInfo{&ShellExecuteExW<trampolineConst.value>};
-		});
+			// ShellExecuteA ShellExecuteW ShellExecuteExA 测试发现全部会调用ShellExecuteExW 只hook这一个就行
+			create_hook_by_func_ptr<&::ShellExecuteExW>().setHookFromGetter([&](auto trampolineConst)
+			{
+				return HookInfo{&ShellExecuteExW<trampolineConst.value>};
+			});
+		}
 	}
 }

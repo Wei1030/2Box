@@ -67,6 +67,52 @@ namespace
 		}
 		return std::nullopt;
 	}
+
+	BOOL get_process_elevation(TOKEN_ELEVATION_TYPE* pElevationType, BOOL* pIsAdmin)
+	{
+		HANDLE hToken{nullptr};
+		DWORD dwSize;
+
+		// Get current process token
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+		{
+			return FALSE;
+		}
+
+		BOOL bResult = FALSE;
+		// Retrieve elevation type information 
+		if (GetTokenInformation(hToken, TokenElevationType,
+		                        pElevationType, sizeof(TOKEN_ELEVATION_TYPE), &dwSize))
+		{
+			// Create the SID corresponding to the Administrators group
+			byte adminSid[SECURITY_MAX_SID_SIZE]{};
+			dwSize = sizeof(adminSid);
+			CreateWellKnownSid(WinBuiltinAdministratorsSid, nullptr, &adminSid, &dwSize);
+
+			if (*pElevationType == TokenElevationTypeLimited)
+			{
+				// Get handle to linked token (will have one if we are lua)
+				HANDLE hUnfilteredToken{nullptr};
+				if (GetTokenInformation(hToken, TokenLinkedToken,
+				                        &hUnfilteredToken, sizeof(HANDLE), &dwSize))
+				{
+					// Check if this original token contains admin SID
+					if (CheckTokenMembership(hUnfilteredToken, &adminSid, pIsAdmin))
+					{
+						bResult = TRUE;
+					}
+					CloseHandle(hUnfilteredToken);
+				}
+			}
+			else
+			{
+				*pIsAdmin = IsUserAnAdmin();
+				bResult = TRUE;
+			}
+		}
+		CloseHandle(hToken);
+		return bResult;
+	}
 }
 
 namespace global
@@ -79,6 +125,7 @@ namespace global
 		m_envFlagNameA = std::format("{:016X}", envFlag);
 		m_rootPath = rootPath;
 
+		initializePrivilegesAbout();
 		initializeRegistry();
 		initializeDllFullPath();
 		initializeKnownFolderPath();
@@ -138,6 +185,19 @@ namespace global
 			break;
 		}
 		return std::nullopt;
+	}
+
+	void Data::initializePrivilegesAbout()
+	{
+		TOKEN_ELEVATION_TYPE elevationType = TokenElevationTypeDefault;
+		BOOL bIsAdmin = FALSE;
+		if (get_process_elevation(&elevationType, &bIsAdmin))
+		{
+			if (elevationType != TokenElevationTypeLimited)
+			{
+				m_bIsNonLimitedAdmin = bIsAdmin ? true : false;
+			}
+		}
 	}
 
 	void Data::initializeRegistry()

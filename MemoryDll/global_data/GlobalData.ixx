@@ -65,6 +65,11 @@ namespace global
 			return m_envIndex;
 		}
 
+		bool isNonLimitedAdmin() const
+		{
+			return m_bIsNonLimitedAdmin;
+		}
+
 		std::wstring_view envFlagName() const
 		{
 			return m_envFlagName;
@@ -95,6 +100,7 @@ namespace global
 	private:
 		Data() = default;
 
+		void initializePrivilegesAbout();
 		void initializeRegistry();
 		void initializeDllFullPath();
 		void initializeKnownFolderPath();
@@ -102,6 +108,7 @@ namespace global
 	private:
 		std::uint64_t m_envFlag{0};
 		std::uint32_t m_envIndex{0};
+		bool m_bIsNonLimitedAdmin{false};
 		std::wstring m_envFlagName;
 		std::string m_envFlagNameA;
 		std::string m_dllFullPath;
