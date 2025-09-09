@@ -69,6 +69,9 @@
     <ClCompile Include="hook\Hook-User32.ixx">
       <Filter>src\hook</Filter>
     </ClCompile>
+    <ClCompile Include="hook\Hook-Shell32.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="biz_initializer.h">

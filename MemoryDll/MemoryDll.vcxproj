@@ -206,6 +206,7 @@
     <ClCompile Include="hook\Hook-Netapi32.ixx" />
     <ClCompile Include="hook\Hook-Ntdll.ixx" />
     <ClCompile Include="hook\Hook-Ole32.ixx" />
+    <ClCompile Include="hook\Hook-Shell32.ixx" />
     <ClCompile Include="hook\Hook-User32.ixx" />
     <ClCompile Include="hook\Hook.ixx" />
     <ClCompile Include="load_self\LoadSelf.cpp">

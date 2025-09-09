@@ -4,6 +4,7 @@ import :Core;
 import :Ntdll;
 import :Kernel32;
 import :Advapi32;
+import :Shell32;
 import :User32;
 import :Ole32;
 import :Iphlpapi;
@@ -16,6 +17,7 @@ namespace hook
 		hook_ntdll();
 		hook_kernel32();
 		hook_advapi32();
+		hook_shell32();
 		hook_user32();
 		hook_ole32();
 		hook_iphlpapi();
