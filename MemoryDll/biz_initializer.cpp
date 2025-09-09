@@ -6,7 +6,7 @@ import GlobalData;
 import RpcClient;
 import Hook;
 
-int filter_login_error(unsigned int code)
+int filter_offline_error(unsigned int code)
 {
 	if (RpcExceptionFilter(code) == EXCEPTION_CONTINUE_SEARCH)
 	{
@@ -24,12 +24,24 @@ HANDLE login_two_box()
 	__try
 	{
 		const rpc::ClientDefault c;
-		unsigned long long boxHandle = c.addToBox(GetCurrentProcessId(), global::Data::get().envFlag());
+		unsigned long long boxHandle = c.login2Box(GetCurrentProcessId(), global::Data::get().envFlag());
 		return reinterpret_cast<HANDLE>(boxHandle);
 	}
-	__except (filter_login_error(RpcExceptionCode()))
+	__except (filter_offline_error(RpcExceptionCode()))
 	{
 		return nullptr;
+	}
+}
+
+void request_window_inspection()
+{
+	__try
+	{
+		const rpc::ClientDefault c;
+		c.requestWindowInspection(GetCurrentProcessId(), global::Data::get().envFlag());
+	}
+	__except (filter_offline_error(RpcExceptionCode()))
+	{
 	}
 }
 
@@ -83,10 +95,14 @@ void initialize_rpc()
 					try
 					{
 						boxHandle = login_two_box();
+						if (boxHandle)
+						{
+							request_window_inspection();
+						}
 					}
 					catch (...)
 					{
-						break;
+						TerminateProcess(GetCurrentProcess(), 0);
 					}
 				}
 				if (boxHandle)
@@ -95,7 +111,7 @@ void initialize_rpc()
 					DWORD index = WaitForMultipleObjects(static_cast<DWORD>(handles.size()), handles.data(), FALSE, INFINITE);
 					if (index >= handles.size())
 					{
-						break;
+						TerminateProcess(GetCurrentProcess(), 0);
 					}
 					if (handles[index] == quitEvent)
 					{
@@ -109,13 +125,7 @@ void initialize_rpc()
 		}
 	};
 
-	try
-	{
-		static BoxSimpleWatcher watcher{login_two_box()};
-	}
-	catch (...)
-	{
-	}
+	static BoxSimpleWatcher watcher{login_two_box()};
 }
 
 void initialize_hook()
