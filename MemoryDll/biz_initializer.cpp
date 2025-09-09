@@ -50,6 +50,11 @@ void initialize_global_data(unsigned long long envFlag, unsigned long envIndex, 
 	global::Data::get().initialize(envFlag, envIndex, rootPath);
 }
 
+// 目前虽然处理了2box临时退出的情况, 但是当进程重新登录2box后必定会存在一段时间无法阻止其访问其他env内的窗口（因为其他env内的进程也可能正在登录），这可能会引起问题
+// 从另一方面讲，允许2box临时退出其实没什么必要，唯一的好处是当有进程需要以管理员身份启动子进程时可以通知2box以管理员身份重启并作为父进程启动需要管理员权限的进程。。。没什么必要，目前直接全部强制退出就行，以后再说吧，
+// 所以暂时不允许2Box退出。
+#define ALLOW_2BOX_EXIT 0
+
 void initialize_rpc()
 {
 	struct BoxSimpleWatcher
@@ -59,6 +64,12 @@ void initialize_rpc()
 
 		explicit BoxSimpleWatcher(HANDLE boxHandle)
 		{
+#if !ALLOW_2BOX_EXIT
+			if (boxHandle == nullptr)
+			{
+				TerminateProcess(GetCurrentProcess(), 0);
+			}
+#endif
 			quitEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 			if (!quitEvent)
 			{
@@ -120,6 +131,9 @@ void initialize_rpc()
 					CloseHandle(boxHandle);
 					boxHandle = nullptr;
 				}
+#if !ALLOW_2BOX_EXIT
+				TerminateProcess(GetCurrentProcess(), 0);
+#endif
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
 		}
