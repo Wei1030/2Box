@@ -48,12 +48,24 @@ namespace rpc
 
 
 extern "C" {
-void add_to_box(handle_t /*IDL_handle*/, unsigned int pid, unsigned long long envFlag)
+unsigned long long add_to_box(handle_t /*IDL_handle*/, unsigned int pid, unsigned long long envFlag)
 {
 	try
 	{
 		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
-		pEnv->addProcess(pid);
+		std::shared_ptr<biz::ProcessInfo> proc = pEnv->addProcess(pid);
+		if (!proc)
+		{
+			throw std::runtime_error{"add fail, already added before?"};
+		}
+		HANDLE boxHandleInRemote{nullptr};
+		if (!DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(),
+		                     proc->getHandle(), &boxHandleInRemote,
+		                     SYNCHRONIZE, FALSE, 0))
+		{
+			throw std::runtime_error{std::format("DuplicateHandle failed, return status:{}", GetLastError())};
+		}
+		return reinterpret_cast<unsigned long long>(boxHandleInRemote);
 	}
 	catch (...)
 	{

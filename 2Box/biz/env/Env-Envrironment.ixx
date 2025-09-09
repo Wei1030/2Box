@@ -151,9 +151,7 @@ namespace biz
 		std::string_view getDllFullPath() const { return m_dllFullPath; }
 
 	public:
-		void addProcess(HANDLE handle);
-		void addProcess(DWORD pid);
-		void addProcess(HANDLE handle, DWORD pid);
+		std::shared_ptr<ProcessInfo> addProcess(DWORD pid);
 
 		std::size_t getAllProcessesCount() const;
 		std::vector<std::shared_ptr<ProcessInfo>> getAllProcesses() const;

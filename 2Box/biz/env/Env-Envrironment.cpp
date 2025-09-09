@@ -212,20 +212,7 @@ namespace biz
 		return it->second;
 	}
 
-	void Env::addProcess(HANDLE handle)
-	{
-		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(handle);
-		if (addProcessInternal(newProcInfo))
-		{
-			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
-			{
-				removeProcessInternal(newProcInfo);
-				removeToplevelWindowWhenProcessTerminate(newProcInfo);
-			});
-		}
-	}
-
-	void Env::addProcess(DWORD pid)
+	std::shared_ptr<ProcessInfo> Env::addProcess(DWORD pid)
 	{
 		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(pid);
 		if (addProcessInternal(newProcInfo))
@@ -235,20 +222,9 @@ namespace biz
 				removeProcessInternal(newProcInfo);
 				removeToplevelWindowWhenProcessTerminate(newProcInfo);
 			});
+			return newProcInfo;
 		}
-	}
-
-	void Env::addProcess(HANDLE handle, DWORD pid)
-	{
-		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(handle, pid);
-		if (addProcessInternal(newProcInfo))
-		{
-			m_waiter.addWait(newProcInfo->getHandle(), [this, newProcInfo]
-			{
-				removeProcessInternal(newProcInfo);
-				removeToplevelWindowWhenProcessTerminate(newProcInfo);
-			});
-		}
+		return nullptr;
 	}
 
 	std::size_t Env::getAllProcessesCount() const

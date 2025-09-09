@@ -54,7 +54,7 @@ namespace ui
 			D2D1_RECT_F rect;
 		};
 
-		std::map<std::uint32_t, ListItem> m_processes;
+		std::unordered_map<std::uint32_t, ListItem> m_processes;
 		std::vector<ListItem*> m_processesToDraw;
 	};
 
