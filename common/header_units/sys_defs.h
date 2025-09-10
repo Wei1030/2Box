@@ -25,6 +25,7 @@
 #include <d2d1.h>
 #include <dwrite.h>
 
+#include <Shlobj.h>
 #include <shellapi.h>
 #include <Nb30.h>
 #include <winsock2.h>

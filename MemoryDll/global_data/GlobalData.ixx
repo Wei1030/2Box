@@ -70,6 +70,11 @@ namespace global
 			return m_bIsNonLimitedAdmin;
 		}
 
+		bool isCmd() const
+		{
+			return m_bIsCmd;
+		}
+
 		std::wstring_view envFlagName() const
 		{
 			return m_envFlagName;
@@ -102,6 +107,7 @@ namespace global
 
 		void initializePrivilegesAbout();
 		void initializeRegistry();
+		void initializeSelfPath();
 		void initializeDllFullPath();
 		void initializeKnownFolderPath();
 
@@ -109,10 +115,13 @@ namespace global
 		std::uint64_t m_envFlag{0};
 		std::uint32_t m_envIndex{0};
 		bool m_bIsNonLimitedAdmin{false};
+		bool m_bIsCmd{false};
 		std::wstring m_envFlagName;
 		std::string m_envFlagNameA;
 		std::string m_dllFullPath;
 		std::wstring m_rootPath;
+		std::wstring m_selfFullPath;
+		std::wstring m_selfFileName;
 		RegKey m_appKey;
 		std::vector<std::wstring> m_knownFolders;
 	};

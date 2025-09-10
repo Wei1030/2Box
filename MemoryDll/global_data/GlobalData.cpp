@@ -2,7 +2,6 @@
 module;
 // #define _CRT_SECURE_NO_WARNINGS
 // #include <cstdio>
-#include <Shlobj.h>
 module GlobalData;
 
 import "sys_defs.h";
@@ -127,6 +126,7 @@ namespace global
 
 		initializePrivilegesAbout();
 		initializeRegistry();
+		initializeSelfPath();
 		initializeDllFullPath();
 		initializeKnownFolderPath();
 
@@ -215,6 +215,16 @@ namespace global
 				return hKey;
 			}
 		};
+	}
+
+	void Data::initializeSelfPath()
+	{
+		constexpr DWORD pathLength = std::numeric_limits<short>::max();
+		m_selfFullPath.resize(pathLength);
+		DWORD resultSize = GetModuleFileNameW(nullptr, m_selfFullPath.data(), pathLength);
+		m_selfFullPath.resize(resultSize);
+		m_selfFileName = std::filesystem::path{m_selfFullPath}.filename().native();
+		m_bIsCmd = _wcsicmp(m_selfFileName.c_str(), L"cmd.exe") == 0;
 	}
 
 	void Data::initializeDllFullPath()

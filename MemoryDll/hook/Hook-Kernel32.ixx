@@ -162,6 +162,14 @@ namespace hook
 		                lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
 		                lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation))
 		{
+			// 因为不知道该怎么优雅的拦截cmd创建管理员进程，因此在这里抹去这个ERROR_ELEVATION_REQUIRED错误
+			if (GetLastError() == ERROR_ELEVATION_REQUIRED)
+			{
+				if (global::Data::get().isCmd())
+				{
+					SetLastError(ERROR_ACCESS_DENIED);
+				}
+			}
 			return FALSE;
 		}
 		const BOOL bRet = inject_dll_to_process(lpProcessInformation);
