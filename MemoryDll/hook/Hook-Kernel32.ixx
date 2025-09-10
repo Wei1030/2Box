@@ -4,6 +4,7 @@ import "sys_defs.h";
 import :Core;
 import std;
 import GlobalData;
+import RpcClient;
 import PELoader;
 import Utility.SystemInfo;
 
@@ -163,12 +164,10 @@ namespace hook
 		                lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation))
 		{
 			// 因为不知道该怎么优雅的拦截cmd创建管理员进程，因此在这里抹去这个ERROR_ELEVATION_REQUIRED错误
-			if (GetLastError() == ERROR_ELEVATION_REQUIRED)
+			if (GetLastError() == ERROR_ELEVATION_REQUIRED && global::Data::get().isCmd())
 			{
-				if (global::Data::get().isCmd())
-				{
-					SetLastError(ERROR_ACCESS_DENIED);
-				}
+				SetLastError(ERROR_ACCESS_DENIED);
+				rpc::default_call_ignore_error(&rpc::ClientDefault::requireElevation, GetCurrentProcessId(), global::Data::get().envFlag(), lpApplicationName ? lpApplicationName : L"");
 			}
 			return FALSE;
 		}

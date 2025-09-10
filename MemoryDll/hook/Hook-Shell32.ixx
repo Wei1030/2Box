@@ -4,6 +4,7 @@ import "sys_defs.h";
 import std;
 import :Core;
 import GlobalData;
+import RpcClient;
 
 namespace hook
 {
@@ -14,6 +15,8 @@ namespace hook
 		{
 			if (_stricmp(lpOperation, "runas") == 0)
 			{
+				const std::filesystem::path path{lpFile ? lpFile : ""};
+				rpc::default_call_ignore_error(&rpc::ClientDefault::requireElevation, GetCurrentProcessId(), global::Data::get().envFlag(), path.native());
 				return reinterpret_cast<HINSTANCE>(SE_ERR_ACCESSDENIED);
 			}
 		}
@@ -27,6 +30,7 @@ namespace hook
 		{
 			if (_wcsicmp(lpOperation, L"runas") == 0)
 			{
+				rpc::default_call_ignore_error(&rpc::ClientDefault::requireElevation, GetCurrentProcessId(), global::Data::get().envFlag(), lpFile ? lpFile : L"");
 				return reinterpret_cast<HINSTANCE>(SE_ERR_ACCESSDENIED);
 			}
 		}
@@ -42,6 +46,8 @@ namespace hook
 			{
 				pExecInfo->hInstApp = reinterpret_cast<HINSTANCE>(SE_ERR_ACCESSDENIED);
 				SetLastError(ERROR_CANCELLED);
+				const std::filesystem::path path{pExecInfo->lpFile ? pExecInfo->lpFile : ""};
+				rpc::default_call_ignore_error(&rpc::ClientDefault::requireElevation, GetCurrentProcessId(), global::Data::get().envFlag(), path.native());
 				return FALSE;
 			}
 		}
@@ -57,6 +63,7 @@ namespace hook
 			{
 				pExecInfo->hInstApp = reinterpret_cast<HINSTANCE>(SE_ERR_ACCESSDENIED);
 				SetLastError(ERROR_CANCELLED);
+				rpc::default_call_ignore_error(&rpc::ClientDefault::requireElevation, GetCurrentProcessId(), global::Data::get().envFlag(), pExecInfo->lpFile ? pExecInfo->lpFile : L"");
 				return FALSE;
 			}
 		}

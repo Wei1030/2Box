@@ -312,3 +312,5 @@ export void show_utf8_error_message(std::string_view msg)
 {
 	show_error_message(utf8_to_wide_string(msg));
 }
+
+export void show_require_elevation_message(std::wstring_view requester, std::wstring_view path);

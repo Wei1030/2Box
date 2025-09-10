@@ -5,6 +5,7 @@
 import std;
 import EssentialData;
 import Biz.Core;
+import MainApp;
 
 namespace rpc
 {
@@ -79,6 +80,24 @@ void request_window_inspection(handle_t /*IDL_handle*/, unsigned int pid, unsign
 	{
 		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
 		biz::wnd_enumerator().requestGetProcessAllWnd(pid, pEnv);
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
+}
+
+void require_elevation(handle_t /*IDL_handle*/, unsigned int pid, unsigned long long envFlag, const wchar_t path[])
+{
+	try
+	{
+		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
+		std::shared_ptr<biz::ProcessInfo> proc = pEnv->getProcess(pid);
+		if (!proc)
+		{
+			throw std::runtime_error{"pid not found"};
+		}
+		show_require_elevation_message(proc->getProcessFullPath(), path);
 	}
 	catch (...)
 	{

@@ -64,3 +64,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 	}
 	return 0;
 }
+
+void show_require_elevation_message(std::wstring_view requester, std::wstring_view path)
+{
+	static std::atomic hasShown{false};
+	if (hasShown.exchange(true))
+	{
+		return;
+	}
+	app().get_scheduler().addTask([requester = std::wstring{requester}, path = std::wstring{path}]()
+	{
+		MessageBoxW(ui::main_wnd().nativeHandle(), requester.data(), path.data(), MB_OK);
+	});
+}

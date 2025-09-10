@@ -6,6 +6,7 @@ interface service
 {
 	unsigned long long login([in] unsigned int pid, [in] unsigned long long envFlag);
 	void request_window_inspection([in] unsigned int pid, [in] unsigned long long envFlag);
+	void require_elevation([in] unsigned int pid, [in] unsigned long long envFlag, [in, string] const wchar_t path[]);
 	
 	inline const unsigned int MAX_PIDS = 1024;
 	void get_all_process_id_in_env([in] unsigned long long envFlag,

@@ -172,6 +172,11 @@ namespace rpc
 			return request_window_inspection(handle(), pid, envFlag);
 		}
 
+		decltype(auto) requireElevation(unsigned int pid, unsigned long long envFlag, std::wstring_view path) const
+		{
+			return require_elevation(handle(), pid, envFlag, path.data());
+		}
+
 		decltype(auto) getAllProcessIdInEnv(unsigned long long envFlag, unsigned long long pids[], unsigned int* count) const
 		{
 			return get_all_process_id_in_env(handle(), envFlag, pids, count);
@@ -233,4 +238,18 @@ namespace rpc
 	private:
 		ClientBindingHandle m_handle;
 	};
+
+	export
+	template <typename Func, typename... Args>
+	decltype(auto) default_call_ignore_error(Func&& func, Args&&... args)
+	{
+		__try
+		{
+			const ClientDefault c;
+			return std::invoke(std::forward<Func>(func), c, std::forward<Args>(args)...);
+		}
+		__except (RpcExceptionFilter(RpcExceptionCode()))
+		{
+		}
+	}
 }
