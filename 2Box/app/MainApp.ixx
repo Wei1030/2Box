@@ -231,9 +231,11 @@ private:
 		m_strCmdLine = lpCmdLine;
 		m_nCmdShow = nCmdShow;
 
-		wchar_t szFullName[MAX_PATH + 1] = {0};
-		GetModuleFileNameW(nullptr, szFullName, MAX_PATH);
-		m_exeFullName = szFullName;
+		constexpr DWORD pathLength = std::numeric_limits<short>::max();
+		m_exeFullName.resize(pathLength);
+		const DWORD resultSize = GetModuleFileNameW(nullptr, m_exeFullName.data(), pathLength);
+		m_exeFullName.resize(resultSize);
+		m_exeFullName.shrink_to_fit();
 
 		namespace fs = std::filesystem;
 		const fs::path fsPath = fs::absolute(fs::path(m_exeFullName));

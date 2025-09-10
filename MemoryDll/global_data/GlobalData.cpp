@@ -223,6 +223,7 @@ namespace global
 		m_selfFullPath.resize(pathLength);
 		DWORD resultSize = GetModuleFileNameW(nullptr, m_selfFullPath.data(), pathLength);
 		m_selfFullPath.resize(resultSize);
+		m_selfFullPath.shrink_to_fit();
 		m_selfFileName = std::filesystem::path{m_selfFullPath}.filename().native();
 		m_bIsCmd = _wcsicmp(m_selfFileName.c_str(), L"cmd.exe") == 0;
 	}

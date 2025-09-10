@@ -180,13 +180,13 @@ namespace sched
 
 			lock.unlock();
 			const DWORD result = MsgWaitForMultipleObjects(1, &m_hNotifyEvent, FALSE, dwMilliseconds,QS_ALLEVENTS);
+			lock.lock();
 
 			if (result == WAIT_TIMEOUT)
 			{
-				lock.lock();
 				m_timeQueue.advanceUntil(tp);
-				out = m_timeQueue.pull();
 			}
+			out = m_timeQueue.pull();
 		}
 
 		void notify() const
@@ -233,13 +233,13 @@ namespace sched
 				if (m_cv.wait_until(m_queueLock, tp) == std::cv_status::timeout)
 				{
 					m_timeQueue.advanceUntil(tp);
-					out = m_timeQueue.pull();
 				}
 			}
 			else
 			{
 				m_cv.wait(m_queueLock);
 			}
+			out = m_timeQueue.pull();
 			return !m_bStopped;
 		}
 
