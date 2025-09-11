@@ -250,6 +250,7 @@ private:
 	}
 
 	void parseCmdLine() const;
+	void waitAnotherInstanceEnd(std::wstring_view strPid) const;
 
 private:
 	HINSTANCE m_hInstance{nullptr};

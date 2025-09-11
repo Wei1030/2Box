@@ -81,9 +81,54 @@ void MainApp::parseCmdLine() const
 	}
 	for (int i = 0; i < numArgs; ++i)
 	{
-		// MessageBoxW(nullptr, cmdArray[i], L"", MB_OK);
+		std::wstring_view arg{cmdArray[i]};
+		std::size_t delimiterPos = arg.find(L"=");
+		if (delimiterPos != std::wstring_view::npos)
+		{
+			std::wstring_view paramName = arg.substr(0, delimiterPos);
+			if (paramName == L"--wait-another-end")
+			{
+				std::wstring_view paramValue = arg.substr(delimiterPos + 1);
+				waitAnotherInstanceEnd(paramValue);
+			}
+		}
 	}
 	LocalFree(cmdArray);
+}
+
+void MainApp::waitAnotherInstanceEnd(std::wstring_view strPid) const
+{
+	HANDLE hProcess{nullptr};
+
+	try
+	{
+		DWORD pid = std::stoul(std::wstring{strPid});
+		hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE, FALSE, pid);
+		if (!hProcess)
+		{
+			throw std::runtime_error(std::format("Failed to open process, error:{}", GetLastError()));
+		}
+		DWORD pathLength = std::numeric_limits<short>::max();
+		std::wstring path;
+		path.resize(pathLength);
+		if (!QueryFullProcessImageNameW(hProcess, 0, path.data(), &pathLength))
+		{
+			throw std::runtime_error(std::format("Failed to query full process image, error:{}", GetLastError()));
+		}
+		path.resize(pathLength);
+		path = std::wstring(path);
+		if (_wcsicmp(m_exeFullName.c_str(), path.c_str()) == 0)
+		{
+			WaitForSingleObject(hProcess, INFINITE);
+		}
+	}
+	catch (...)
+	{
+	}
+	if (hProcess)
+	{
+		CloseHandle(hProcess);
+	}
 }
 
 namespace
