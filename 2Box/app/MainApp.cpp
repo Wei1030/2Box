@@ -171,16 +171,18 @@ void show_require_elevation_message(std::wstring_view requester, std::wstring_vi
 		cfg.dwFlags = TDF_USE_COMMAND_LINKS | TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW;
 		cfg.pszWindowTitle = MainApp::appName.data();
 		cfg.pszMainIcon = TD_SHIELD_ICON;
-		cfg.pszMainInstruction = L"环境中有进程正在试图以管理员身份运行子进程";
-		std::wstring content = std::format(L"进程：\n{}\n正在试图以管理员身份运行：\n{}", requester, path);
+		cfg.pszMainInstruction = L"环境中有进程试图以管理员身份运行子进程";
+		std::wstring content = std::format(L"进程：{}\n试图以管理员身份运行：{}\n\n"
+		                                   L"{}在权限受限情况下会始终阻止环境中的进程以管理员身份创建子进程，这可能会导致环境中的进程功能或行为不正常。您可以选择：",
+		                                   requester, path, MainApp::appName.data());
 		cfg.pszContent = content.c_str();
 		cfg.dwCommonButtons = TDCBF_CANCEL_BUTTON;
 		std::wstring btnText1 = std::format(L"以管理员身份重新运行{}\n"
 		                                    L"注意！重启{}会导致强制关闭所有环境中的所有进程！建议手动关闭所有进程以免丢失数据",
 		                                    MainApp::appName.data(), MainApp::appName.data());
 		std::wstring btnText2 = std::format(L"必要时手动以管理员身份运行{}\n"
-		                                    L"{}在权限受限情况下会始终阻止环境中的进程以管理员身份创建子进程，这可能会导致其功能或行为不正常，如您发现任何异常，可以手动以管理员身份重新运行{}",
-		                                    MainApp::appName.data(), MainApp::appName.data(), MainApp::appName.data());
+		                                    L"选择此项并继续观察环境中该进程的表现，如您发现任何异常，可以手动以管理员身份重新运行{}",
+		                                    MainApp::appName.data(), MainApp::appName.data());
 		TASKDIALOG_BUTTON btnArray[2]{};
 		btnArray[0].nButtonID = IDYES;
 		btnArray[0].pszButtonText = btnText1.c_str();
