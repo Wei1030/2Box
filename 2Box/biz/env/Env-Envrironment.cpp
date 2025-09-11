@@ -213,6 +213,39 @@ namespace biz
 		return it->second;
 	}
 
+	bool TopLevelWindowDenseMap::addTopLevelWindow(void* hWnd)
+	{
+		auto [it, success] = m_sparse.insert(std::make_pair(hWnd, TopLevelWindow{hWnd}));
+		if (!success)
+		{
+			return false;
+		}
+		m_denseHandles.push_back(hWnd);
+		it->second.setDenseIndex(m_denseHandles.size() - 1);
+		return true;
+	}
+
+	bool TopLevelWindowDenseMap::removeTopLevelWindow(void* hWnd)
+	{
+		const auto it = m_sparse.find(hWnd);
+		if (it == m_sparse.end())
+		{
+			return false;
+		}
+		const size_t idx = it->second.getDenseIndex();
+		if (idx < m_denseHandles.size() - 1)
+		{
+			std::swap(m_denseHandles.at(idx), m_denseHandles.back());
+			if (const auto swapped = m_sparse.find(m_denseHandles.at(idx)); swapped != m_sparse.end())
+			{
+				swapped->second.setDenseIndex(idx);
+			}
+		}
+		m_denseHandles.pop_back();
+		m_sparse.erase(it);
+		return true;
+	}
+
 	std::shared_ptr<ProcessInfo> Env::addProcess(DWORD pid)
 	{
 		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(pid);
@@ -272,7 +305,7 @@ namespace biz
 			return;
 		}
 		std::unique_lock lock(m_wndMutex);
-		m_toplevelWindows.insert(hWnd);
+		m_toplevelWindows.addTopLevelWindow(hWnd);
 		proc->addToplevelWindow(hWnd);
 	}
 
@@ -284,7 +317,7 @@ namespace biz
 			return;
 		}
 		std::unique_lock lock(m_wndMutex);
-		m_toplevelWindows.erase(hWnd);
+		m_toplevelWindows.removeTopLevelWindow(hWnd);
 		proc->removeToplevelWindow(hWnd);
 	}
 
@@ -296,14 +329,8 @@ namespace biz
 
 	std::vector<void*> Env::getAllToplevelWindows() const
 	{
-		std::vector<void*> result;
 		std::shared_lock lock(m_wndMutex);
-		result.reserve(m_toplevelWindows.size());
-		for (auto it = m_toplevelWindows.begin(); it != m_toplevelWindows.end(); ++it)
-		{
-			result.emplace_back(*it);
-		}
-		return result;
+		return m_toplevelWindows.getAllHandles();
 	}
 
 	bool Env::addProcessInternal(const std::shared_ptr<ProcessInfo>& procInfo)
@@ -340,7 +367,7 @@ namespace biz
 		const std::unordered_set<void*>& allToplevelWindows = procInfo->getToplevelWindows();
 		for (void* hWnd : allToplevelWindows)
 		{
-			m_toplevelWindows.erase(hWnd);
+			m_toplevelWindows.removeTopLevelWindow(hWnd);
 		}
 	}
 }

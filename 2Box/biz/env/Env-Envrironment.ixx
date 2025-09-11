@@ -134,6 +134,39 @@ namespace biz
 		std::unordered_map<DWORD, std::shared_ptr<ProcessInfo>> m_sparse;
 	};
 
+	export class TopLevelWindow
+	{
+	public:
+		explicit TopLevelWindow(void* hWnd) noexcept : m_hWnd(hWnd)
+		{
+		}
+
+	public:
+		void* getHandle() const noexcept { return m_hWnd; }
+
+		void setDenseIndex(size_t index) noexcept { m_indexInDense = index; }
+		size_t getDenseIndex() const noexcept { return m_indexInDense; }
+
+	private:
+		void* m_hWnd;
+		size_t m_indexInDense{0};
+	};
+
+	class TopLevelWindowDenseMap
+	{
+	public:
+		bool addTopLevelWindow(void* hWnd);
+		bool removeTopLevelWindow(void* hWnd);
+
+	public:
+		const std::vector<void*>& getAllHandles() const { return m_denseHandles; }
+		bool contains(void* handle) const { return m_sparse.contains(handle); }
+
+	private:
+		std::vector<void*> m_denseHandles;
+		std::unordered_map<void*, TopLevelWindow> m_sparse;
+	};
+
 	export class Env
 	{
 	public:
@@ -191,6 +224,6 @@ namespace biz
 		ProcCountChangeNotify m_notify;
 
 		mutable std::shared_mutex m_wndMutex;
-		std::unordered_set<void*> m_toplevelWindows;
+		TopLevelWindowDenseMap m_toplevelWindows;
 	};
 }
