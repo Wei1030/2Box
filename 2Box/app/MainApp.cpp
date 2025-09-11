@@ -67,6 +67,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 	return 0;
 }
 
+void MainApp::parseCmdLine() const
+{
+	if (m_strCmdLine.empty())
+	{
+		return;
+	}
+	int numArgs;
+	LPWSTR* cmdArray = CommandLineToArgvW(m_strCmdLine.c_str(), &numArgs);
+	if (!cmdArray)
+	{
+		return;
+	}
+	for (int i = 0; i < numArgs; ++i)
+	{
+		// MessageBoxW(nullptr, cmdArray[i], L"", MB_OK);
+	}
+	LocalFree(cmdArray);
+}
+
 namespace
 {
 	HRESULT CALLBACK task_dialog_callback(_In_ HWND hwnd, _In_ UINT msg, _In_ WPARAM wParam, _In_ LPARAM lParam, _In_ LONG_PTR lpRefData)
@@ -79,13 +98,14 @@ namespace
 		{
 			if (wParam == IDYES)
 			{
-				// biz::shutdown_rpc_server();
-				// SHELLEXECUTEINFOW siw{sizeof(siw)};
-				// siw.lpVerb = L"runas";
-				// siw.lpFile = app().exeFullName().data();
-				// siw.nShow = SW_SHOWNORMAL;
-				// ShellExecuteExW(&siw);
-				// app().exit();
+				SHELLEXECUTEINFOW siw{sizeof(siw)};
+				siw.lpVerb = L"runas";
+				siw.lpFile = app().exeFullName().data();
+				std::wstring params = std::format(LR"(--wait-another-end={})", GetCurrentProcessId());
+				siw.lpParameters = params.c_str();
+				siw.nShow = SW_SHOWNORMAL;
+				ShellExecuteExW(&siw);
+				app().exit();
 			}
 		}
 		return S_OK;

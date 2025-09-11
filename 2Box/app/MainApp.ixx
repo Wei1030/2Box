@@ -235,17 +235,21 @@ private:
 		m_exeFullName.resize(pathLength);
 		const DWORD resultSize = GetModuleFileNameW(nullptr, m_exeFullName.data(), pathLength);
 		m_exeFullName.resize(resultSize);
-		m_exeFullName.shrink_to_fit();
+		m_exeFullName = std::wstring(m_exeFullName);
 
 		namespace fs = std::filesystem;
 		const fs::path fsPath = fs::absolute(fs::path(m_exeFullName));
 		m_exeDir = fsPath.parent_path().native();
+
+		parseCmdLine();
 	}
 
 	void runMessageLoop() const
 	{
 		m_eventLoop.run();
 	}
+
+	void parseCmdLine() const;
 
 private:
 	HINSTANCE m_hInstance{nullptr};

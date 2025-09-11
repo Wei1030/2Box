@@ -141,7 +141,7 @@ namespace biz
 			throw std::runtime_error("Failed to query full path");
 		}
 		m_fullPath.resize(pathLength);
-		m_fullPath.shrink_to_fit();
+		m_fullPath = std::wstring(m_fullPath);
 	}
 
 	bool ProcessDenseMap::addProcessInfo(const std::shared_ptr<ProcessInfo>& procInfo)

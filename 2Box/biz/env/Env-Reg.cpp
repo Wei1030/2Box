@@ -105,14 +105,34 @@ namespace
 		{
 			AppKeyWrapper()
 			{
-				fs::path path = fs::weakly_canonical(get_data_path() / fs::path{MainApp::appName});
 				appKey = biz::RegKey{
 					[&]()-> HKEY
 					{
+						fs::path path = fs::weakly_canonical(get_data_path() / fs::path{MainApp::appName});
 						HKEY hAppKey;
 						if (LSTATUS status = RegLoadAppKeyW(path.native().c_str(), &hAppKey, KEY_ALL_ACCESS, 0, 0);
 							status != ERROR_SUCCESS)
 						{
+							if (status == ERROR_ACCESS_DENIED)
+							{
+								DWORD count{0};
+								GetUserNameW(nullptr, &count);
+								if (count)
+								{
+									std::wstring name;
+									name.resize(count);
+									if (GetUserNameW(name.data(), &count))
+									{
+										name.resize(count - 1);
+										path = fs::weakly_canonical(get_data_path() / fs::path{std::format(L"{}_{}", MainApp::appName, name)});
+										status = RegLoadAppKeyW(path.native().c_str(), &hAppKey, KEY_ALL_ACCESS, 0, 0);
+										if (status == ERROR_SUCCESS)
+										{
+											return hAppKey;
+										}
+									}
+								}
+							}
 							throw std::runtime_error(std::format("RegLoadAppKeyW failed, error code:{}", status));
 						}
 						return hAppKey;
