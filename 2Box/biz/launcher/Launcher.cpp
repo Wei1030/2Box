@@ -10,6 +10,7 @@ import MainApp;
 import PELoader;
 import EssentialData;
 import Utility.SystemInfo;
+import Biz.Core;
 
 namespace
 {
@@ -66,12 +67,21 @@ namespace biz
 		m_asyncScope.spawn(launch(env, std::wstring{exePath}));
 	}
 
+	void Launcher::runInNewEnv(std::wstring_view exePath)
+	{
+		m_asyncScope.spawn(launch(std::shared_ptr<Env>{}, std::wstring{exePath}));
+	}
+
 	coro::LazyTask<void> Launcher::launch(std::shared_ptr<Env> env, std::wstring exePath) const
 	{
 		try
 		{
 			co_await sched::transfer_to(m_execCtx);
 
+			if (!env)
+			{
+				env = env_mgr().createEnv();
+			}
 			const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath);
 			ResumeThread(procInfo.hThread);
 			CloseHandle(procInfo.hThread);

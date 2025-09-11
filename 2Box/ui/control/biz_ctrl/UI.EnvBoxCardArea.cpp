@@ -39,9 +39,8 @@ namespace ui
 			return;
 		}
 		// 没有合适的env，则创建新的
-		std::shared_ptr<biz::Env> env = biz::env_mgr().createEnv();
 		// 这里不考虑m_envs了，env的创建回调中会加入m_envs，这里直接使用launcher接口启动进程
-		biz::launcher().run(env, procFullPath);
+		biz::launcher().runInNewEnv(procFullPath);
 	}
 
 	void EnvBoxCardArea::onResize(float width, float height)
