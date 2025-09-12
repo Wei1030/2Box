@@ -21,10 +21,6 @@ namespace ui
 			m_leftSidebar = std::make_unique<LeftSidebar>(owner);
 			m_rightContent = std::make_unique<RightContent>(owner);
 
-			const D2D_RECT_F ownerRc = owner->rect();
-			m_leftSidebar->setBounds(D2D1::RectF(0.f, 0.f, sidebarWidth, ownerRc.bottom));
-			m_rightContent->setBounds(D2D1::RectF(sidebarWidth, 0, ownerRc.right, ownerRc.bottom));
-
 			m_leftSidebar->getEnvBoxCardArea()->setOnSelect([this](const std::shared_ptr<biz::Env>& env, bool bSelected)
 			{
 				if (bSelected)
