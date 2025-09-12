@@ -6,6 +6,9 @@ import std;
 namespace ui
 {
 	export using HResult = HRESULT;
+	export using LResult = LRESULT;
+	export using WParam = WPARAM;
+	export using LParam = LPARAM;
 	export class WindowBase;
 
 	export struct RenderContext
@@ -427,9 +430,9 @@ namespace ui
 		HWND nativeHandle() const { return m_hWnd; }
 		const DpiInfo& dpiInfo() const { return m_dpiInfo; }
 		D2D_RECT_F rect() const;
-		void setRect(const D2D_RECT_F& rect);
+		void setRect(const D2D_RECT_F& rect, int flag = SWP_NOZORDER | SWP_NOACTIVATE);
 		D2D_RECT_F physicalRect() const;
-		void setPhysicalRect(const D2D_RECT_F& rect);
+		void setPhysicalRect(const D2D_RECT_F& rect, int flag = SWP_NOZORDER | SWP_NOACTIVATE);
 		void invalidateRect(const D2D_RECT_F& rect);
 		void invalidateRect();
 		D2D_RECT_F rectNeedUpdate() const;
@@ -440,17 +443,41 @@ namespace ui
 		void removeControl(const ControlBase* control);
 		void removeRenderer(const RendererInterface* renderer);
 
+		bool isCompositionEnabled() const { return m_bIsCompositionEnabled ? true : false; }
+
 	protected:
 		const RenderContext& renderContext() const { return m_renderCtx; }
 
 	protected:
 		virtual HResult onRender();
 
+		virtual void onActivate(WParam wParam, LParam lParam)
+		{
+		}
+
 		// 返回true表示不要调用默认实现销毁窗口,而是自己处理
 		// 返回false表示默认处理(直接销毁窗口)
 		virtual bool onClose()
 		{
 			return false;
+		}
+
+		virtual bool onNcCalcSize(WParam wParam, LParam lParam)
+		{
+			return false;
+		}
+
+		virtual LResult onNcHitTest(WPARAM wParam, LParam lParam, LResult dwmProcessedResult)
+		{
+			return 0;
+		}
+
+		virtual void onNcPaint(WParam wParam, LParam lParam)
+		{
+		}
+
+		virtual void onDwmCompositionChanged()
+		{
 		}
 
 	private:
@@ -477,6 +504,7 @@ namespace ui
 		bool m_bIsExitAppWhenWindowDestroyed{false};
 		bool m_bIsMouseTracking{false};
 		DpiInfo m_dpiInfo{};
+		BOOL m_bIsCompositionEnabled{true};
 		RenderContext m_renderCtx{};
 		std::vector<RendererInterface*> m_renderersExcludeControls;
 		std::vector<RendererInterface*> m_pendingNoDeviceResources;

@@ -12,22 +12,31 @@ namespace
 {
 	constexpr float PADDING = 24.f;
 	constexpr float MARGIN_BOTTOM = 24.f;
+	constexpr float START_BTN_HEIGHT = 36.f;
 }
 
 namespace ui
 {
 	void LeftSidebar::onResize(float width, float height)
 	{
-		resizeEnvCardsArea();
+		m_startAppDiv->setBounds(D2D1::RectF(PADDING, PADDING, width - PADDING, PADDING + m_startAppDiv->getPathAreaHeight() + START_BTN_HEIGHT));
+
+		const float startYPos = m_startAppDiv->getBounds().bottom + MARGIN_BOTTOM * 2;
+		m_envCardsArea->setBounds(D2D1::RectF(PADDING - EnvBoxCardArea::shadowSize,
+		                                      startYPos - EnvBoxCardArea::shadowSize + EnvBoxCardArea::shadowOffsetY,
+		                                      width - PADDING + EnvBoxCardArea::scrollAreaWidth + EnvBoxCardArea::shadowSize,
+		                                      height));
 	}
 
 	void LeftSidebar::initialize()
 	{
 		m_startAppDiv = std::make_unique<StartAppDiv>(this);
 		m_startAppDiv->setBounds(D2D1::RectF(PADDING, PADDING, PADDING + 232.f, PADDING + 36.f));
-		m_startAppDiv->setSizeChangeNotify([this](float, float)
+		m_startAppDiv->setUpdateBounds([this]()
 		{
-			resizeEnvCardsArea();
+			const auto [width, height] = size();
+			onResize(width, height);
+			update();
 		});
 		m_startAppDiv->setLaunchProcess([this](const std::wstring& procPath)
 		{
@@ -35,16 +44,6 @@ namespace ui
 		});
 
 		m_envCardsArea = std::make_unique<EnvBoxCardArea>(this);
-	}
-
-	void LeftSidebar::resizeEnvCardsArea() const
-	{
-		const auto contentSize = size();
-		const float startYPos = m_startAppDiv->getBounds().bottom + MARGIN_BOTTOM * 2;
-		m_envCardsArea->setBounds(D2D1::RectF(PADDING - EnvBoxCardArea::shadowSize,
-		                                      startYPos - EnvBoxCardArea::shadowSize + EnvBoxCardArea::shadowOffsetY,
-		                                      contentSize.width - PADDING + EnvBoxCardArea::scrollAreaWidth + EnvBoxCardArea::shadowSize,
-		                                      contentSize.height));
 	}
 
 	void LeftSidebar::drawImpl(const RenderContext& renderCtx)

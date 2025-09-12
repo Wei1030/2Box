@@ -23,7 +23,6 @@ namespace ui
 
 	private:
 		void initialize();
-		void resizeEnvCardsArea() const;
 
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override;

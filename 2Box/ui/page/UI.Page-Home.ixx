@@ -44,10 +44,16 @@ namespace ui
 			m_ownerWnd->removeRenderer(this);
 		}
 
+		void setMargins(const D2D1_RECT_F& margins)
+		{
+			m_frameMargins = margins;
+		}
+
 		virtual void onResize(float width, float height) override
 		{
-			m_leftSidebar->setBounds(D2D1::RectF(0.f, 0.f, sidebarWidth, height));
-			m_rightContent->setBounds(D2D1::RectF(sidebarWidth, 0, width, height));
+			m_leftSidebar->setBounds(D2D1::RectF(m_frameMargins.left, m_frameMargins.top,
+			                                     m_frameMargins.left + sidebarWidth, height));
+			m_rightContent->setBounds(D2D1::RectF(m_frameMargins.left + sidebarWidth, m_frameMargins.top, width, height));
 		}
 
 		virtual void draw(const RenderContext& renderCtx) override
@@ -60,6 +66,7 @@ namespace ui
 
 	private:
 		WindowBase* m_ownerWnd{nullptr};
+		D2D1_RECT_F m_frameMargins{};
 		std::unique_ptr<LeftSidebar> m_leftSidebar;
 		std::unique_ptr<RightContent> m_rightContent;
 	};

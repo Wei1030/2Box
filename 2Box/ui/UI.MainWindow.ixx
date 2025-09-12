@@ -18,10 +18,17 @@ namespace ui
 
 	protected:
 		virtual void onResize(float width, float height) override;
+		virtual void onActivate(WParam wParam, LParam lParam) override;
 		virtual bool onClose() override;
+		virtual bool onNcCalcSize(WParam wParam, LParam lParam) override;
+		virtual LResult onNcHitTest(WPARAM wParam, LParam lParam, LResult dwmProcessedResult) override;
+		virtual void onNcPaint(WParam wParam, LParam lParam) override;
+		virtual void onDwmCompositionChanged() override;
 
 	private:
+		void initWindowInfo();
 		void initWindowPosition();
+		void extendFrameIfCompositionEnabled() const;
 		coro::LazyTask<void> initSymbols();
 
 	private:
@@ -29,6 +36,10 @@ namespace ui
 		void changePageTo()
 		{
 			m_pages = std::make_unique<PageType>(this);
+			if (isCompositionEnabled())
+			{
+				getPage<PageType>().setMargins(m_margins);
+			}
 			invalidateRect();
 		}
 
@@ -63,6 +74,10 @@ namespace ui
 
 	private:
 		std::variant<std::monostate, std::unique_ptr<DownloadPage>, std::unique_ptr<HomePage>> m_pages;
+
+	private:
+		MARGINS m_physicalMargins{};
+		D2D1_RECT_F m_margins{};
 	};
 
 	export MainWindow* g_main_wnd{nullptr};

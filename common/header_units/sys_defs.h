@@ -24,7 +24,7 @@
 #endif
 #include <d2d1.h>
 #include <dwrite.h>
-
+#include <dwmapi.h>
 #include <Shlobj.h>
 #include <shellapi.h>
 #include <Nb30.h>

@@ -47,6 +47,11 @@ namespace ui
 			m_ownerWnd->removeRenderer(this);
 		}
 
+		void setMargins(const D2D1_RECT_F& margins)
+		{
+			m_frameMargins = margins;
+		}
+
 		virtual void draw(const RenderContext& renderCtx) override
 		{
 			const auto& [renderTarget, solidBrush] = renderCtx;
@@ -67,7 +72,7 @@ namespace ui
 			}
 
 			const float contentXPos = (size.width - contentWidth) / 2;
-			float contentYPos = bottomMargin;
+			float contentYPos = m_frameMargins.top + bottomMargin;
 			solidBrush->SetColor(D2D1::ColorF(0x2b579a));
 			renderTarget->DrawTextW(downloadPageTitle.data(),
 			                        static_cast<UINT32>(downloadPageTitle.length()),
@@ -173,6 +178,7 @@ namespace ui
 
 	private:
 		WindowBase* m_ownerWnd{nullptr};
+		D2D1_RECT_F m_frameMargins{};
 		UniqueComPtr<IDWriteTextLayout> m_pTextLayout;
 		std::unique_ptr<FileStatusCtrl> m_p32FileStatusCtrl{nullptr};
 		std::unique_ptr<FileStatusCtrl> m_p64FileStatusCtrl{nullptr};

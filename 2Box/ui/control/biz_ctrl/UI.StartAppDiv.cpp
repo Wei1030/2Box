@@ -16,16 +16,15 @@ namespace
 	constexpr float GAP = 8.f;
 	constexpr float CLEAR_BTN_WIDTH = 24.f;
 	constexpr float CLEAR_BTN_HEIGHT = CLEAR_BTN_WIDTH;
-	constexpr float START_BTN_HEIGHT = 36.f;
-
-	float get_path_area_height(float pathTextHeight)
-	{
-		return pathTextHeight == 0.f ? 0.f : PADDING * 2.f + pathTextHeight + MARGIN;
-	}
 }
 
 namespace ui
 {
+	float StartAppDiv::getPathAreaHeight() const
+	{
+		return m_pathTextHeight == 0.f ? 0.f : PADDING * 2.f + m_pathTextHeight + MARGIN;
+	}
+
 	void StartAppDiv::initialize()
 	{
 		m_btnClear = std::make_unique<Button>(this);
@@ -54,13 +53,8 @@ namespace ui
 		m_btnClear->setBounds(D2D1::RectF(width - CLEAR_BTN_WIDTH - PADDING, clearBtnYPos,
 		                                  width - PADDING, clearBtnYPos + CLEAR_BTN_HEIGHT));
 
-		const float startBtnYPos = get_path_area_height(m_pathTextHeight);
-		m_btnStart->setBounds(D2D1::RectF(0, startBtnYPos, width, startBtnYPos + START_BTN_HEIGHT));
-
-		if (m_sizeChangeNotify)
-		{
-			m_sizeChangeNotify(width, height);
-		}
+		const float startBtnYPos = getPathAreaHeight();
+		m_btnStart->setBounds(D2D1::RectF(0, startBtnYPos, width, height));
 	}
 
 	void StartAppDiv::updateBoundsWhenPathChanged()
@@ -89,9 +83,10 @@ namespace ui
 			m_pExePathTextLayout.reset();
 		}
 
-		const D2D1_RECT_F& rcNow = getBounds();
-		setBounds(D2D1::RectF(rcNow.left, rcNow.top, rcNow.right, rcNow.top + get_path_area_height(m_pathTextHeight) + START_BTN_HEIGHT));
-		updateWholeWnd();
+		if (m_updateBoundsFunc)
+		{
+			m_updateBoundsFunc();
+		}
 	}
 
 	void StartAppDiv::drawImpl(const RenderContext& renderCtx)

@@ -23,6 +23,7 @@ namespace ui
 			throw std::runtime_error(std::format("CreateWindowExW fail , error code: {}", GetLastError()));
 		}
 		updateDpi();
+		DwmIsCompositionEnabled(&m_bIsCompositionEnabled);
 	}
 
 	// WindowBase::WindowBase(WindowBase* parentWnd, const WindowCreateParam& param)
@@ -88,7 +89,7 @@ namespace ui
 		return D2D1::RectF(rc.left * physicalToDevice, rc.top * physicalToDevice, rc.right * physicalToDevice, rc.bottom * physicalToDevice);
 	}
 
-	void WindowBase::setRect(const D2D_RECT_F& rect)
+	void WindowBase::setRect(const D2D_RECT_F& rect, int flag /*= SWP_NOZORDER | SWP_NOACTIVATE*/)
 	{
 		const float deviceToPhysical = m_dpiInfo.deviceToPhysical;
 		SetWindowPos(m_hWnd,
@@ -97,7 +98,7 @@ namespace ui
 		             static_cast<int>(std::ceil(rect.top * deviceToPhysical)),
 		             static_cast<int>(std::ceil((rect.right - rect.left) * deviceToPhysical)),
 		             static_cast<int>(std::ceil((rect.bottom - rect.top) * deviceToPhysical)),
-		             SWP_NOZORDER | SWP_NOACTIVATE);
+		             flag);
 	}
 
 	D2D_RECT_F WindowBase::physicalRect() const
@@ -107,7 +108,7 @@ namespace ui
 		return D2D1::RectF(static_cast<float>(rc.left), static_cast<float>(rc.top), static_cast<float>(rc.right), static_cast<float>(rc.bottom));
 	}
 
-	void WindowBase::setPhysicalRect(const D2D_RECT_F& rect)
+	void WindowBase::setPhysicalRect(const D2D_RECT_F& rect, int flag /*= SWP_NOZORDER | SWP_NOACTIVATE*/)
 	{
 		SetWindowPos(m_hWnd,
 		             nullptr,
@@ -115,7 +116,7 @@ namespace ui
 		             static_cast<int>(std::ceil(rect.top)),
 		             static_cast<int>(std::ceil(rect.right - rect.left)),
 		             static_cast<int>(std::ceil(rect.bottom - rect.top)),
-		             SWP_NOZORDER | SWP_NOACTIVATE);
+		             flag);
 	}
 
 	void WindowBase::invalidateRect(const D2D_RECT_F& rect)
@@ -441,6 +442,12 @@ namespace ui
 			{
 				if (WindowBase* pWnd = reinterpret_cast<WindowBase*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA)))
 				{
+					BOOL bProcessedByDwm{FALSE};
+					LRESULT dwmProcessedResult{HTNOWHERE};
+					if (pWnd->m_bIsCompositionEnabled)
+					{
+						bProcessedByDwm = DwmDefWindowProc(hWnd, message, wParam, lParam, &dwmProcessedResult);
+					}
 					switch (message)
 					{
 					case WM_DESTROY:
@@ -455,6 +462,11 @@ namespace ui
 							pWnd->resize(width, height);
 						}
 						return 0;
+					case WM_ACTIVATE:
+						{
+							pWnd->onActivate(wParam, lParam);
+						}
+						break;
 					case WM_PAINT:
 						{
 							if (SUCCEEDED(pWnd->prepareDeviceResources()))
@@ -484,6 +496,31 @@ namespace ui
 							InvalidateRect(hWnd, nullptr, FALSE);
 						}
 						return 0;
+					case WM_NCCALCSIZE:
+						{
+							if (pWnd->onNcCalcSize(wParam, lParam))
+							{
+								return 0;
+							}
+						}
+						break;
+					case WM_NCHITTEST:
+						{
+							dwmProcessedResult = pWnd->onNcHitTest(wParam, lParam, dwmProcessedResult);
+							if (dwmProcessedResult != HTNOWHERE)
+							{
+								bProcessedByDwm = true;
+							}
+						}
+						break;
+					case WM_NCPAINT:
+						if (!pWnd->m_bIsCompositionEnabled)
+						{
+							LRESULT result = DefWindowProcW(hWnd, message, wParam, lParam);
+							pWnd->onNcPaint(wParam, lParam);
+							return result;
+						}
+						break;
 					case WM_MOUSEMOVE:
 						pWnd->mouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MouseEvent::ButtonType::NotInvolved, wParam);
 						break;
@@ -539,8 +576,18 @@ namespace ui
 							                                  static_cast<float>(pNewRc->right), static_cast<float>(pNewRc->bottom)));
 						}
 						break;
+					case WM_DWMCOMPOSITIONCHANGED:
+						{
+							DwmIsCompositionEnabled(&pWnd->m_bIsCompositionEnabled);
+							pWnd->onDwmCompositionChanged();
+						}
+						break;
 					default:
 						break;
+					}
+					if (bProcessedByDwm)
+					{
+						return dwmProcessedResult;
 					}
 				}
 			}

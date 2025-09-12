@@ -16,11 +16,13 @@ namespace ui
 			initialize();
 		}
 
-		using SizeChangeNotify = std::function<void(float, float)>;
-		void setSizeChangeNotify(SizeChangeNotify notify) noexcept { m_sizeChangeNotify = std::move(notify); }
+		using UpdateBoundsFunc = std::function<void()>;
+		void setUpdateBounds(UpdateBoundsFunc fn) noexcept { m_updateBoundsFunc = std::move(fn); }
 
 		using LaunchProcessFunc = std::function<void(const std::wstring&)>;
 		void setLaunchProcess(LaunchProcessFunc fn) noexcept { m_launchProcessFunc = std::move(fn); }
+
+		float getPathAreaHeight() const;
 
 	private:
 		void initialize();
@@ -41,7 +43,7 @@ namespace ui
 		float m_pathTextHeight{0};
 		std::unique_ptr<Button> m_btnClear;
 		std::unique_ptr<Button> m_btnStart;
-		SizeChangeNotify m_sizeChangeNotify;
+		UpdateBoundsFunc m_updateBoundsFunc;
 		LaunchProcessFunc m_launchProcessFunc;
 	};
 }
