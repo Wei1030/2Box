@@ -14,11 +14,12 @@ namespace ui
 		MainWindow();
 
 	public:
+		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override;
+		virtual void onDiscardDeviceResources() override;
 		virtual void draw(const RenderContext& renderCtx) override;
 
 	protected:
 		virtual void onResize(float width, float height) override;
-		virtual void onActivate(WParam wParam, LParam lParam) override;
 		virtual bool onClose() override;
 		virtual bool onNcCalcSize(WParam wParam, LParam lParam) override;
 		virtual LResult onNcHitTest(WPARAM wParam, LParam lParam, LResult dwmProcessedResult) override;
@@ -26,9 +27,11 @@ namespace ui
 		virtual void onDwmCompositionChanged() override;
 
 	private:
-		void initWindowInfo();
+		void initWindow();
+		void reinitWindow();
 		void initWindowPosition();
-		void extendFrameIfCompositionEnabled() const;
+		void initTitleIcon();
+		ID2D1Bitmap* getTitleIconBitmap(ID2D1HwndRenderTarget* renderTarget);
 		coro::LazyTask<void> initSymbols();
 
 	private:
@@ -78,6 +81,9 @@ namespace ui
 	private:
 		MARGINS m_physicalMargins{};
 		D2D1_RECT_F m_margins{};
+		BITMAP m_bmIcon;
+		std::vector<std::byte> m_bmpIconData;
+		UniqueComPtr<ID2D1Bitmap> m_pD2D1Bitmap;
 	};
 
 	export MainWindow* g_main_wnd{nullptr};

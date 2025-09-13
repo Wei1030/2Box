@@ -51,22 +51,35 @@ namespace ui
 
 		virtual void onResize(float width, float height) override
 		{
+			m_size = {width, height};
 			m_leftSidebar->setBounds(D2D1::RectF(m_frameMargins.left, m_frameMargins.top,
-			                                     m_frameMargins.left + sidebarWidth, height));
-			m_rightContent->setBounds(D2D1::RectF(m_frameMargins.left + sidebarWidth, m_frameMargins.top, width, height));
+			                                     m_frameMargins.left + sidebarWidth, height - m_frameMargins.bottom));
+			m_rightContent->setBounds(D2D1::RectF(m_frameMargins.left + sidebarWidth, m_frameMargins.top,
+			                                      width - m_frameMargins.right, height - m_frameMargins.bottom));
 		}
 
 		virtual void draw(const RenderContext& renderCtx) override
 		{
+			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+			D2D1_RECT_F rect = D2D1::RectF(0.f, 0.f, m_size.width, m_size.height);
+			rect.left += m_frameMargins.left;
+			rect.top += m_frameMargins.top;
+			rect.right -= m_frameMargins.right;
+			rect.bottom -= m_frameMargins.bottom;
+			renderTarget->PushAxisAlignedClip(rect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+			
 			m_rightContent->draw(renderCtx);
 
 			draw_box_shadow(renderCtx, m_leftSidebar->getBounds(), {.offset = D2D1::Point2F(0.f, 1.f)});
 			m_leftSidebar->draw(renderCtx);
+
+			renderTarget->PopAxisAlignedClip();
 		}
 
 	private:
 		WindowBase* m_ownerWnd{nullptr};
 		D2D1_RECT_F m_frameMargins{};
+		D2D1_SIZE_F m_size{};
 		std::unique_ptr<LeftSidebar> m_leftSidebar;
 		std::unique_ptr<RightContent> m_rightContent;
 	};

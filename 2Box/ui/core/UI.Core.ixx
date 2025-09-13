@@ -451,10 +451,6 @@ namespace ui
 	protected:
 		virtual HResult onRender();
 
-		virtual void onActivate(WParam wParam, LParam lParam)
-		{
-		}
-
 		// 返回true表示不要调用默认实现销毁窗口,而是自己处理
 		// 返回false表示默认处理(直接销毁窗口)
 		virtual bool onClose()
