@@ -17,12 +17,16 @@ namespace ui
 	static constexpr float DESIRED_WIDTH = 1024.f;
 	static constexpr float DESIRED_HEIGHT = 768.f;
 
+	static constexpr float TRAY_ID = 0;
+	static constexpr float TRAY_MESSAGE = WM_USER + 9527;
+
 	MainWindow::MainWindow() : WindowBase({MainApp::appName})
 	{
 		setExitAppWhenWindowDestroyed(true);
 		initWindow();
 		initWindowPosition();
 		initTitleIcon();
+		initTray();
 		reserveRenderers(2, 20);
 
 		m_btnToTray.setBackgroundColor(D2D1::ColorF(D2D1::ColorF::White), Button::EState::Normal);
@@ -108,7 +112,7 @@ namespace ui
 				                        D2D1::RectF(textXPos, textYPos, toTrayBthXPos, textYPos + m_titleTextHeight),
 				                        solidBrush);
 			}
-			m_btnToTray.setBounds(D2D1::Rect(toTrayBthXPos, paddingTop, toTrayBthXPos + toTrayBthWidth, m_margins.top));
+			m_btnToTray.setBounds(D2D1::Rect(toTrayBthXPos, paddingTop + 1.f, toTrayBthXPos + toTrayBthWidth, m_margins.top));
 			m_btnToTray.draw(renderCtx);
 			renderTarget->PopAxisAlignedClip();
 		}
@@ -173,11 +177,13 @@ namespace ui
 				[](MainWindow& self, const DownloadPage& page) -> coro::OnewayTask
 				{
 					co_await page.joinAsync();
+					self.destroyTray();
 					self.destroyWindow();
 				}(*this, downloadPage);
 			}
 			return true;
 		}
+		destroyTray();
 		return false;
 	}
 
@@ -348,14 +354,14 @@ namespace ui
 
 	void MainWindow::initTitleIcon()
 	{
-		HICON hIcon = LoadIconW(app().moduleInstance(), MAKEINTRESOURCE(IDI_APP_ICON));
-		if (!hIcon)
+		m_hIcon = LoadIconW(app().moduleInstance(), MAKEINTRESOURCE(IDI_APP_ICON));
+		if (!m_hIcon)
 		{
 			return;
 		}
 
 		ICONINFO ii{};
-		if (!GetIconInfo(hIcon, &ii))
+		if (!GetIconInfo(m_hIcon, &ii))
 		{
 			return;
 		}
@@ -401,6 +407,28 @@ namespace ui
 		while (false);
 		DeleteObject(ii.hbmColor);
 		ReleaseDC(nativeHandle(), hdcWindow);
+	}
+
+	void MainWindow::initTray() const
+	{
+		NOTIFYICONDATA nid = {};
+		nid.cbSize = sizeof(nid);
+		nid.hWnd = nativeHandle();
+		nid.uID = TRAY_ID;
+		nid.uFlags = NIF_ICON | NIF_MESSAGE;
+		nid.uCallbackMessage = TRAY_MESSAGE;
+		nid.hIcon = m_hIcon;
+
+		Shell_NotifyIconW(NIM_ADD, &nid);
+	}
+
+	void MainWindow::destroyTray() const
+	{
+		NOTIFYICONDATA nid = {};
+		nid.cbSize = sizeof(nid);
+		nid.hWnd = nativeHandle();
+		nid.uID = TRAY_ID;
+		Shell_NotifyIconW(NIM_DELETE, &nid);
 	}
 
 	ID2D1Bitmap* MainWindow::getTitleIconBitmap(ID2D1HwndRenderTarget* renderTarget)

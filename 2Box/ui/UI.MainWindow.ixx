@@ -34,6 +34,8 @@ namespace ui
 		void reinitWindow();
 		void initWindowPosition();
 		void initTitleIcon();
+		void initTray() const;
+		void destroyTray() const;
 		ID2D1Bitmap* getTitleIconBitmap(ID2D1HwndRenderTarget* renderTarget);
 		coro::LazyTask<void> initSymbols();
 		bool ncBtnHitTest(POINT pt) const;
@@ -85,6 +87,7 @@ namespace ui
 	private:
 		MARGINS m_physicalMargins{};
 		D2D1_RECT_F m_margins{};
+		HICON m_hIcon{};
 		BITMAP m_bmIcon;
 		std::vector<std::byte> m_bmpIconData;
 		UniqueComPtr<ID2D1Bitmap> m_pD2D1Bitmap;
