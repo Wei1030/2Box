@@ -55,32 +55,51 @@ namespace ui
 	{
 		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
 		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
-
-		float captionContentHeight;
-		float padding;
-		if (IsMaximized(nativeHandle()))
+		const D2D1_RECT_F rc = rect();
+		const float width = rc.right - rc.left;
+		// 绘制标题栏
+		renderTarget->PushAxisAlignedClip(D2D1::RectF(0.f, 0.f, width - m_captionBtnWidth, m_margins.top), D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+		renderTarget->Clear(D2D1::ColorF{0, 0.f});
+		if (isCompositionEnabled())
 		{
-			RECT rcFrame = {};
-			AdjustWindowRectEx(&rcFrame, GetWindowStyle(nativeHandle()) & ~WS_CAPTION, FALSE, GetWindowExStyle(nativeHandle()));
-			const float captionHeight = m_margins.top + rcFrame.top;
-			captionContentHeight = captionHeight * 0.618f;
-			padding = (captionHeight - captionContentHeight) * 0.5f - rcFrame.top;
+			float paddingTop{0};
+			float paddingLeft{8.f};
+			if (IsMaximized(nativeHandle()))
+			{
+				RECT rcFrame = {};
+				AdjustWindowRectEx(&rcFrame, GetWindowStyle(nativeHandle()) & ~WS_CAPTION, FALSE, GetWindowExStyle(nativeHandle()));
+				paddingTop -= rcFrame.top;
+				paddingLeft -= rcFrame.left;
+			}
+			const float captionHeight = m_margins.top - paddingTop;
+			const float titleIconSize = captionHeight * 0.618f;
+
+			if (ID2D1Bitmap* bitmap = getTitleIconBitmap(renderTarget))
+			{
+				const float yPos = (captionHeight - titleIconSize) * 0.5f + paddingTop;
+				renderTarget->DrawBitmap(bitmap, D2D1::RectF(paddingLeft, yPos,
+				                                             paddingLeft + titleIconSize, yPos + titleIconSize));
+			}
+			const float textXPos = paddingLeft + titleIconSize + 8.f;
+			const float textYPos = (captionHeight - m_titleTextHeight) * 0.5f + paddingTop - 1.f;
+			solidBrush->SetColor(m_titleColor);
+			if (m_pTitleLayout)
+			{
+				renderTarget->DrawTextLayout(D2D1::Point2F(textXPos, textYPos), m_pTitleLayout, solidBrush);
+			}
+			else
+			{
+				renderTarget->DrawTextW(MainApp::appName.data(),
+				                        static_cast<UINT32>(MainApp::appName.length()),
+				                        app().textFormat().pMainFormat,
+				                        D2D1::RectF(textXPos, textYPos, width - m_captionBtnWidth, textYPos + m_titleTextHeight),
+				                        solidBrush);
+			}
 		}
 		else
 		{
-			captionContentHeight = m_margins.top * 0.618f;
-			padding = (m_margins.top - captionContentHeight) * 0.5f;
 		}
-
-		renderTarget->PushAxisAlignedClip(D2D1::RectF(0.f, 0.f, padding + captionContentHeight + padding, m_margins.top), D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-		renderTarget->Clear(D2D1::ColorF{0, 0.f});
 		renderTarget->PopAxisAlignedClip();
-
-		if (ID2D1Bitmap* bitmap = getTitleIconBitmap(renderTarget))
-		{
-			renderTarget->DrawBitmap(bitmap, D2D1::RectF(padding, padding,
-			                                             padding + captionContentHeight, padding + captionContentHeight));
-		}
 
 		currentRenderer()->draw(renderCtx);
 	}
@@ -90,6 +109,19 @@ namespace ui
 		if (!std::holds_alternative<std::monostate>(m_pages))
 		{
 			currentRenderer()->onResize(width, height);
+		}
+	}
+
+	void MainWindow::onActivate(WParam wParam, LParam lParam)
+	{
+		if (wParam != WA_INACTIVE)
+		{
+			if (isCompositionEnabled())
+			{
+				RECT rc{};
+				DwmGetWindowAttribute(nativeHandle(), DWMWA_CAPTION_BUTTON_BOUNDS, &rc, sizeof(rc));
+				m_captionBtnWidth = (rc.right - rc.left) * dpiInfo().physicalToDevice;
+			}
 		}
 	}
 
@@ -207,6 +239,22 @@ namespace ui
 		m_margins.top = m_physicalMargins.cyTopHeight * physicalToDevice;
 		m_margins.right = m_physicalMargins.cxRightWidth * physicalToDevice;
 		m_margins.bottom = m_physicalMargins.cyBottomHeight * physicalToDevice;
+
+		m_titleColor = D2D1::ColorF{static_cast<unsigned int>(GetSystemMetrics(COLOR_CAPTIONTEXT))};
+		m_titleTextHeight = 20.f;
+		m_pTitleLayout.reset();
+		if (SUCCEEDED(app().dWriteFactory()->CreateTextLayout(MainApp::appName.data(),
+			static_cast<UINT32>(MainApp::appName.size()),
+			app().textFormat().pMainFormat,
+			std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+			&m_pTitleLayout)))
+		{
+			DWRITE_TEXT_METRICS textMetrics;
+			if (SUCCEEDED(m_pTitleLayout->GetMetrics(&textMetrics)))
+			{
+				m_titleTextHeight = textMetrics.height;
+			}
+		}
 
 		if (isCompositionEnabled())
 		{

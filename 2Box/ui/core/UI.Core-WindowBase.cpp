@@ -463,6 +463,11 @@ namespace ui
 							pWnd->resize(width, height);
 						}
 						return 0;
+					case WM_ACTIVATE:
+						{
+							pWnd->onActivate(wParam, lParam);
+						}
+						break;
 					case WM_PAINT:
 						{
 							if (SUCCEEDED(pWnd->prepareDeviceResources()))

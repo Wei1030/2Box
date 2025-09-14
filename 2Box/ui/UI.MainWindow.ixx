@@ -20,6 +20,7 @@ namespace ui
 
 	protected:
 		virtual void onResize(float width, float height) override;
+		virtual void onActivate(WParam wParam, LParam lParam) override;
 		virtual bool onClose() override;
 		virtual bool onNcCalcSize(WParam wParam, LParam lParam) override;
 		virtual LResult onNcHitTest(WPARAM wParam, LParam lParam, LResult dwmProcessedResult) override;
@@ -84,6 +85,10 @@ namespace ui
 		BITMAP m_bmIcon;
 		std::vector<std::byte> m_bmpIconData;
 		UniqueComPtr<ID2D1Bitmap> m_pD2D1Bitmap;
+		D2D1_COLOR_F m_titleColor{};
+		UniqueComPtr<IDWriteTextLayout> m_pTitleLayout;
+		float m_titleTextHeight{};
+		float m_captionBtnWidth{};
 	};
 
 	export MainWindow* g_main_wnd{nullptr};
