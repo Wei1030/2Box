@@ -480,6 +480,10 @@ namespace ui
 		{
 		}
 
+		virtual void onUserMsg(UINT message, WParam wParam, LParam lParam)
+		{
+		}
+
 	private:
 		HWND createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
 		                          int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu);

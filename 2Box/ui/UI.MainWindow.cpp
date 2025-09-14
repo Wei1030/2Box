@@ -17,8 +17,8 @@ namespace ui
 	static constexpr float DESIRED_WIDTH = 1024.f;
 	static constexpr float DESIRED_HEIGHT = 768.f;
 
-	static constexpr float TRAY_ID = 0;
-	static constexpr float TRAY_MESSAGE = WM_USER + 9527;
+	static constexpr UINT TRAY_ID = 0;
+	static constexpr UINT TRAY_MESSAGE = WM_USER + 9527;
 
 	MainWindow::MainWindow() : WindowBase({MainApp::appName})
 	{
@@ -34,6 +34,7 @@ namespace ui
 		m_btnToTray.setBackgroundColor(D2D1::ColorF(0xcacacb), Button::EState::Active);
 		m_btnToTray.setOnClick([this]
 		{
+			// show(SW_HIDE);
 		});
 		m_btnToTray.setDrawCallback(std::bind(&MainWindow::drawToTryBtn, this, std::placeholders::_1, std::placeholders::_2));
 
@@ -270,6 +271,21 @@ namespace ui
 		reinitWindow();
 	}
 
+	void MainWindow::onUserMsg(UINT message, WParam wParam, LParam lParam)
+	{
+		if (message == TRAY_MESSAGE)
+		{
+			if (lParam == WM_LBUTTONUP)
+			{
+				show(SW_RESTORE);
+				SetForegroundWindow(nativeHandle());
+			}
+			else if (lParam == WM_RBUTTONUP)
+			{
+			}
+		}
+	}
+
 	void MainWindow::initWindow()
 	{
 		RECT rcFrame = {};
@@ -411,8 +427,7 @@ namespace ui
 
 	void MainWindow::initTray() const
 	{
-		NOTIFYICONDATA nid = {};
-		nid.cbSize = sizeof(nid);
+		NOTIFYICONDATAW nid = {sizeof(nid)};
 		nid.hWnd = nativeHandle();
 		nid.uID = TRAY_ID;
 		nid.uFlags = NIF_ICON | NIF_MESSAGE;
@@ -424,8 +439,7 @@ namespace ui
 
 	void MainWindow::destroyTray() const
 	{
-		NOTIFYICONDATA nid = {};
-		nid.cbSize = sizeof(nid);
+		NOTIFYICONDATAW nid = {sizeof(nid)};
 		nid.hWnd = nativeHandle();
 		nid.uID = TRAY_ID;
 		Shell_NotifyIconW(NIM_DELETE, &nid);

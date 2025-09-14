@@ -51,7 +51,14 @@ namespace ui
 		if (m_hWnd)
 		{
 			ShowWindow(m_hWnd, nCmdShow);
-			UpdateWindow(m_hWnd);
+			if (nCmdShow != SW_HIDE
+				&& nCmdShow != SW_SHOWMINIMIZED
+				&& nCmdShow != SW_MINIMIZE
+				&& nCmdShow != SW_SHOWDEFAULT
+				&& nCmdShow != SW_FORCEMINIMIZE)
+			{
+				UpdateWindow(m_hWnd);
+			}
 		}
 	}
 
@@ -584,6 +591,12 @@ namespace ui
 						}
 						break;
 					default:
+						{
+							if (message > WM_USER)
+							{
+								pWnd->onUserMsg(message, wParam, lParam);
+							}
+						}
 						break;
 					}
 					if (bProcessedByDwm)
