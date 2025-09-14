@@ -4,6 +4,7 @@ import "sys_defs.h";
 import std;
 import UI.Core;
 import UI.Page;
+import UI.Button;
 import Coroutine;
 
 namespace ui
@@ -19,6 +20,7 @@ namespace ui
 		virtual void draw(const RenderContext& renderCtx) override;
 
 	protected:
+		void drawToTryBtn(const RenderContext& renderCtx, Button::EState state) const;
 		virtual void onResize(float width, float height) override;
 		virtual void onActivate(WParam wParam, LParam lParam) override;
 		virtual bool onClose() override;
@@ -34,6 +36,7 @@ namespace ui
 		void initTitleIcon();
 		ID2D1Bitmap* getTitleIconBitmap(ID2D1HwndRenderTarget* renderTarget);
 		coro::LazyTask<void> initSymbols();
+		bool ncBtnHitTest(POINT pt) const;
 
 	private:
 		template <typename PageType>
@@ -89,6 +92,7 @@ namespace ui
 		UniqueComPtr<IDWriteTextLayout> m_pTitleLayout;
 		float m_titleTextHeight{};
 		float m_captionBtnWidth{};
+		Button m_btnToTray{this};
 	};
 
 	export MainWindow* g_main_wnd{nullptr};

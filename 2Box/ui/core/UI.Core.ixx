@@ -158,6 +158,20 @@ namespace ui
 		void update() const;
 		void updateWholeWnd() const;
 
+		bool hitTest(D2D1_POINT_2F point) const
+		{
+			const ControlBase* current = this;
+			while (current)
+			{
+				if (!current->hitTestInternal(point))
+				{
+					return false;
+				}
+				current = current->m_parent;
+			}
+			return true;
+		}
+
 	public:
 		virtual void draw(const RenderContext& renderCtx) override
 		{
@@ -178,20 +192,6 @@ namespace ui
 
 	protected:
 		friend class ControlManager;
-
-		bool hitTest(D2D1_POINT_2F point) const
-		{
-			const ControlBase* current = this;
-			while (current)
-			{
-				if (!current->hitTestInternal(point))
-				{
-					return false;
-				}
-				current = current->m_parent;
-			}
-			return true;
-		}
 
 		virtual void onMouseMove(const MouseEvent& e)
 		{

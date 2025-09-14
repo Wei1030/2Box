@@ -24,6 +24,15 @@ namespace ui
 		initWindowPosition();
 		initTitleIcon();
 		reserveRenderers(2, 20);
+
+		m_btnToTray.setBackgroundColor(D2D1::ColorF(D2D1::ColorF::White), Button::EState::Normal);
+		m_btnToTray.setBackgroundColor(D2D1::ColorF(0xe5e5e5), Button::EState::Hover);
+		m_btnToTray.setBackgroundColor(D2D1::ColorF(0xcacacb), Button::EState::Active);
+		m_btnToTray.setOnClick([this]
+		{
+		});
+		m_btnToTray.setDrawCallback(std::bind(&MainWindow::drawToTryBtn, this, std::placeholders::_1, std::placeholders::_2));
+
 #if 0	// 暂时不使用反射注入，就不需要下载pdb了
 		initSymbols().detachAndStart();
 #else
@@ -53,15 +62,19 @@ namespace ui
 
 	void MainWindow::draw(const RenderContext& renderCtx)
 	{
-		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
-		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
-		const D2D1_RECT_F rc = rect();
-		const float width = rc.right - rc.left;
 		// 绘制标题栏
-		renderTarget->PushAxisAlignedClip(D2D1::RectF(0.f, 0.f, width - m_captionBtnWidth, m_margins.top), D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-		renderTarget->Clear(D2D1::ColorF{0, 0.f});
 		if (isCompositionEnabled())
 		{
+			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+			const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
+			const D2D1_RECT_F rc = rect();
+			const float width = rc.right - rc.left;
+			renderTarget->PushAxisAlignedClip(D2D1::RectF(0.f, 0.f, width - m_captionBtnWidth, m_margins.top), D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+			renderTarget->Clear(D2D1::ColorF{0, 0.f});
+			constexpr float toTrayBthMarginRight = 0.f;
+			const float toTrayBthWidth = m_captionBtnWidth / 3.f;
+			const float toTrayBthXPos = width - m_captionBtnWidth - toTrayBthMarginRight - toTrayBthWidth;
+
 			float paddingTop{0};
 			float paddingLeft{8.f};
 			if (IsMaximized(nativeHandle()))
@@ -92,16 +105,40 @@ namespace ui
 				renderTarget->DrawTextW(MainApp::appName.data(),
 				                        static_cast<UINT32>(MainApp::appName.length()),
 				                        app().textFormat().pMainFormat,
-				                        D2D1::RectF(textXPos, textYPos, width - m_captionBtnWidth, textYPos + m_titleTextHeight),
+				                        D2D1::RectF(textXPos, textYPos, toTrayBthXPos, textYPos + m_titleTextHeight),
 				                        solidBrush);
 			}
+			m_btnToTray.setBounds(D2D1::Rect(toTrayBthXPos, paddingTop, toTrayBthXPos + toTrayBthWidth, m_margins.top));
+			m_btnToTray.draw(renderCtx);
+			renderTarget->PopAxisAlignedClip();
 		}
-		else
-		{
-		}
-		renderTarget->PopAxisAlignedClip();
 
 		currentRenderer()->draw(renderCtx);
+	}
+
+	void MainWindow::drawToTryBtn(const RenderContext& renderCtx, Button::EState) const
+	{
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
+		const D2D1_RECT_F& bounds = m_btnToTray.getBounds();
+		const float width = bounds.right - bounds.left;
+		const float height = bounds.bottom - bounds.top;
+		const float contentWidth = width * 0.236f;
+		const float contentHeight = height * 0.382f;
+		const float paddingLr = width * 0.382f;
+		const float paddingTb = height * 0.309f;
+		const float contentTopHeight = contentHeight * 0.618f;
+		const float contentBottomYPos = paddingTb + contentTopHeight + 0.191f * contentHeight;
+
+		solidBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
+		const D2D1_POINT_2F pt1{D2D1::Point2F(paddingLr, paddingTb)};
+		const D2D1_POINT_2F pt2{D2D1::Point2F(paddingLr + contentWidth, paddingTb)};
+		const D2D1_POINT_2F pt3{D2D1::Point2F((pt1.x + pt2.x) * 0.5f, paddingTb + contentTopHeight)};
+		//renderTarget->DrawLine(pt1, pt2, solidBrush, 0.5f);
+		renderTarget->DrawLine(pt2, pt3, solidBrush, 0.5f);
+		renderTarget->DrawLine(pt3, pt1, solidBrush, 0.5f);
+
+		renderTarget->DrawLine(D2D1::Point2F(pt1.x, contentBottomYPos), D2D1::Point2F(pt2.x, contentBottomYPos), solidBrush, 0.5f);
 	}
 
 	void MainWindow::onResize(float width, float height)
@@ -167,6 +204,10 @@ namespace ui
 			{
 				return dwmProcessedResult;
 			}
+			if (ncBtnHitTest(ptMouse))
+			{
+				return HTCLIENT;
+			}
 
 			// Get the window rectangle.
 			RECT rcWindow;
@@ -209,7 +250,6 @@ namespace ui
 				{HTLEFT, HTNOWHERE, HTRIGHT},
 				{HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT},
 			};
-
 			return hitTests[uRow][uCol];
 		}
 		return HTNOWHERE;
@@ -392,5 +432,12 @@ namespace ui
 			changePageTo<HomePage>();
 		}
 		co_return;
+	}
+
+	bool MainWindow::ncBtnHitTest(POINT pt) const
+	{
+		//这里的入参pt是相对于屏幕的
+		ScreenToClient(nativeHandle(), &pt);
+		return m_btnToTray.hitTest(D2D1::Point2F(pt.x * dpiInfo().physicalToDevice, pt.y * dpiInfo().physicalToDevice));
 	}
 }

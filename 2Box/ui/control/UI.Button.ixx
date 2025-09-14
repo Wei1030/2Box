@@ -150,6 +150,11 @@ namespace ui
 			m_onClick = std::move(func);
 		}
 
+		using DrawCallback = std::function<void(const RenderContext& renderCtx, EState state)>;
+		void setDrawCallback(DrawCallback func) { m_drawCallback = std::move(func); }
+
+		void setButtonState(EState state);
+
 	protected:
 		virtual void onMouseEnter(const MouseEvent& e) override;
 		virtual void onMouseLeave(const MouseEvent& e) override;
@@ -193,6 +198,7 @@ namespace ui
 	private:
 		sm::StateMachine<button_detail::TPainterType, EPainterType, PainterContext> m_painter;
 		std::move_only_function<void()> m_onClick;
+		DrawCallback m_drawCallback;
 		bool m_bIsHover{false};
 	};
 
@@ -205,24 +211,40 @@ namespace ui
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Normal>::OnUpdate(PainterContext& ctx) const
 		{
 			ctx.btn.drawByState(ctx.renderCtx, *this);
+			if (ctx.btn.m_drawCallback)
+			{
+				ctx.btn.m_drawCallback(ctx.renderCtx, Button::EState::Normal);
+			}
 			return {EPainterType::Normal};
 		}
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Hover>::OnUpdate(PainterContext& ctx) const
 		{
 			ctx.btn.drawByState(ctx.renderCtx, *this);
+			if (ctx.btn.m_drawCallback)
+			{
+				ctx.btn.m_drawCallback(ctx.renderCtx, Button::EState::Hover);
+			}
 			return {EPainterType::Hover};
 		}
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Active>::OnUpdate(PainterContext& ctx) const
 		{
 			ctx.btn.drawByState(ctx.renderCtx, *this);
+			if (ctx.btn.m_drawCallback)
+			{
+				ctx.btn.m_drawCallback(ctx.renderCtx, Button::EState::Active);
+			}
 			return {EPainterType::Active};
 		}
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Disabled>::OnUpdate(PainterContext& ctx) const
 		{
 			ctx.btn.drawByState(ctx.renderCtx, *this);
+			if (ctx.btn.m_drawCallback)
+			{
+				ctx.btn.m_drawCallback(ctx.renderCtx, Button::EState::Disabled);
+			}
 			return {EPainterType::Disabled};
 		}
 
