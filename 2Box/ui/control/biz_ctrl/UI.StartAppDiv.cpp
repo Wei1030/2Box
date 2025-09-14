@@ -41,8 +41,9 @@ namespace ui
 
 		m_btnStart = std::make_unique<Button>(this);
 		m_btnStart->setText(L"启动进程");
-		m_btnStart->setBackgroundColor(D2D1::ColorF(0x006cbd));
 		m_btnStart->setBackgroundColor(D2D1::ColorF(0x0078d4), Button::EState::Normal);
+		m_btnStart->setBackgroundColor(D2D1::ColorF(0x006cbd), Button::EState::Hover);
+		m_btnStart->setBackgroundColor(D2D1::ColorF(0x005a9e), Button::EState::Active);
 		m_btnStart->setTextColor(D2D1::ColorF(D2D1::ColorF::White));
 		m_btnStart->setOnClick([this] { onBtnStartPressed(); });
 	}

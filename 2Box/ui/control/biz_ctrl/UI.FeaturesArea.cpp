@@ -21,8 +21,9 @@ namespace ui
 	void FeaturesArea::initialize()
 	{
 		m_tileWndBtn.setText(L"排布窗口");
-		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xe0e0e0));
 		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xf0f0f0), Button::EState::Normal);
+		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xe0e0e0), Button::EState::Hover);
+		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xd5d5d5), Button::EState::Active);
 		m_tileWndBtn.setTextColor(D2D1::ColorF(0x333333));
 		m_tileWndBtn.setOnClick([]
 		{

@@ -208,8 +208,9 @@ namespace ui
 		});
 
 		m_btnLaunch.setText(L"添加进程");
-		m_btnLaunch.setBackgroundColor(D2D1::ColorF(0xe3f2fd));
 		m_btnLaunch.setBackgroundColor(D2D1::ColorF(0x000000, 0.f), Button::EState::Normal);
+		m_btnLaunch.setBackgroundColor(D2D1::ColorF(0xe3f2fd), Button::EState::Hover);
+		m_btnLaunch.setBackgroundColor(D2D1::ColorF(0xbbdefb), Button::EState::Active);
 		m_btnLaunch.setBorderColor(D2D1::ColorF(0x0078d4));
 		m_btnLaunch.setTextColor(D2D1::ColorF(0x0078d4));
 		m_btnLaunch.setOnClick([this] { onLaunchBtnClick(); });
