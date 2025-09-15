@@ -320,6 +320,20 @@ namespace ui
 					menuItem.fType = MFT_SEPARATOR;
 					InsertMenuItemW(hMenu, 0, TRUE, &menuItem);
 				}
+				std::wstring path;
+				if (isPage<HomePage>())
+				{
+					path = std::wstring{getPage<HomePage>().getLeftSidebar()->getStartAppDiv()->getCurrentSelectedPath()};
+				}
+				if (!path.empty())
+				{
+					MENUITEMINFOW menuItem = {sizeof(MENUITEMINFOW)};
+					menuItem.fMask = MIIM_ID | MIIM_STRING;
+					menuItem.dwTypeData = path.data();
+					menuItem.cch = static_cast<UINT>(path.size());
+					menuItem.wID = 2;
+					InsertMenuItemW(hMenu, 0, TRUE, &menuItem);
+				}
 				POINT pt{};
 				GetCursorPos(&pt);
 				SetForegroundWindow(nativeHandle());
@@ -330,8 +344,9 @@ namespace ui
 				{
 					destroyWindow();
 				}
-				else if (id == 2)
+				else if (id == 2 && isPage<HomePage>())
 				{
+					getPage<HomePage>().getLeftSidebar()->getEnvBoxCardArea()->launchProcess(path);
 				}
 			}
 		}

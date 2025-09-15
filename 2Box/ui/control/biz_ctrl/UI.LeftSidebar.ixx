@@ -2,7 +2,7 @@ export module UI.LeftSidebar;
 
 import std;
 import UI.Core;
-import UI.StartAppDiv;
+export import UI.StartAppDiv;
 export import UI.EnvBoxCardArea;
 
 namespace ui
@@ -16,6 +16,7 @@ namespace ui
 			initialize();
 		}
 
+		StartAppDiv* getStartAppDiv() const noexcept { return m_startAppDiv.get(); }
 		EnvBoxCardArea* getEnvBoxCardArea() const noexcept { return m_envCardsArea.get(); }
 
 	protected:

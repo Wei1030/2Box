@@ -3,7 +3,7 @@ export module UI.Page:Home;
 import "sys_defs.h";
 import std;
 import UI.Core;
-import UI.LeftSidebar;
+export import UI.LeftSidebar;
 import UI.RightContent;
 import Biz.Core;
 
@@ -67,7 +67,7 @@ namespace ui
 			rect.right -= m_frameMargins.right;
 			rect.bottom -= m_frameMargins.bottom;
 			renderTarget->PushAxisAlignedClip(rect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-			
+
 			m_rightContent->draw(renderCtx);
 
 			draw_box_shadow(renderCtx, m_leftSidebar->getBounds(), {.offset = D2D1::Point2F(0.f, 1.f)});
@@ -75,6 +75,8 @@ namespace ui
 
 			renderTarget->PopAxisAlignedClip();
 		}
+
+		LeftSidebar* getLeftSidebar() const { return m_leftSidebar.get(); }
 
 	private:
 		WindowBase* m_ownerWnd{nullptr};

@@ -24,6 +24,8 @@ namespace ui
 
 		float getPathAreaHeight() const;
 
+		std::wstring_view getCurrentSelectedPath() const { return m_strExePath; }
+
 	private:
 		void initialize();
 
