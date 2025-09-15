@@ -179,7 +179,7 @@ namespace sched
 			}
 
 			lock.unlock();
-			const DWORD result = MsgWaitForMultipleObjects(1, &m_hNotifyEvent, FALSE, dwMilliseconds,QS_ALLEVENTS);
+			const DWORD result = MsgWaitForMultipleObjects(1, &m_hNotifyEvent, FALSE, dwMilliseconds,QS_ALLINPUT);
 			lock.lock();
 
 			if (result == WAIT_TIMEOUT)

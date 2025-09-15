@@ -17,7 +17,7 @@ namespace ui
 	static constexpr float DESIRED_WIDTH = 1024.f;
 	static constexpr float DESIRED_HEIGHT = 768.f;
 
-	static constexpr UINT TRAY_ID = 0;
+	static constexpr UINT TRAY_ID = 1;
 	static constexpr UINT TRAY_MESSAGE = WM_USER + 9527;
 
 	MainWindow::MainWindow() : WindowBase({MainApp::appName})
@@ -29,12 +29,12 @@ namespace ui
 		initTray();
 		reserveRenderers(2, 20);
 
-		m_btnToTray.setBackgroundColor(D2D1::ColorF(D2D1::ColorF::White), Button::EState::Normal);
-		m_btnToTray.setBackgroundColor(D2D1::ColorF(0xe5e5e5), Button::EState::Hover);
-		m_btnToTray.setBackgroundColor(D2D1::ColorF(0xcacacb), Button::EState::Active);
+		m_btnToTray.setBackgroundColor(D2D1::ColorF(0, 0.f), Button::EState::Normal);
+		m_btnToTray.setBackgroundColor(D2D1::ColorF(0, 0.102f), Button::EState::Hover);
+		m_btnToTray.setBackgroundColor(D2D1::ColorF(0, 0.208f), Button::EState::Active);
 		m_btnToTray.setOnClick([this]
 		{
-			// show(SW_HIDE);
+			show(SW_HIDE);
 		});
 		m_btnToTray.setDrawCallback(std::bind(&MainWindow::drawToTryBtn, this, std::placeholders::_1, std::placeholders::_2));
 
@@ -156,7 +156,7 @@ namespace ui
 
 	void MainWindow::onActivate(WParam wParam, LParam lParam)
 	{
-		if (wParam != WA_INACTIVE)
+		if (LOWORD(wParam) != WA_INACTIVE)
 		{
 			if (isCompositionEnabled())
 			{
