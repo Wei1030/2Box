@@ -153,7 +153,9 @@ namespace ui
 		using DrawCallback = std::function<void(const RenderContext& renderCtx, EState state)>;
 		void setDrawCallback(DrawCallback func) { m_drawCallback = std::move(func); }
 
-		void setButtonState(EState state);
+		void setDontDrawDefault(bool b = true) { m_bDontDraw = b; }
+
+		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	protected:
 		virtual void onMouseEnter(const MouseEvent& e) override;
@@ -164,7 +166,6 @@ namespace ui
 
 	private:
 		void initialize();
-		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 		template <typename PainterEnumType, PainterEnumType>
 		friend class button_detail::TPainterType;
@@ -200,6 +201,7 @@ namespace ui
 		std::move_only_function<void()> m_onClick;
 		DrawCallback m_drawCallback;
 		bool m_bIsHover{false};
+		bool m_bDontDraw{false};
 	};
 
 
@@ -210,7 +212,10 @@ namespace ui
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Normal>::OnUpdate(PainterContext& ctx) const
 		{
-			ctx.btn.drawByState(ctx.renderCtx, *this);
+			if (!ctx.btn.m_bDontDraw)
+			{
+				ctx.btn.drawByState(ctx.renderCtx, *this);
+			}
 			if (ctx.btn.m_drawCallback)
 			{
 				ctx.btn.m_drawCallback(ctx.renderCtx, Button::EState::Normal);
@@ -220,7 +225,10 @@ namespace ui
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Hover>::OnUpdate(PainterContext& ctx) const
 		{
-			ctx.btn.drawByState(ctx.renderCtx, *this);
+			if (!ctx.btn.m_bDontDraw)
+			{
+				ctx.btn.drawByState(ctx.renderCtx, *this);
+			}
 			if (ctx.btn.m_drawCallback)
 			{
 				ctx.btn.m_drawCallback(ctx.renderCtx, Button::EState::Hover);
@@ -230,7 +238,10 @@ namespace ui
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Active>::OnUpdate(PainterContext& ctx) const
 		{
-			ctx.btn.drawByState(ctx.renderCtx, *this);
+			if (!ctx.btn.m_bDontDraw)
+			{
+				ctx.btn.drawByState(ctx.renderCtx, *this);
+			}
 			if (ctx.btn.m_drawCallback)
 			{
 				ctx.btn.m_drawCallback(ctx.renderCtx, Button::EState::Active);
@@ -240,7 +251,10 @@ namespace ui
 
 		sm::TNextState<EPainterType> TPainterType<EPainterType, EPainterType::Disabled>::OnUpdate(PainterContext& ctx) const
 		{
-			ctx.btn.drawByState(ctx.renderCtx, *this);
+			if (!ctx.btn.m_bDontDraw)
+			{
+				ctx.btn.drawByState(ctx.renderCtx, *this);
+			}
 			if (ctx.btn.m_drawCallback)
 			{
 				ctx.btn.m_drawCallback(ctx.renderCtx, Button::EState::Disabled);

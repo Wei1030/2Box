@@ -48,27 +48,6 @@ namespace ui
 		                                        &ctx.textLayout);
 	}
 
-	void Button::setButtonState(EState state)
-	{
-		if (state == EState::Normal)
-		{
-			m_painter.transferTo<EPainterType::Normal>();
-		}
-		else if (state == EState::Hover)
-		{
-			m_painter.transferTo<EPainterType::Hover>();
-		}
-		else if (state == EState::Active)
-		{
-			m_painter.transferTo<EPainterType::Active>();
-		}
-		else if (state == EState::Disabled)
-		{
-			m_painter.transferTo<EPainterType::Disabled>();
-		}
-		update();
-	}
-
 	void Button::onMouseEnter(const MouseEvent&)
 	{
 		m_bIsHover = true;

@@ -115,7 +115,7 @@ namespace ui
 			}
 			const float textXPos = paddingLeft + titleIconSize + 8.f;
 			const float textYPos = (captionHeight - m_titleTextHeight) * 0.5f + paddingTop - 1.f;
-			solidBrush->SetColor(m_titleColor);
+			solidBrush->SetColor(D2D1::ColorF{0});
 			if (m_pTitleLayout)
 			{
 				renderTarget->DrawTextLayout(D2D1::Point2F(textXPos, textYPos), m_pTitleLayout, solidBrush);
@@ -138,27 +138,75 @@ namespace ui
 
 	void MainWindow::drawToTryBtn(const RenderContext& renderCtx, Button::EState) const
 	{
-		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
-		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		const D2D1_RECT_F& bounds = m_btnToTray.getBounds();
-		const float width = bounds.right - bounds.left;
-		const float height = bounds.bottom - bounds.top;
-		const float contentWidth = width * 0.236f;
-		const float contentHeight = height * 0.382f;
-		const float paddingLr = width * 0.382f;
-		const float paddingTb = height * 0.309f;
-		const float contentTopHeight = contentHeight * 0.618f;
-		const float contentBottomYPos = paddingTb + contentTopHeight + 0.191f * contentHeight;
 
-		solidBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
-		const D2D1_POINT_2F pt1{D2D1::Point2F(paddingLr, paddingTb)};
-		const D2D1_POINT_2F pt2{D2D1::Point2F(paddingLr + contentWidth, paddingTb)};
-		const D2D1_POINT_2F pt3{D2D1::Point2F((pt1.x + pt2.x) * 0.5f, paddingTb + contentTopHeight)};
-		//renderTarget->DrawLine(pt1, pt2, solidBrush, 0.5f);
-		renderTarget->DrawLine(pt2, pt3, solidBrush, 0.5f);
-		renderTarget->DrawLine(pt3, pt1, solidBrush, 0.5f);
+		if (isCompositionEnabled())
+		{
+			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+			const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
+			const float width = bounds.right - bounds.left;
+			const float height = bounds.bottom - bounds.top;
+			const float contentWidth = width * 0.236f;
+			const float contentHeight = height * 0.382f;
+			const float paddingLr = width * 0.382f;
+			const float paddingTb = height * 0.309f;
+			const float contentTopHeight = contentHeight * 0.618f;
+			const float contentBottomYPos = paddingTb + contentTopHeight + 0.191f * contentHeight;
+			const D2D1_POINT_2F pt1{D2D1::Point2F(paddingLr, paddingTb)};
+			const D2D1_POINT_2F pt2{D2D1::Point2F(paddingLr + contentWidth, paddingTb)};
+			const D2D1_POINT_2F pt3{D2D1::Point2F((pt1.x + pt2.x) * 0.5f, paddingTb + contentTopHeight)};
 
-		renderTarget->DrawLine(D2D1::Point2F(pt1.x, contentBottomYPos), D2D1::Point2F(pt2.x, contentBottomYPos), solidBrush, 0.5f);
+			solidBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
+			//renderTarget->DrawLine(pt1, pt2, solidBrush, 0.5f);
+			renderTarget->DrawLine(pt2, pt3, solidBrush, 0.5f);
+			renderTarget->DrawLine(pt3, pt1, solidBrush, 0.5f);
+
+			renderTarget->DrawLine(D2D1::Point2F(pt1.x, contentBottomYPos), D2D1::Point2F(pt2.x, contentBottomYPos), solidBrush, 0.5f);
+		}
+		else
+		{
+			HDC hdc = GetWindowDC(nativeHandle());
+			const float deviceToPhysical = dpiInfo().deviceToPhysical;
+			// 先以设备单位转到非客户区坐标系再转到逻辑单位
+			D2D1_RECT_F physicalBounds = D2D1::RectF((bounds.left + m_margins.left) * deviceToPhysical,
+			                                         (bounds.top + m_margins.top) * deviceToPhysical,
+			                                         (bounds.right + m_margins.left) * deviceToPhysical,
+			                                         (bounds.bottom + m_margins.top) * deviceToPhysical);
+			const LONG width = static_cast<LONG>(physicalBounds.right - physicalBounds.left);
+			const LONG height = static_cast<LONG>(physicalBounds.bottom - physicalBounds.top);
+			const LONG contentWidth = static_cast<LONG>(width * 0.382f);
+			// const LONG contentHeight = static_cast<LONG>(height * 0.382f);
+			const LONG paddingLr = static_cast<LONG>(width * 0.309f);
+			// const LONG paddingTb = static_cast<LONG>(height * 0.309f);
+			// const LONG contentTopHeight = static_cast<LONG>(contentHeight * 0.618f);
+
+			const RECT rcFill{static_cast<LONG>(physicalBounds.left), static_cast<LONG>(physicalBounds.top), static_cast<LONG>(physicalBounds.right), static_cast<LONG>(physicalBounds.bottom)};
+			HBRUSH hbr = CreateSolidBrush(RGB(214, 211, 206));
+			FillRect(hdc, &rcFill, hbr);
+			DeleteObject(hbr);
+
+			HPEN pen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
+			HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, pen));
+			Rectangle(hdc, rcFill.left, rcFill.top, rcFill.right, rcFill.bottom);
+
+			// const D2D1_POINT_2U pt1{D2D1::Point2U(rcFill.left + paddingLr, rcFill.top + paddingTb)};
+			// const D2D1_POINT_2U pt2{D2D1::Point2U(rcFill.left + paddingLr + contentWidth, pt1.y)};
+			// const D2D1_POINT_2U pt3{D2D1::Point2U((pt1.x + pt2.x) / 2, pt1.y + contentTopHeight)};
+			// MoveToEx(hdc, pt2.x, pt2.y, nullptr);
+			// LineTo(hdc, pt3.x, pt3.y);
+			// LineTo(hdc, pt1.x, pt1.y);
+
+			// const LONG contentBottomYPos = static_cast<LONG>(pt3.y + 0.382f * contentHeight);
+			// MoveToEx(hdc, pt1.x, contentBottomYPos, nullptr);
+			// LineTo(hdc, pt2.x, contentBottomYPos);
+			const LONG contentXPos = rcFill.left + paddingLr;
+			const LONG contentYPos = rcFill.top + height / 2;
+			MoveToEx(hdc, contentXPos, contentYPos, nullptr);
+			LineTo(hdc, contentXPos + contentWidth, contentYPos);
+			SelectObject(hdc, oldPen);
+			DeleteObject(pen);
+			ReleaseDC(nativeHandle(), hdc);
+		}
 	}
 
 	void MainWindow::onResize(float width, float height)
@@ -179,6 +227,15 @@ namespace ui
 				DwmGetWindowAttribute(nativeHandle(), DWMWA_CAPTION_BUTTON_BOUNDS, &rc, sizeof(rc));
 				m_captionBtnWidth = (rc.right - rc.left) * dpiInfo().physicalToDevice;
 			}
+			else
+			{
+				m_captionBtnWidth = (GetSystemMetrics(SM_CXSIZE) + 8) * 3 * dpiInfo().physicalToDevice;
+			}
+		}
+
+		if (!isCompositionEnabled())
+		{
+			RedrawWindow(nativeHandle(), nullptr, nullptr, RDW_FRAME | RDW_INVALIDATE | RDW_NOINTERNALPAINT | RDW_ERASENOW);
 		}
 	}
 
@@ -277,11 +334,25 @@ namespace ui
 			};
 			return hitTests[uRow][uCol];
 		}
+		// !isCompositionEnabled()
+		if (ncBtnHitTest(ptMouse))
+		{
+			return HTCLIENT;
+		}
 		return HTNOWHERE;
 	}
 
 	void MainWindow::onNcPaint(WParam wParam, LParam lParam)
 	{
+		// dwm未启用的情况下才会调用这个函数来自绘标题栏新增按钮
+		const D2D1_RECT_F rc = rect();
+		const float width = rc.right - rc.left;
+		constexpr float toTrayBthMarginRight = 0.f;
+		const float toTrayBthWidth = m_captionBtnWidth / 3.f;
+		const float toTrayBthXPos = width - m_captionBtnWidth - toTrayBthMarginRight - toTrayBthWidth - -m_margins.left;
+		m_btnToTray.setBounds(D2D1::Rect(toTrayBthXPos, 6 - m_margins.top, toTrayBthXPos + toTrayBthWidth, -2.f));
+		m_btnToTray.setDontDrawDefault(true);
+		m_btnToTray.drawImpl(renderContext());
 	}
 
 	void MainWindow::onDwmCompositionChanged()
@@ -368,7 +439,6 @@ namespace ui
 		m_margins.right = m_physicalMargins.cxRightWidth * physicalToDevice;
 		m_margins.bottom = m_physicalMargins.cyBottomHeight * physicalToDevice;
 
-		m_titleColor = D2D1::ColorF{static_cast<unsigned int>(GetSystemMetrics(COLOR_CAPTIONTEXT))};
 		m_titleTextHeight = 20.f;
 		m_pTitleLayout.reset();
 		if (SUCCEEDED(app().dWriteFactory()->CreateTextLayout(MainApp::appName.data(),
@@ -386,9 +456,14 @@ namespace ui
 
 		if (isCompositionEnabled())
 		{
+			m_btnToTray.setDontDrawDefault(false);
 			DWM_SYSTEMBACKDROP_TYPE t = DWMSBT_MAINWINDOW;
 			DwmSetWindowAttribute(nativeHandle(), DWMWA_SYSTEMBACKDROP_TYPE, &t, sizeof(t));
 			DwmExtendFrameIntoClientArea(nativeHandle(), &m_physicalMargins);
+		}
+		else
+		{
+			m_btnToTray.setDontDrawDefault(true);
 		}
 	}
 

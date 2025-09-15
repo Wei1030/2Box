@@ -94,7 +94,6 @@ namespace ui
 		BITMAP m_bmIcon;
 		std::vector<std::byte> m_bmpIconData;
 		UniqueComPtr<ID2D1Bitmap> m_pD2D1Bitmap;
-		D2D1_COLOR_F m_titleColor{};
 		UniqueComPtr<IDWriteTextLayout> m_pTitleLayout;
 		float m_titleTextHeight{};
 		float m_captionBtnWidth{};
