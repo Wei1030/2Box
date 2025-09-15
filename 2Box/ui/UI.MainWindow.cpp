@@ -45,6 +45,21 @@ namespace ui
 #endif
 	}
 
+	MainWindow::~MainWindow()
+	{
+		// 引起MainWindow析构，也即导致main函数中的ui::MainWindow mainWnd析构的情况：
+		// 1、程序式的主动调用destroyWindow, 引起的app().exit()退出消息循环。
+		//		这种情况nativeHandle为空就不能也不需要调用destroyTray了, 因为主动调用destroyWindow引发的onBeforeWindowDestroy中已经destroyTray了
+		// 2、用户任何形式的点击关闭，触发onClose且未进行阻止时，会先触发一次onBeforeWindowDestroy进行destroyTray，再由系统调用::DestroyWindow引起的app().exit()退出消息循环.
+		//		这种情况和1一样，nativeHandle为空，且已经处理过destroyTray
+		// 3、在没有销毁窗口的情况下，直接由于app().exit()而析构，这种情况下父类析构由于无法使用虚函数，子类必须自己在析构中处理额外清理业务。
+		//		这种情况nativeHandle还有效，可以且必须destroyTray
+		if (nativeHandle())
+		{
+			destroyTray();
+		}
+	}
+
 	HResult MainWindow::onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget)
 	{
 		m_pD2D1Bitmap.reset();
@@ -178,14 +193,17 @@ namespace ui
 				[](MainWindow& self, const DownloadPage& page) -> coro::OnewayTask
 				{
 					co_await page.joinAsync();
-					self.destroyTray();
 					self.destroyWindow();
 				}(*this, downloadPage);
 			}
 			return true;
 		}
-		destroyTray();
 		return false;
+	}
+
+	void MainWindow::onBeforeWindowDestroy()
+	{
+		destroyTray();
 	}
 
 	bool MainWindow::onNcCalcSize(WParam wParam, LParam lParam)
@@ -282,6 +300,39 @@ namespace ui
 			}
 			else if (lParam == WM_RBUTTONUP)
 			{
+				HMENU hMenu = CreatePopupMenu();
+				if (!hMenu)
+				{
+					return;
+				}
+				{
+					MENUITEMINFOW menuItem = {sizeof(MENUITEMINFOW)};
+					menuItem.fMask = MIIM_ID | MIIM_STRING;
+					wchar_t szText[] = {L"退出"};
+					menuItem.dwTypeData = szText;
+					menuItem.cch = sizeof(szText) / sizeof(wchar_t);
+					menuItem.wID = 1;
+					InsertMenuItemW(hMenu, 0, TRUE, &menuItem);
+				}
+				{
+					MENUITEMINFOW menuItem = {sizeof(MENUITEMINFOW)};
+					menuItem.fMask = MIIM_FTYPE;
+					menuItem.fType = MFT_SEPARATOR;
+					InsertMenuItemW(hMenu, 0, TRUE, &menuItem);
+				}
+				POINT pt{};
+				GetCursorPos(&pt);
+				SetForegroundWindow(nativeHandle());
+				UINT id = TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_NONOTIFY | TPM_RETURNCMD, pt.x, pt.y, nativeHandle(), nullptr);
+				SendMessageW(nativeHandle(), WM_NULL, 0, 0);
+				DestroyMenu(hMenu);
+				if (id == 1)
+				{
+					destroyWindow();
+				}
+				else if (id == 2)
+				{
+				}
 			}
 		}
 	}

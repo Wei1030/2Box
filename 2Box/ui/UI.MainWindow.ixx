@@ -13,6 +13,7 @@ namespace ui
 	{
 	public:
 		MainWindow();
+		virtual ~MainWindow();
 
 	public:
 		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override;
@@ -24,6 +25,7 @@ namespace ui
 		virtual void onResize(float width, float height) override;
 		virtual void onActivate(WParam wParam, LParam lParam) override;
 		virtual bool onClose() override;
+		virtual void onBeforeWindowDestroy() override;
 		virtual bool onNcCalcSize(WParam wParam, LParam lParam) override;
 		virtual LResult onNcHitTest(WPARAM wParam, LParam lParam, LResult dwmProcessedResult) override;
 		virtual void onNcPaint(WParam wParam, LParam lParam) override;

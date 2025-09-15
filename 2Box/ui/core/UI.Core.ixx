@@ -462,6 +462,10 @@ namespace ui
 			return false;
 		}
 
+		virtual void onBeforeWindowDestroy()
+		{
+		}
+
 		virtual bool onNcCalcSize(WParam wParam, LParam lParam)
 		{
 			return false;
@@ -487,6 +491,7 @@ namespace ui
 	private:
 		HWND createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
 		                          int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu);
+		void destroyWindowInternal();
 		HResult prepareDeviceResources();
 		void releaseDeviceResources();
 		void updateDpi();
@@ -497,7 +502,7 @@ namespace ui
 		void mouseLeave();
 		void mouseWheel(int physicalScreenX, int physicalScreenY, short zDelta, std::size_t downState);
 		// 这个不做成虚函数，因为窗口有可能在基类析构中销毁，此时无法调用到子类的虚函数。索性不要这个时机了，反正有子类析构可以用
-		void onDestroy();
+		void onAfterWindowDestroy();
 
 	private:
 		static void registerWndClassOnce();

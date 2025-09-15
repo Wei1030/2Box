@@ -43,7 +43,9 @@ namespace ui
 
 	WindowBase::~WindowBase()
 	{
-		destroyWindow();
+		// destroyWindow 要用于触发onBeforeWindowDestroy虚函数，不能在析构中调用
+		// 析构中直接调用destroyWindowInternal版本
+		destroyWindowInternal();
 	}
 
 	void WindowBase::show(int nCmdShow /*= SW_SHOW*/) const
@@ -64,14 +66,8 @@ namespace ui
 
 	void WindowBase::destroyWindow()
 	{
-		m_renderCtx.renderTarget.reset();
-		m_renderCtx.brush.reset();
-
-		if (m_hWnd)
-		{
-			DestroyWindow(m_hWnd);
-			m_hWnd = nullptr;
-		}
+		onBeforeWindowDestroy();
+		destroyWindowInternal();
 	}
 
 	bool WindowBase::setMouseTracking()
@@ -210,6 +206,17 @@ namespace ui
 		return CreateWindowExW(dwExStyle, MainApp::appName.data(), lpWindowName, dwStyle,
 		                       X, Y, nWidth, nHeight, hWndParent, hMenu,
 		                       app().moduleInstance(), this);
+	}
+
+	void WindowBase::destroyWindowInternal()
+	{
+		m_renderCtx.renderTarget.reset();
+		m_renderCtx.brush.reset();
+		if (m_hWnd)
+		{
+			DestroyWindow(m_hWnd);
+			m_hWnd = nullptr;
+		}
 	}
 
 	HResult WindowBase::prepareDeviceResources()
@@ -394,7 +401,7 @@ namespace ui
 		m_controlManager.onMouseWheel(e);
 	}
 
-	void WindowBase::onDestroy()
+	void WindowBase::onAfterWindowDestroy()
 	{
 		m_hWnd = nullptr;
 		if (m_bIsExitAppWhenWindowDestroyed)
@@ -460,7 +467,7 @@ namespace ui
 					{
 					case WM_DESTROY:
 						{
-							pWnd->onDestroy();
+							pWnd->onAfterWindowDestroy();
 						}
 						return 0;
 					case WM_SIZE:
@@ -497,6 +504,9 @@ namespace ui
 							{
 								return 0;
 							}
+							// 如果没有阻止Close，默认处理函数就会调用::DestroyWindow了
+							// 在这之前需要调用onBeforeWindowDestroy通知子类进行清理工作
+							pWnd->onBeforeWindowDestroy();
 						}
 						break;
 					case WM_DISPLAYCHANGE:
