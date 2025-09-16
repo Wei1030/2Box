@@ -192,7 +192,6 @@ namespace biz
 		for (const std::shared_ptr<Env>& env : allEnv)
 		{
 			std::vector<void*> temp = env->getAllToplevelWindows();
-			result.reserve(result.size() + temp.size());
 			result.insert(result.end(), temp.begin(), temp.end());
 		}
 		return result;

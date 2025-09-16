@@ -10,6 +10,224 @@ import Biz.Core;
 
 namespace
 {
+	class Cell
+	{
+	public:
+		explicit Cell(const RECT& rc) : m_rc(rc)
+		{
+		}
+
+		void fillWindow(HWND hWnd, bool maintainAspectRatio) const
+		{
+			RECT finalRc = m_rc;
+
+			if (maintainAspectRatio)
+			{
+				RECT windowRc{};
+				if (GetWindowRect(hWnd, &windowRc))
+				{
+					const LONG cellWidth = m_rc.right - m_rc.left;
+					const LONG cellHeight = m_rc.bottom - m_rc.top;
+					const LONG windowWidth = windowRc.right - windowRc.left;
+					const LONG windowHeight = windowRc.bottom - windowRc.top;
+					if (windowHeight > 0 && cellHeight > 0)
+					{
+						const double cellAspect = static_cast<double>(cellWidth) / cellHeight;
+						const double windowAspect = static_cast<double>(windowWidth) / windowHeight;
+
+						if (windowAspect > cellAspect)
+						{
+							// 窗口更宽，以宽度为准，高度按比例缩小
+							LONG newHeight = static_cast<LONG>(cellWidth / windowAspect);
+							finalRc.top = m_rc.top + (cellHeight - newHeight) / 2;
+							finalRc.bottom = finalRc.top + newHeight;
+						}
+						else
+						{
+							// 窗口更高，以高度为准，宽度按比例缩小
+							LONG newWidth = static_cast<LONG>(cellHeight * windowAspect);
+							finalRc.left = m_rc.left + (cellWidth - newWidth) / 2;
+							finalRc.right = finalRc.left + newWidth;
+						}
+					}
+				}
+			}
+			SetWindowPos(hWnd, nullptr,
+			             finalRc.left, finalRc.top,
+			             finalRc.right - finalRc.left, finalRc.bottom - finalRc.top,
+			             SWP_ASYNCWINDOWPOS | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+		}
+
+	private:
+		RECT m_rc;
+	};
+
+	class Strip
+	{
+	public:
+		enum class Orientation
+		{
+			Horizontal,
+			Vertical
+		};
+
+		Strip(Orientation orientation, const RECT& rc, std::uint32_t count)
+			: m_orientation(orientation)
+			  , m_rc(rc)
+		{
+			m_cells.reserve(count);
+			if (orientation == Orientation::Horizontal)
+			{
+				const LONG space = m_rc.right - m_rc.left;
+				const LONG spacePerItem = space / count;
+				for (std::uint32_t i = 0; i < count; ++i)
+				{
+					const LONG left = m_rc.left + i * spacePerItem;
+					m_cells.emplace_back(RECT{left, m_rc.top, left + spacePerItem, m_rc.bottom});
+				}
+			}
+			else if (orientation == Orientation::Vertical)
+			{
+				const LONG space = m_rc.bottom - m_rc.top;
+				const LONG spacePerItem = space / count;
+				for (std::uint32_t i = 0; i < count; ++i)
+				{
+					const LONG top = m_rc.top + i * spacePerItem;
+					m_cells.emplace_back(RECT{m_rc.left, top, m_rc.right, top + spacePerItem});
+				}
+			}
+		}
+
+		const std::vector<Cell>& getCells() const { return m_cells; }
+
+	private:
+		Orientation m_orientation;
+		RECT m_rc;
+		std::vector<Cell> m_cells;
+	};
+
+	class LayoutArea
+	{
+	public:
+		LayoutArea(HMONITOR hMonitor, std::uint32_t n)
+		{
+			MONITORINFO mi{sizeof(mi)};
+			if (!GetMonitorInfoW(hMonitor, &mi))
+			{
+				return;
+			}
+			const RECT& rcWork = mi.rcWork;
+
+			std::uint32_t row = static_cast<std::uint32_t>(std::sqrt(n));
+			std::uint32_t col;
+			if (row * row == n)
+			{
+				col = row;
+			}
+			// row * row < n
+			else
+			{
+				col = row + 1;
+				if (row * col < n)
+				{
+					row += 1;
+				}
+			}
+			const std::uint32_t total = row * col;
+			const std::uint32_t countDiff = total - n;
+			if (row == col)
+			{
+				const LONG hSpace = rcWork.right - rcWork.left;
+				const LONG hSpacePerItem = hSpace / col;
+				for (std::uint32_t i = 0; i < col; ++i)
+				{
+					const LONG left = rcWork.left + i * hSpacePerItem;
+					const std::uint32_t cellCount = i < countDiff ? row - 1 : row;
+					m_strips.emplace_back(Strip::Orientation::Vertical,
+					                      RECT{left, rcWork.top, left + hSpacePerItem, rcWork.bottom},
+					                      cellCount);
+				}
+			}
+			// row < col
+			else
+			{
+				const LONG vSpace = rcWork.bottom - rcWork.top;
+				const LONG vSpacePerItem = vSpace / row;
+				for (std::uint32_t i = 0; i < row; ++i)
+				{
+					const LONG top = rcWork.top + i * vSpacePerItem;
+					const std::uint32_t cellCount = i < countDiff ? col - 1 : col;
+					m_strips.emplace_back(Strip::Orientation::Horizontal,
+					                      RECT{rcWork.left, top, rcWork.right, top + vSpacePerItem},
+					                      cellCount);
+				}
+			}
+		}
+
+		void tileWindow(const std::vector<HWND>& windows, bool maintainAspectRatio) const
+		{
+			std::uint32_t index = 0;
+			for (const Strip& strip : m_strips)
+			{
+				const std::vector<Cell>& cells = strip.getCells();
+				for (const Cell& cell : cells)
+				{
+					if (index >= windows.size())
+					{
+						return;
+					}
+					cell.fillWindow(windows[index], maintainAspectRatio);
+					index++;
+				}
+			}
+		}
+
+	private:
+		std::vector<Strip> m_strips;
+	};
+
+	class LayoutPerMonitor
+	{
+	public:
+		explicit LayoutPerMonitor(const std::vector<void*>& allWindows)
+		{
+			for (void* window : allWindows)
+			{
+				HWND hWnd = static_cast<HWND>(window);
+				if (IsWindowVisible(hWnd))
+				{
+					if (HMONITOR hMonitor = MonitorFromWindow(hWnd,MONITOR_DEFAULTTONEAREST))
+					{
+						auto it = m_windows.find(hMonitor);
+						if (it != m_windows.end())
+						{
+							it->second.push_back(hWnd);
+						}
+						else
+						{
+							m_windows.insert(std::make_pair(hMonitor, std::vector{hWnd}));
+						}
+					}
+				}
+			}
+		}
+
+		void tileWindow(bool maintainAspectRatio) const
+		{
+			for (const auto& pair : m_windows)
+			{
+				const LayoutArea layout(pair.first, static_cast<std::uint32_t>(pair.second.size()));
+				layout.tileWindow(pair.second, maintainAspectRatio);
+			}
+		}
+
+	private:
+		std::unordered_map<HMONITOR, std::vector<HWND>> m_windows;
+	};
+}
+
+namespace
+{
 	constexpr float PADDING = 16.f;
 	constexpr float GAP = 8.f;
 	constexpr float BUTTON_WIDTH = 78.f;
@@ -20,14 +238,15 @@ namespace ui
 {
 	void FeaturesArea::initialize()
 	{
-		m_tileWndBtn.setText(L"排布窗口");
+		m_tileWndBtn.setText(L"平铺窗口");
 		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xf0f0f0), Button::EState::Normal);
 		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xe0e0e0), Button::EState::Hover);
 		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xd5d5d5), Button::EState::Active);
 		m_tileWndBtn.setTextColor(D2D1::ColorF(0x333333));
 		m_tileWndBtn.setOnClick([]
 		{
-			
+			const LayoutPerMonitor layout(biz::env_mgr().getAllToplevelWindows());
+			layout.tileWindow(false);
 		});
 	}
 
