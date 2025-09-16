@@ -254,7 +254,14 @@ namespace
 	constexpr float CHECKBOX_SIZE = 12.f;
 	constexpr float CHECK_BOX_X_POS = PADDING + BUTTON_WIDTH + GAP;
 	constexpr float CHECK_BOX_Y_POS = PADDING + (BUTTON_HEIGHT - CHECKBOX_SIZE) / 2;
+	constexpr float CHECK_BOX_TIPS_X_POS = CHECK_BOX_X_POS + CHECKBOX_SIZE + 4.f;
 	constexpr std::wstring_view CHECK_TIPS{L"平铺时维持窗口当前比例"};
+	constexpr std::wstring_view SYNC_TIPS{
+		L"同步输入说明：\n"
+		L"在任意焦点窗口中按下 Ctrl+Alt+S 键开启/关闭输入同步\n"
+		L"焦点窗口会作为 Leader 将输入同步至其他环境中的所有窗口。\n"
+		L"切换焦点窗口并按下快捷键即可切换 Leader"
+	};
 }
 
 namespace ui
@@ -282,6 +289,7 @@ namespace ui
 		});
 		m_tileCheckbox.setDrawCallback(std::bind(&FeaturesArea::drawCheckBox, this, std::placeholders::_1, std::placeholders::_2));
 
+		m_checkBoxTextWidth = 132.f;
 		m_checkBoxTextHeight = 15.f;
 		if (SUCCEEDED(app().dWriteFactory()->CreateTextLayout(CHECK_TIPS.data(),
 			static_cast<UINT32>(CHECK_TIPS.size()),
@@ -292,15 +300,28 @@ namespace ui
 			DWRITE_TEXT_METRICS textMetrics;
 			if (SUCCEEDED(m_checkBoxTextLayout->GetMetrics(&textMetrics)))
 			{
+				m_checkBoxTextWidth = textMetrics.width;
 				m_checkBoxTextHeight = textMetrics.height;
 			}
 		}
+
+		m_syncBtn.setText(L"同步输入");
+		m_syncBtn.setBackgroundColor(D2D1::ColorF(0xf0f0f0), Button::EState::Normal);
+		m_syncBtn.setBackgroundColor(D2D1::ColorF(0xe0e0e0), Button::EState::Hover);
+		m_syncBtn.setBackgroundColor(D2D1::ColorF(0xd5d5d5), Button::EState::Active);
+		m_syncBtn.setTextColor(D2D1::ColorF(0x333333));
+		m_syncBtn.setOnClick([this]
+		{
+			MessageBoxW(owner()->nativeHandle(), SYNC_TIPS.data(), MainApp::appName.data(), MB_OK);
+		});
 	}
 
 	void FeaturesArea::onResize(float width, float height)
 	{
 		m_tileWndBtn.setBounds(D2D1::RectF(PADDING, PADDING, PADDING + BUTTON_WIDTH, PADDING + BUTTON_HEIGHT));
 		m_tileCheckbox.setBounds(D2D1::RectF(CHECK_BOX_X_POS, CHECK_BOX_Y_POS, CHECK_BOX_X_POS + CHECKBOX_SIZE, CHECK_BOX_Y_POS + CHECKBOX_SIZE));
+		const float syncBtnXPos = CHECK_BOX_TIPS_X_POS + m_checkBoxTextWidth + PADDING * 4.f;
+		m_syncBtn.setBounds(D2D1::RectF(syncBtnXPos, PADDING, syncBtnXPos + BUTTON_WIDTH, PADDING + BUTTON_HEIGHT));
 	}
 
 	void FeaturesArea::drawImpl(const RenderContext& renderCtx)
@@ -318,19 +339,20 @@ namespace ui
 		m_tileWndBtn.draw(renderCtx);
 		m_tileCheckbox.draw(renderCtx);
 
-		constexpr float checkBoxTipsXPos = CHECK_BOX_X_POS + CHECKBOX_SIZE + 4.f;
 		solidBrush->SetColor(D2D1::ColorF(0x333333));
 		if (m_checkBoxTextLayout)
 		{
 			const float paddingTop = CHECK_BOX_Y_POS + (CHECKBOX_SIZE - m_checkBoxTextHeight) * 0.5f;
-			renderTarget->DrawTextLayout(D2D1::Point2F(checkBoxTipsXPos, paddingTop), m_checkBoxTextLayout, solidBrush);
+			renderTarget->DrawTextLayout(D2D1::Point2F(CHECK_BOX_TIPS_X_POS, paddingTop), m_checkBoxTextLayout, solidBrush);
 		}
 		else
 		{
 			renderTarget->DrawTextW(CHECK_TIPS.data(), static_cast<UINT>(CHECK_TIPS.size()),
 			                        app().textFormat().pTipsFormat,
-			                        D2D1::RectF(checkBoxTipsXPos, CHECK_BOX_Y_POS - 2.f, width - PADDING, CHECK_BOX_Y_POS + 2.f), solidBrush);
+			                        D2D1::RectF(CHECK_BOX_TIPS_X_POS, CHECK_BOX_Y_POS - 2.f, width - PADDING, CHECK_BOX_Y_POS + 2.f), solidBrush);
 		}
+
+		m_syncBtn.draw(renderCtx);
 	}
 
 	void FeaturesArea::drawCheckBox(const RenderContext& renderCtx, Button::EState) const

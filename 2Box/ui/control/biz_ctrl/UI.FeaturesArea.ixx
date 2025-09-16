@@ -30,7 +30,9 @@ namespace ui
 		Button m_tileWndBtn{this};
 		Button m_tileCheckbox{this};
 		bool m_bMaintainAspectRatio{false};
-		float m_checkBoxTextHeight{0};
+		float m_checkBoxTextWidth;
+		float m_checkBoxTextHeight;
 		UniqueComPtr<IDWriteTextLayout> m_checkBoxTextLayout;
+		Button m_syncBtn{this};
 	};
 }
