@@ -259,8 +259,8 @@ namespace
 	constexpr std::wstring_view SYNC_TIPS{
 		L"同步输入说明：\n"
 		L"在任意焦点窗口中按下 Ctrl+Alt+S 键开启/关闭输入同步\n"
-		L"焦点窗口会作为 Leader 将输入同步至其他环境中的所有窗口。\n"
-		L"切换焦点窗口并按下快捷键即可切换 Leader"
+		L"焦点窗口会作为 主窗口 将输入同步至其他环境中的所有窗口。\n"
+		L"切换焦点窗口并按下快捷键即可切换 主窗口"
 	};
 }
 

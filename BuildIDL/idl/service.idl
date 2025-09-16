@@ -17,4 +17,9 @@ interface service
 	void remove_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
 	int contains_toplevel_window([in] unsigned long long hWnd, [in] unsigned long long envFlag);
 	int contains_toplevel_window_excluding_by_flag([in] unsigned long long hWnd, [in] unsigned long long excludeEnvFlag);
+
+	inline const unsigned int MAX_TOPLEVEL_WINDOW = 2048;
+	void get_all_toplevel_window_exclude([in] unsigned long long excludeEnvFlag,
+		[out, length_is(*count), size_is(MAX_TOPLEVEL_WINDOW)] unsigned long long hWnds[],
+		[out] unsigned int* count);
 }

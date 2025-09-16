@@ -18,6 +18,7 @@ namespace biz
 
 		bool containsToplevelWindowExcludingByFlag(void* hWnd, std::uint64_t excludeEnvFlag) const;
 		std::vector<void*> getAllToplevelWindows() const;
+		std::vector<void*> getAllToplevelWindowsExclude(std::uint64_t excludeEnvFlag) const;
 
 	public:
 		std::vector<std::shared_ptr<Env>> getAllEnv() const;

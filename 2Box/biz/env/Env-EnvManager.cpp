@@ -197,6 +197,23 @@ namespace biz
 		return result;
 	}
 
+	std::vector<void*> EnvManager::getAllToplevelWindowsExclude(std::uint64_t excludeEnvFlag) const
+	{
+		std::vector<std::shared_ptr<Env>> allEnv = getAllEnv();
+		std::vector<void*> result;
+		result.reserve(allEnv.size() * 4);
+		for (const std::shared_ptr<Env>& env : allEnv)
+		{
+			if (env->getFlag() == excludeEnvFlag)
+			{
+				continue;
+			}
+			std::vector<void*> temp = env->getAllToplevelWindows();
+			result.insert(result.end(), temp.begin(), temp.end());
+		}
+		return result;
+	}
+
 	std::vector<std::shared_ptr<Env>> EnvManager::getAllEnv() const
 	{
 		std::vector<std::shared_ptr<Env>> result;

@@ -8,6 +8,7 @@ import std;
 namespace rpc
 {
 	export constexpr unsigned int MAX_PID_COUNT = MAX_PIDS;
+	export constexpr unsigned int MAX_TOPLEVEL_WND_COUNT = MAX_TOPLEVEL_WINDOW;
 
 	class ClientBindingString
 	{
@@ -200,6 +201,11 @@ namespace rpc
 		decltype(auto) containsToplevelWindowExcludingByFlag(void* hWnd, unsigned long long excludeEnvFlag) const
 		{
 			return contains_toplevel_window_excluding_by_flag(handle(), reinterpret_cast<unsigned long long>(hWnd), excludeEnvFlag) ? true : false;
+		}
+
+		decltype(auto) getAllToplevelWindowExclude(unsigned long long excludeEnvFlag, unsigned long long hWnds[], unsigned int* count) const
+		{
+			return get_all_toplevel_window_exclude(handle(), excludeEnvFlag, hWnds, count);
 		}
 	};
 

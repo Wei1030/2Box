@@ -57,6 +57,27 @@ namespace hook
 		return true;
 	}
 
+	std::vector<HWND> get_all_toplevel_window_in_other_env()
+	{
+		std::vector<HWND> result;
+		try
+		{
+			const rpc::ClientDefault c;
+			std::uint64_t hWnds[rpc::MAX_TOPLEVEL_WND_COUNT]{};
+			std::uint32_t count = rpc::MAX_TOPLEVEL_WND_COUNT;
+			c.getAllToplevelWindowExclude(global::Data::get().envFlag(), hWnds, &count);
+			result.reserve(count);
+			for (std::uint32_t i = 0; i < count; ++i)
+			{
+				result.push_back(reinterpret_cast<HWND>(hWnds[i]));
+			}
+		}
+		catch (...)
+		{
+		}
+		return result;
+	}
+
 	template <auto Trampoline>
 	HWND WINAPI CreateWindowExA(_In_ DWORD dwExStyle, _In_opt_ LPCSTR lpClassName, _In_opt_ LPCSTR lpWindowName,
 	                            _In_ DWORD dwStyle, _In_ int X, _In_ int Y, _In_ int nWidth, _In_ int nHeight,
@@ -108,6 +129,170 @@ namespace hook
 			return TRUE;
 		}
 		return FALSE;
+	}
+
+	static constexpr UINT WM_INPUT_SYNC = 9527;
+
+	class SyncInput
+	{
+	public:
+		static SyncInput& instPerThread()
+		{
+			thread_local SyncInput syncInput;
+			return syncInput;
+		}
+
+		void startSync(bool bStart)
+		{
+			m_bLeaderStart = false;
+			m_bSyncStart = bStart;
+		}
+
+		bool isSync() const { return m_bSyncStart; }
+
+		void startLeader(bool bStart)
+		{
+			m_bSyncStart = false;
+			m_bLeaderStart = bStart;
+			if (m_bLeaderStart)
+			{
+				m_others = get_all_toplevel_window_in_other_env();
+			}
+			postMsg(WM_INPUT_SYNC, static_cast<WPARAM>(m_bLeaderStart), 0);
+		}
+
+		bool isLeader() const { return m_bLeaderStart; }
+
+		void processMouseMsg(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+		{
+			m_ptLastPos.x = GET_X_LPARAM(lParam);
+			m_ptLastPos.y = GET_Y_LPARAM(lParam);
+			m_wndLastProcessMouseMsg = hWnd;
+
+			if (m_bLeaderStart)
+			{
+				postMsg(uMsg, wParam, lParam);
+			}
+		}
+
+		void postMsg(UINT uMsg, WPARAM wParam, LPARAM lParam) const
+		{
+			for (const HWND& hWnd : m_others)
+			{
+				PostMessageW(hWnd, uMsg, wParam, lParam);
+			}
+		}
+
+		HWND getLastProcessMouseMsgWnd() const { return m_wndLastProcessMouseMsg; }
+		POINT getLastPoint() const { return m_ptLastPos; }
+
+	private:
+		bool m_bSyncStart{false};
+		bool m_bLeaderStart{false};
+		POINT m_ptLastPos{};
+		HWND m_wndLastProcessMouseMsg{nullptr};
+		std::vector<HWND> m_others;
+	};
+
+	void process_msg(_In_ CONST MSG* lpMsg)
+	{
+		if (lpMsg->message == WM_INPUT_SYNC)
+		{
+			SyncInput::instPerThread().startSync(lpMsg->wParam ? true : false);
+		}
+		else if (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST)
+		{
+			SyncInput::instPerThread().processMouseMsg(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam);
+		}
+		else if (lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
+		{
+			auto processKeyMsg = [&]()
+			{
+				if (lpMsg->message != WM_KEYDOWN)
+				{
+					return false;
+				}
+				if (lpMsg->wParam != 0x53 // S
+					&& lpMsg->wParam != 0x43) // C
+				{
+					return false;
+				}
+				if (lpMsg->lParam & 0x40000000) // autorepeat
+				{
+					return false;
+				}
+				if ((GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0
+					|| (GetAsyncKeyState(VK_MENU) & 0x8000) == 0)
+				{
+					return false;
+				}
+				if (lpMsg->wParam == 0x53)
+				{
+					SyncInput::instPerThread().startLeader(true);
+				}
+				else if (lpMsg->wParam == 0x43)
+				{
+					SyncInput::instPerThread().startLeader(false);
+				}
+				return true;
+			};
+			if (!processKeyMsg())
+			{
+				if (SyncInput::instPerThread().isLeader())
+				{
+					SyncInput::instPerThread().postMsg(lpMsg->message, lpMsg->wParam, lpMsg->lParam);
+				}
+			}
+		}
+	}
+
+	template <auto Trampoline>
+	LRESULT WINAPI DispatchMessageA(_In_ CONST MSG* lpMsg)
+	{
+		if (lpMsg)
+		{
+			process_msg(lpMsg);
+		}
+		return Trampoline(lpMsg);
+	}
+
+	template <auto Trampoline>
+	LRESULT WINAPI DispatchMessageW(_In_ CONST MSG* lpMsg)
+	{
+		if (lpMsg)
+		{
+			process_msg(lpMsg);
+		}
+		return Trampoline(lpMsg);
+	}
+
+	template <auto Trampoline>
+	BOOL WINAPI GetCursorPos(_Out_ LPPOINT lpPoint)
+	{
+		if (lpPoint && SyncInput::instPerThread().isSync())
+		{
+			POINT clientOffset{};
+			ClientToScreen(SyncInput::instPerThread().getLastProcessMouseMsgWnd(), &clientOffset);
+			const POINT lastPt = SyncInput::instPerThread().getLastPoint();
+			lpPoint->x = lastPt.x + clientOffset.x;
+			lpPoint->y = lastPt.y + clientOffset.y;
+		}
+		return Trampoline(lpPoint);
+	}
+
+	template <auto Trampoline>
+	BOOL WINAPI GetCursorInfo(_Inout_ PCURSORINFO pci)
+	{
+		const BOOL bRet = Trampoline(pci);
+		if (bRet && pci && SyncInput::instPerThread().isSync())
+		{
+			POINT clientOffset{};
+			ClientToScreen(SyncInput::instPerThread().getLastProcessMouseMsgWnd(), &clientOffset);
+			const POINT lastPt = SyncInput::instPerThread().getLastPoint();
+			pci->ptScreenPos.x = lastPt.x + clientOffset.x;
+			pci->ptScreenPos.y = lastPt.y + clientOffset.y;
+		}
+		return bRet;
 	}
 
 	template <auto Trampoline>
@@ -311,6 +496,23 @@ namespace hook
 		create_hook_by_func_ptr<&::DestroyWindow>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&DestroyWindow<trampolineConst.value>};
+		});
+
+		create_hook_by_func_ptr<&::DispatchMessageA>().setHookFromGetter([&](auto trampolineConst)
+		{
+			return HookInfo{&DispatchMessageA<trampolineConst.value>};
+		});
+		create_hook_by_func_ptr<&::DispatchMessageW>().setHookFromGetter([&](auto trampolineConst)
+		{
+			return HookInfo{&DispatchMessageW<trampolineConst.value>};
+		});
+		create_hook_by_func_ptr<&::GetCursorPos>().setHookFromGetter([&](auto trampolineConst)
+		{
+			return HookInfo{&GetCursorPos<trampolineConst.value>};
+		});
+		create_hook_by_func_ptr<&::GetCursorInfo>().setHookFromGetter([&](auto trampolineConst)
+		{
+			return HookInfo{&GetCursorInfo<trampolineConst.value>};
 		});
 
 		create_hook_by_func_ptr<&::FindWindowA>().setHookFromGetter([&](auto trampolineConst)

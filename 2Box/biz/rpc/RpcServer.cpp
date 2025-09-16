@@ -179,6 +179,24 @@ int contains_toplevel_window_excluding_by_flag(handle_t /*IDL_handle*/, unsigned
 		RpcRaiseException(0xE06D7363);
 	}
 }
+
+void get_all_toplevel_window_exclude(handle_t /*IDL_handle*/, unsigned long long excludeEnvFlag, unsigned long long hWnds[], unsigned int* count)
+{
+	try
+	{
+		std::vector<void*> allHandles = biz::env_mgr().getAllToplevelWindowsExclude(excludeEnvFlag);
+		const unsigned int allCount = allHandles.size() > MAX_TOPLEVEL_WINDOW ? MAX_TOPLEVEL_WINDOW : static_cast<unsigned int>(allHandles.size());
+		for (unsigned int i = 0; i < allCount; ++i)
+		{
+			hWnds[i] = reinterpret_cast<unsigned long long>(allHandles[i]);
+		}
+		*count = allCount;
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
+}
 }
 
 extern "C" {
