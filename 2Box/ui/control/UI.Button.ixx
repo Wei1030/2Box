@@ -145,6 +145,8 @@ namespace ui
 		void setTextFormat(IDWriteTextFormat* textFormat, EState state = EState::All);
 		void setText(std::wstring_view text, EState state = EState::All);
 
+		void setRadius(float radius) { m_radius = radius; }
+
 		void setOnClick(std::move_only_function<void()> func)
 		{
 			m_onClick = std::move(func);
@@ -198,6 +200,7 @@ namespace ui
 
 	private:
 		sm::StateMachine<button_detail::TPainterType, EPainterType, PainterContext> m_painter;
+		float m_radius{4.f};
 		std::move_only_function<void()> m_onClick;
 		DrawCallback m_drawCallback;
 		bool m_bIsHover{false};

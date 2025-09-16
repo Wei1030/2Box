@@ -126,13 +126,22 @@ namespace ui
 		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
 		const UniqueComPtr<ID2D1SolidColorBrush>& brush = renderCtx.brush;
 		const auto drawSize = size();
-		const D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(
-			D2D1::RectF(0.f, 0.f, drawSize.width, drawSize.height),
-			4.0f, 4.0f);
-		brush->SetColor(stateCtx.backgroundColor);
-		renderTarget->FillRoundedRectangle(roundedRect, brush);
-		brush->SetColor(stateCtx.borderColor);
-		renderTarget->DrawRoundedRectangle(roundedRect, brush);
+		const D2D1_RECT_F rect = D2D1::RectF(0.f, 0.f, drawSize.width, drawSize.height);
+		if (m_radius > 0.f)
+		{
+			const D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(rect, m_radius, m_radius);
+			brush->SetColor(stateCtx.backgroundColor);
+			renderTarget->FillRoundedRectangle(roundedRect, brush);
+			brush->SetColor(stateCtx.borderColor);
+			renderTarget->DrawRoundedRectangle(roundedRect, brush);
+		}
+		else
+		{
+			brush->SetColor(stateCtx.backgroundColor);
+			renderTarget->FillRectangle(rect, brush);
+			brush->SetColor(stateCtx.borderColor);
+			renderTarget->DrawRectangle(rect, brush);
+		}
 
 		brush->SetColor(stateCtx.textColor);
 		if (stateCtx.textLayout)

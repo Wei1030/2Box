@@ -1,5 +1,6 @@
 export module UI.FeaturesArea;
 
+import "sys_defs.h";
 import std;
 import UI.Core;
 import UI.Button;
@@ -23,8 +24,13 @@ namespace ui
 
 	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override;
+		void drawCheckBox(const RenderContext& renderCtx, Button::EState state) const;
 
 	private:
 		Button m_tileWndBtn{this};
+		Button m_tileCheckbox{this};
+		bool m_bMaintainAspectRatio{false};
+		float m_checkBoxTextHeight{0};
+		UniqueComPtr<IDWriteTextLayout> m_checkBoxTextLayout;
 	};
 }

@@ -7,6 +7,7 @@ import "sys_defs.hpp";
 #endif
 
 import Biz.Core;
+import MainApp;
 
 namespace
 {
@@ -109,6 +110,24 @@ namespace
 	class LayoutArea
 	{
 	public:
+		/*
+		 * 整体思路：
+		 * 先确定最小能容纳数量n的正方形（宽和高相等，每排或每列称之为一条Strip）
+		 * 每个Strip中再确定其中有几个cell，按水平排列还是按竖直排列
+		 * 
+		 * 确定 cell 数量（row和col）的大致逻辑：
+		 * 根号n后舍弃小数 = row， 那么：
+		 * 1、row * row 不可能大于n
+		 * 2、if row * row  == n    =>  col = row
+		 * 3、if row * row < n  =>  col = row +1
+		 *		此时 if row * col < n  =>  row+=1
+		 * 这样一来，row * col 就不可能小于 n 了。
+		 * 但是row*col会大于n，多的个数 diff = row * col - n， 则需要挑选Strip，减去其中的cell数量，策略分且仅分两种情况：
+		 * 1、row 比 col 小1
+		 *		这种情况，strip 按水平排列（即作为row），并从上到下执行 diff 次，对每个strip中的cell数减去 1
+		 * 2、row 和 col 数相等
+		 *		这种情况，strip 按竖直排列（即作为col），并从左到右执行 diff 次，对每个strip中的cell数减去 1
+		 */
 		LayoutArea(HMONITOR hMonitor, std::uint32_t n)
 		{
 			MONITORINFO mi{sizeof(mi)};
@@ -232,6 +251,10 @@ namespace
 	constexpr float GAP = 8.f;
 	constexpr float BUTTON_WIDTH = 78.f;
 	constexpr float BUTTON_HEIGHT = 36.f;
+	constexpr float CHECKBOX_SIZE = 12.f;
+	constexpr float CHECK_BOX_X_POS = PADDING + BUTTON_WIDTH + GAP;
+	constexpr float CHECK_BOX_Y_POS = PADDING + (BUTTON_HEIGHT - CHECKBOX_SIZE) / 2;
+	constexpr std::wstring_view CHECK_TIPS{L"平铺时维持窗口当前比例"};
 }
 
 namespace ui
@@ -243,16 +266,41 @@ namespace ui
 		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xe0e0e0), Button::EState::Hover);
 		m_tileWndBtn.setBackgroundColor(D2D1::ColorF(0xd5d5d5), Button::EState::Active);
 		m_tileWndBtn.setTextColor(D2D1::ColorF(0x333333));
-		m_tileWndBtn.setOnClick([]
+		m_tileWndBtn.setOnClick([this]
 		{
 			const LayoutPerMonitor layout(biz::env_mgr().getAllToplevelWindows());
-			layout.tileWindow(false);
+			layout.tileWindow(m_bMaintainAspectRatio);
 		});
+
+		m_tileCheckbox.setRadius(0.f);
+		m_tileCheckbox.setBackgroundColor(D2D1::ColorF(0, 0.f));
+		m_tileCheckbox.setBorderColor(D2D1::ColorF{0x333333});
+		m_tileCheckbox.setOnClick([this]
+		{
+			m_bMaintainAspectRatio = !m_bMaintainAspectRatio;
+			m_tileCheckbox.update();
+		});
+		m_tileCheckbox.setDrawCallback(std::bind(&FeaturesArea::drawCheckBox, this, std::placeholders::_1, std::placeholders::_2));
+
+		m_checkBoxTextHeight = 15.f;
+		if (SUCCEEDED(app().dWriteFactory()->CreateTextLayout(CHECK_TIPS.data(),
+			static_cast<UINT32>(CHECK_TIPS.size()),
+			app().textFormat().pTipsFormat,
+			std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+			&m_checkBoxTextLayout)))
+		{
+			DWRITE_TEXT_METRICS textMetrics;
+			if (SUCCEEDED(m_checkBoxTextLayout->GetMetrics(&textMetrics)))
+			{
+				m_checkBoxTextHeight = textMetrics.height;
+			}
+		}
 	}
 
 	void FeaturesArea::onResize(float width, float height)
 	{
 		m_tileWndBtn.setBounds(D2D1::RectF(PADDING, PADDING, PADDING + BUTTON_WIDTH, PADDING + BUTTON_HEIGHT));
+		m_tileCheckbox.setBounds(D2D1::RectF(CHECK_BOX_X_POS, CHECK_BOX_Y_POS, CHECK_BOX_X_POS + CHECKBOX_SIZE, CHECK_BOX_Y_POS + CHECKBOX_SIZE));
 	}
 
 	void FeaturesArea::drawImpl(const RenderContext& renderCtx)
@@ -268,5 +316,42 @@ namespace ui
 		renderTarget->DrawRoundedRectangle(roundedRect, solidBrush);
 
 		m_tileWndBtn.draw(renderCtx);
+		m_tileCheckbox.draw(renderCtx);
+
+		constexpr float checkBoxTipsXPos = CHECK_BOX_X_POS + CHECKBOX_SIZE + 4.f;
+		solidBrush->SetColor(D2D1::ColorF(0x333333));
+		if (m_checkBoxTextLayout)
+		{
+			const float paddingTop = CHECK_BOX_Y_POS + (CHECKBOX_SIZE - m_checkBoxTextHeight) * 0.5f;
+			renderTarget->DrawTextLayout(D2D1::Point2F(checkBoxTipsXPos, paddingTop), m_checkBoxTextLayout, solidBrush);
+		}
+		else
+		{
+			renderTarget->DrawTextW(CHECK_TIPS.data(), static_cast<UINT>(CHECK_TIPS.size()),
+			                        app().textFormat().pTipsFormat,
+			                        D2D1::RectF(checkBoxTipsXPos, CHECK_BOX_Y_POS - 2.f, width - PADDING, CHECK_BOX_Y_POS + 2.f), solidBrush);
+		}
+	}
+
+	void FeaturesArea::drawCheckBox(const RenderContext& renderCtx, Button::EState) const
+	{
+		if (!m_bMaintainAspectRatio)
+		{
+			return;
+		}
+		const D2D1_RECT_F& bounds = m_tileCheckbox.getBounds();
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
+		const float width = bounds.right - bounds.left;
+		const float height = bounds.bottom - bounds.top;
+		const float paddingLr = width * 0.236f;
+		const float paddingTb = height * 0.236f;
+		const D2D1_POINT_2F pt1{D2D1::Point2F(paddingLr, height * 0.5f)};
+		const D2D1_POINT_2F pt2{D2D1::Point2F(width * 0.5f, height - paddingTb)};
+		const D2D1_POINT_2F pt3{D2D1::Point2F(width - paddingLr, paddingTb)};
+
+		solidBrush->SetColor(D2D1::ColorF(0x555555));
+		renderTarget->DrawLine(pt1, pt2, solidBrush);
+		renderTarget->DrawLine(pt2, pt3, solidBrush);
 	}
 }
