@@ -583,6 +583,11 @@ namespace ui
 							pWnd->mouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), xButton, fwKeys);
 						}
 						break;
+					case WM_DROPFILES:
+						{
+							pWnd->onDropFiles(wParam);
+						}
+						break;
 					case WM_MOUSELEAVE:
 						pWnd->mouseLeave();
 						break;

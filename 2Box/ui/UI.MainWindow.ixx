@@ -29,6 +29,7 @@ namespace ui
 		virtual bool onNcCalcSize(WParam wParam, LParam lParam) override;
 		virtual LResult onNcHitTest(WPARAM wParam, LParam lParam, LResult dwmProcessedResult) override;
 		virtual void onNcPaint(WParam wParam, LParam lParam) override;
+		virtual void onDropFiles(WParam wParam) override;
 		virtual void onDwmCompositionChanged() override;
 		virtual void onUserMsg(UINT message, WParam wParam, LParam lParam) override;
 

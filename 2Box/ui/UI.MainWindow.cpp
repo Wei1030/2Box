@@ -28,6 +28,7 @@ namespace ui
 		initTitleIcon();
 		initTray();
 		reserveRenderers(2, 20);
+		DragAcceptFiles(nativeHandle(), TRUE);
 
 		m_btnToTray.setBackgroundColor(D2D1::ColorF(0, 0.f), Button::EState::Normal);
 		m_btnToTray.setBackgroundColor(D2D1::ColorF(0, 0.102f), Button::EState::Hover);
@@ -353,6 +354,22 @@ namespace ui
 		m_btnToTray.setBounds(D2D1::Rect(toTrayBthXPos, 6 - m_margins.top, toTrayBthXPos + toTrayBthWidth, -2.f));
 		m_btnToTray.setDontDrawDefault(true);
 		m_btnToTray.drawImpl(renderContext());
+	}
+
+	void MainWindow::onDropFiles(WParam wParam)
+	{
+		HDROP hDrop = reinterpret_cast<HDROP>(wParam);
+		if (UINT length = DragQueryFileW(hDrop, 0, nullptr, 0))
+		{
+			std::wstring filePath;
+			filePath.resize(length + 1);
+			length = DragQueryFileW(hDrop, 0, filePath.data(), static_cast<UINT>(filePath.size()));
+			if (length && isPage<HomePage>())
+			{
+				getPage<HomePage>().getLeftSidebar()->getStartAppDiv()->launchFile(filePath);
+			}
+		}
+		DragFinish(hDrop);
 	}
 
 	void MainWindow::onDwmCompositionChanged()

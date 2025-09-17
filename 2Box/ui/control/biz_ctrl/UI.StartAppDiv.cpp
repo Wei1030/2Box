@@ -25,6 +25,18 @@ namespace ui
 		return m_pathTextHeight == 0.f ? 0.f : PADDING * 2.f + m_pathTextHeight + MARGIN;
 	}
 
+	void StartAppDiv::launchFile(std::wstring_view path)
+	{
+		m_strExePath = path;
+
+		updateBoundsWhenPathChanged();
+
+		if (m_launchProcessFunc)
+		{
+			m_launchProcessFunc(m_strExePath);
+		}
+	}
+
 	void StartAppDiv::initialize()
 	{
 		m_btnClear = std::make_unique<Button>(this);
@@ -142,13 +154,6 @@ namespace ui
 		{
 			return;
 		}
-		m_strExePath = fullPath.value();
-
-		updateBoundsWhenPathChanged();
-
-		if (m_launchProcessFunc)
-		{
-			m_launchProcessFunc(m_strExePath);
-		}
+		launchFile(fullPath.value());
 	}
 }

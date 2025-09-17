@@ -480,6 +480,10 @@ namespace ui
 		{
 		}
 
+		virtual void onDropFiles(WParam wParam)
+		{
+		}
+
 		virtual void onDwmCompositionChanged()
 		{
 		}

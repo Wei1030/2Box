@@ -26,6 +26,8 @@ namespace ui
 
 		std::wstring_view getCurrentSelectedPath() const { return m_strExePath; }
 
+		void launchFile(std::wstring_view path);
+
 	private:
 		void initialize();
 
