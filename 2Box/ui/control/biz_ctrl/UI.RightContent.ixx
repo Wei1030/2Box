@@ -1,5 +1,6 @@
 export module UI.RightContent;
 
+import "sys_defs.h";
 import std;
 import UI.Core;
 import UI.FeaturesArea;
@@ -11,7 +12,14 @@ namespace ui
 	export class RightContent final : public ControlBase
 	{
 	public:
-		using ControlBase::ControlBase;
+		template <typename... Args>
+		explicit RightContent(Args&&... args) noexcept : ControlBase(std::forward<Args>(args)...)
+		{
+			initialize();
+		}
+
+	private:
+		void initialize();
 
 	public:
 		EnvDetail& getEnvDetail() { return m_envDetail; }
@@ -24,6 +32,7 @@ namespace ui
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	private:
+		UniqueComPtr<IDWriteTextFormat> m_importantNoticeFormat;
 		FeaturesArea m_featuresArea{this};
 		EnvDetail m_envDetail{this};
 	};
