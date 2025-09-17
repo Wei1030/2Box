@@ -13,6 +13,7 @@ namespace biz
 		std::shared_ptr<Env> createEnv();
 		std::shared_ptr<Env> findEnvByFlagNoExcept(std::uint64_t flag) const;
 		std::shared_ptr<Env> findEnvByFlag(std::uint64_t flag) const;
+		std::size_t getEnvCount() const;
 
 		void deleteEnv(const std::shared_ptr<Env>& env);
 

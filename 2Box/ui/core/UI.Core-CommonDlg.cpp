@@ -26,6 +26,7 @@ namespace ui
 		}
 		COMDLG_FILTERSPEC rgSpec[] =
 		{
+			{L"可执行文件和快捷方式", L"*.exe;*.lnk;*.url"},
 			{L"可执行文件", L"*.exe"},
 			{L"所有文件", L"*.*"}
 		};

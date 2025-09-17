@@ -26,6 +26,7 @@ namespace ui
 		std::shared_ptr<biz::Env> getEnv() const { return m_env; }
 		bool isHovered() const noexcept { return m_isHovered; }
 		bool isIdle() const noexcept { return m_bIdle; }
+		bool isEmpty() const noexcept { return m_env->getAllProcessesCount() == 0; }
 		bool contains(const std::wstring& procFullPath) const { return m_env->contains(procFullPath); }
 		void launchProcess(std::wstring_view procFullPath);
 

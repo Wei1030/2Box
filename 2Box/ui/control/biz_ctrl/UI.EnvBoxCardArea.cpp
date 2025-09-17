@@ -28,12 +28,29 @@ namespace ui
 
 	void EnvBoxCardArea::launchProcess(const std::wstring& procFullPath)
 	{
+		namespace fs = std::filesystem;
+		fs::path path{procFullPath};
+		const bool isExe = path.extension().native() == L".exe";
 		for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
 		{
 			EnvBoxCard* box = it->second.get();
-			if (!box->isIdle() || box->contains(procFullPath))
+			if (!box->isIdle())
 			{
 				continue;
+			}
+			if (isExe)
+			{
+				if (box->contains(procFullPath))
+				{
+					continue;
+				}
+			}
+			else
+			{
+				if (!box->isEmpty())
+				{
+					continue;
+				}
 			}
 			box->launchProcess(procFullPath);
 			return;

@@ -129,6 +129,10 @@ namespace biz
 
 	std::shared_ptr<Env> EnvManager::createEnv()
 	{
+		if (getEnvCount() >= 100)
+		{
+			throw std::runtime_error("最多只能创建100个环境");
+		}
 		std::shared_ptr<Env> envResult;
 		const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
 		auto [flag, flagName] = ensureCreateNewEnvFlag(index);
@@ -158,6 +162,12 @@ namespace biz
 			throw std::runtime_error(std::format("Failed to find env, flagName:{:016X}", flag));
 		}
 		return result;
+	}
+
+	std::size_t EnvManager::getEnvCount() const
+	{
+		std::shared_lock lock(m_mutex);
+		return m_flagToEnv.size();
 	}
 
 	void EnvManager::deleteEnv(const std::shared_ptr<Env>& env)
