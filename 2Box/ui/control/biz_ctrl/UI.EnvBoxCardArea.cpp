@@ -26,7 +26,7 @@ namespace ui
 		m_asyncScope.join();
 	}
 
-	std::uint32_t EnvBoxCardArea::launchProcess(const std::wstring& procFullPath)
+	void EnvBoxCardArea::launchProcess(const std::wstring& procFullPath)
 	{
 		namespace fs = std::filesystem;
 		fs::path path{procFullPath};
@@ -53,13 +53,12 @@ namespace ui
 				}
 			}
 			box->launchProcess(procFullPath);
-			return it->first;
+			return;
 		}
-		const std::uint32_t nextIndex = biz::env_mgr().getCurrentIndex() + 1;
+
 		// 没有合适的env，则创建新的
 		// 这里不考虑m_envs了，env的创建回调中会加入m_envs，这里直接使用launcher接口启动进程
 		biz::launcher().runInNewEnv(procFullPath);
-		return nextIndex;
 	}
 
 	void EnvBoxCardArea::onResize(float width, float height)

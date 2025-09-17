@@ -23,7 +23,6 @@ namespace biz
 
 	public:
 		std::vector<std::shared_ptr<Env>> getAllEnv() const;
-		std::uint32_t getCurrentIndex() const;
 
 		enum class EChangeType:std::uint8_t
 		{

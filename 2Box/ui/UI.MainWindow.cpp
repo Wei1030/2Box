@@ -478,8 +478,18 @@ namespace ui
 		{
 			m_btnToTray.setDontDrawDefault(false);
 			DWM_SYSTEMBACKDROP_TYPE t = DWMSBT_MAINWINDOW;
-			DwmSetWindowAttribute(nativeHandle(), DWMWA_SYSTEMBACKDROP_TYPE, &t, sizeof(t));
-			DwmExtendFrameIntoClientArea(nativeHandle(), &m_physicalMargins);
+			MARGINS extendMargin = m_physicalMargins;
+			const HRESULT hr = DwmSetWindowAttribute(nativeHandle(), DWMWA_SYSTEMBACKDROP_TYPE, &t, sizeof(t));
+			if (hr != S_OK)
+			{
+				extendMargin.cxLeftWidth = 0;
+				extendMargin.cxRightWidth = 0;
+				extendMargin.cyBottomHeight = 0;
+				m_margins.left = 0;
+				m_margins.right = 0;
+				m_margins.bottom = 0;
+			}
+			DwmExtendFrameIntoClientArea(nativeHandle(), &extendMargin);
 		}
 		else
 		{
