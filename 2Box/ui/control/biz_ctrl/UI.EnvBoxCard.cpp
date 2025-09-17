@@ -146,7 +146,7 @@ namespace ui
 		const D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(
 			D2D1::RectF(0.f, 0.f, drawSize.width, drawSize.height),
 			12.0f, 12.0f);
-		if (m_isHovered || m_isSelected)
+		if (m_isHovered || m_isSelected || m_isBright)
 		{
 			solidBrush->SetColor(D2D1::ColorF(0xf0f8ff));
 			renderTarget->FillRoundedRectangle(roundedRect, solidBrush);
@@ -194,7 +194,18 @@ namespace ui
 
 	coro::LazyTask<void> EnvBoxCard::resetToIdleLater()
 	{
-		co_await sched::transfer_after(std::chrono::seconds{3}, app().get_scheduler());
+		std::uint32_t twinkleCount = 4;
+		while (twinkleCount > 0)
+		{
+			m_isBright = true;
+			updateWholeWnd();
+			co_await sched::transfer_after(std::chrono::milliseconds{200}, app().get_scheduler());
+			m_isBright = false;
+			updateWholeWnd();
+			co_await sched::transfer_after(std::chrono::milliseconds{200}, app().get_scheduler());
+			twinkleCount--;
+		}
+
 		m_bIdle = true;
 	}
 

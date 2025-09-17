@@ -59,6 +59,7 @@ namespace ui
 		std::unique_ptr<Button> m_btnDelete;
 		bool m_isHovered = false;
 		bool m_isSelected = false;
+		bool m_isBright = false;
 		coro::AsyncScope m_asyncScope;
 
 	private:

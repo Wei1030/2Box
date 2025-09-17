@@ -33,6 +33,8 @@ namespace ui
 
 	private:
 		UniqueComPtr<IDWriteTextFormat> m_importantNoticeFormat;
+		UniqueComPtr<IDWriteTextLayout> m_mainTipsLayout;
+		float m_mainTipsWidth{0};
 		FeaturesArea m_featuresArea{this};
 		EnvDetail m_envDetail{this};
 	};
