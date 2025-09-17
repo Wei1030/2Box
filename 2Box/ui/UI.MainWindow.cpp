@@ -1,5 +1,6 @@
 module;
 #include "res/resource.h"
+#define WM_COPYGLOBALDATA 0x0049
 module UI.MainWindow;
 
 import "sys_defs.h";
@@ -29,6 +30,8 @@ namespace ui
 		initTray();
 		reserveRenderers(2, 20);
 		DragAcceptFiles(nativeHandle(), TRUE);
+		ChangeWindowMessageFilterEx(nativeHandle(), WM_DROPFILES, MSGFLT_ALLOW, nullptr);
+		ChangeWindowMessageFilterEx(nativeHandle(), WM_COPYGLOBALDATA, MSGFLT_ALLOW, nullptr);
 
 		m_btnToTray.setBackgroundColor(D2D1::ColorF(0, 0.f), Button::EState::Normal);
 		m_btnToTray.setBackgroundColor(D2D1::ColorF(0, 0.102f), Button::EState::Hover);
