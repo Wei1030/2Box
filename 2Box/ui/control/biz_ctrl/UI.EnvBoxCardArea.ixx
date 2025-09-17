@@ -26,7 +26,7 @@ namespace ui
 		virtual ~EnvBoxCardArea();
 
 		bool isNoEnvs() const noexcept { return m_envs.empty(); }
-		void launchProcess(const std::wstring& procFullPath);
+		std::uint32_t launchProcess(const std::wstring& procFullPath);
 
 		using OnSelected = std::function<void(const std::shared_ptr<biz::Env>&, bool)>;
 		void setOnSelect(OnSelected fn) { m_pfnOnSelect = std::move(fn); }

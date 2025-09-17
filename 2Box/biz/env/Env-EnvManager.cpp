@@ -236,6 +236,11 @@ namespace biz
 		return result;
 	}
 
+	std::uint32_t EnvManager::getCurrentIndex() const
+	{
+		return m_currentIndex.load(std::memory_order_relaxed);
+	}
+
 	void EnvManager::setEnvChangeNotify(EnvChangeNotify envChangeNotify)
 	{
 		std::unique_lock lock(m_mutex);

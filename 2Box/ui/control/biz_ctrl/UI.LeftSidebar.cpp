@@ -40,7 +40,7 @@ namespace ui
 		});
 		m_startAppDiv->setLaunchProcess([this](const std::wstring& procPath)
 		{
-			m_envCardsArea->launchProcess(procPath);
+			std::uint32_t index = m_envCardsArea->launchProcess(procPath);
 		});
 
 		m_envCardsArea = std::make_unique<EnvBoxCardArea>(this);
