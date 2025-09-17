@@ -158,28 +158,49 @@ namespace hook
 			{
 				m_others = get_all_toplevel_window_in_other_env();
 			}
-			postMsg(WM_INPUT_SYNC, static_cast<WPARAM>(m_bLeaderStart), 0);
+			postMsg(WM_INPUT_SYNC, static_cast<WPARAM>(m_bLeaderStart), 0, true);
+			MessageBeep(MB_OK);
 		}
 
 		bool isLeader() const { return m_bLeaderStart; }
 
-		void processMouseMsg(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+		void setLastInput(HWND hWnd, int x, int y)
 		{
-			m_ptLastPos.x = GET_X_LPARAM(lParam);
-			m_ptLastPos.y = GET_Y_LPARAM(lParam);
+			m_ptLastPos.x = x;
+			m_ptLastPos.y = y;
 			m_wndLastProcessMouseMsg = hWnd;
-
-			if (m_bLeaderStart)
-			{
-				postMsg(uMsg, wParam, lParam);
-			}
 		}
 
-		void postMsg(UINT uMsg, WPARAM wParam, LPARAM lParam) const
+		void postMsg(UINT uMsg, WPARAM wParam, LPARAM lParam, bool bForceAll = false) const
 		{
 			for (const HWND& hWnd : m_others)
 			{
-				PostMessageW(hWnd, uMsg, wParam, lParam);
+				if (bForceAll || (IsWindowVisible(hWnd) && IsWindowEnabled(hWnd) && !IsMinimized(hWnd)))
+				{
+					PostMessageW(hWnd, uMsg, wParam, lParam);
+				}
+			}
+		}
+
+		void postCommonMouseMsg(HWND self, int x, int y, UINT uMsg, WPARAM wParam) const
+		{
+			RECT selfRc;
+			GetClientRect(self, &selfRc);
+			const LONG width = selfRc.right - selfRc.left;
+			const LONG height = selfRc.bottom - selfRc.top;
+			const float wPercent = static_cast<float>(x) / static_cast<float>(width);
+			const float hPercent = static_cast<float>(y) / static_cast<float>(height);
+
+			for (const HWND& hWnd : m_others)
+			{
+				if (IsWindowVisible(hWnd) && IsWindowEnabled(hWnd) && !IsMinimized(hWnd))
+				{
+					RECT rc;
+					GetClientRect(hWnd, &rc);
+					const short xPos = static_cast<short>((rc.right - rc.left) * wPercent);
+					const short yPos = static_cast<short>((rc.bottom - rc.top) * hPercent);
+					PostMessageW(hWnd, uMsg, wParam, MAKELPARAM(xPos, yPos));
+				}
 			}
 		}
 
@@ -200,10 +221,6 @@ namespace hook
 		{
 			SyncInput::instPerThread().startSync(lpMsg->wParam ? true : false);
 		}
-		else if (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST)
-		{
-			SyncInput::instPerThread().processMouseMsg(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam);
-		}
 		else if (lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
 		{
 			auto processKeyMsg = [&]()
@@ -221,8 +238,8 @@ namespace hook
 				{
 					return false;
 				}
-				if ((GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0
-					|| (GetAsyncKeyState(VK_MENU) & 0x8000) == 0)
+				if ((GetKeyState(VK_CONTROL) & 0x8000) == 0
+					|| (GetKeyState(VK_MENU) & 0x8000) == 0)
 				{
 					return false;
 				}
@@ -237,6 +254,34 @@ namespace hook
 				return true;
 			};
 			if (!processKeyMsg())
+			{
+				if (SyncInput::instPerThread().isLeader())
+				{
+					SyncInput::instPerThread().postMsg(lpMsg->message, lpMsg->wParam, lpMsg->lParam);
+				}
+			}
+		}
+		else if (lpMsg->message == WM_MOUSELEAVE)
+		{
+			if (SyncInput::instPerThread().isSync())
+			{
+				const_cast<MSG*>(lpMsg)->message = WM_NULL;
+			}
+		}
+		else if (lpMsg->message == WM_MOUSEHOVER
+			|| (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+		{
+			if (lpMsg->message != WM_MOUSEWHEEL && lpMsg->message != WM_MOUSEHWHEEL)
+			{
+				const int x = GET_X_LPARAM(lpMsg->lParam);
+				const int y = GET_Y_LPARAM(lpMsg->lParam);
+				SyncInput::instPerThread().setLastInput(lpMsg->hwnd, x, y);
+				if (SyncInput::instPerThread().isLeader())
+				{
+					SyncInput::instPerThread().postCommonMouseMsg(lpMsg->hwnd, x, y, lpMsg->message, lpMsg->wParam);
+				}
+			}
+			else
 			{
 				if (SyncInput::instPerThread().isLeader())
 				{
@@ -276,6 +321,7 @@ namespace hook
 			const POINT lastPt = SyncInput::instPerThread().getLastPoint();
 			lpPoint->x = lastPt.x + clientOffset.x;
 			lpPoint->y = lastPt.y + clientOffset.y;
+			return true;
 		}
 		return Trampoline(lpPoint);
 	}
@@ -484,6 +530,7 @@ namespace hook
 
 	void hook_user32()
 	{
+		// 顶层窗口管理
 		create_hook_by_func_ptr<&::CreateWindowExA>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&CreateWindowExA<trampolineConst.value>};
@@ -492,12 +539,12 @@ namespace hook
 		{
 			return HookInfo{&CreateWindowExW<trampolineConst.value>};
 		});
-
 		create_hook_by_func_ptr<&::DestroyWindow>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&DestroyWindow<trampolineConst.value>};
 		});
 
+		// 同步输入
 		create_hook_by_func_ptr<&::DispatchMessageA>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&DispatchMessageA<trampolineConst.value>};
@@ -515,6 +562,7 @@ namespace hook
 			return HookInfo{&GetCursorInfo<trampolineConst.value>};
 		});
 
+		// 限制窗口访问
 		create_hook_by_func_ptr<&::FindWindowA>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&FindWindowA<trampolineConst.value>};
@@ -523,7 +571,6 @@ namespace hook
 		{
 			return HookInfo{&FindWindowW<trampolineConst.value>};
 		});
-
 		create_hook_by_func_ptr<&::FindWindowExA>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&FindWindowExA<trampolineConst.value>};
@@ -532,7 +579,6 @@ namespace hook
 		{
 			return HookInfo{&FindWindowExW<trampolineConst.value>};
 		});
-
 		create_hook_by_func_ptr<&::EnumWindows>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&EnumWindows<trampolineConst.value>};
@@ -545,7 +591,6 @@ namespace hook
 		{
 			return HookInfo{&EnumDesktopWindows<trampolineConst.value>};
 		});
-
 		create_hook_by_func_ptr<&::GetWindow>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&GetWindow<trampolineConst.value>};

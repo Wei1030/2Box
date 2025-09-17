@@ -213,7 +213,7 @@ namespace
 			for (void* window : allWindows)
 			{
 				HWND hWnd = static_cast<HWND>(window);
-				if (IsWindowVisible(hWnd))
+				if (IsWindowVisible(hWnd) && IsWindowEnabled(hWnd) && !IsMinimized(hWnd))
 				{
 					if (HMONITOR hMonitor = MonitorFromWindow(hWnd,MONITOR_DEFAULTTONEAREST))
 					{
@@ -258,9 +258,11 @@ namespace
 	constexpr std::wstring_view CHECK_TIPS{L"平铺时维持窗口当前比例"};
 	constexpr std::wstring_view SYNC_TIPS{
 		L"同步输入说明：\n"
-		L"在任意焦点窗口中按下 Ctrl+Alt+S 键开启/关闭输入同步\n"
-		L"焦点窗口会作为 主窗口 将输入同步至其他环境中的所有窗口。\n"
-		L"切换焦点窗口并按下快捷键即可切换 主窗口"
+		L"在任意焦点窗口中按下 Ctrl+Alt+S 开启输入同步\n"
+		L"在任意焦点窗口中按下 Ctrl+Alt+C 关闭输入同步\n\n"
+		L"开启输入同步后，焦点窗口会作为 主窗口 将输入同步至其他环境中的所有窗口\n"
+		L"切换焦点窗口并按下 Ctrl+Alt+S 可直接切换 主窗口\n\n"
+		L"注意：仅支持顶层窗口间的输入同步。暂不支持窗口内的子窗口（子控件）\n"
 	};
 }
 
