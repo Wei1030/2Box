@@ -41,7 +41,7 @@ namespace ui
 		void initTray() const;
 		void destroyTray() const;
 		ID2D1Bitmap* getTitleIconBitmap(ID2D1HwndRenderTarget* renderTarget);
-		coro::LazyTask<void> initSymbols();
+		// coro::LazyTask<void> initSymbols();
 		bool ncBtnHitTest(POINT pt) const;
 
 	private:
@@ -74,10 +74,10 @@ namespace ui
 
 		RendererInterface* currentRenderer() const
 		{
-			if (std::holds_alternative<std::unique_ptr<DownloadPage>>(m_pages))
-			{
-				return std::get<std::unique_ptr<DownloadPage>>(m_pages).get();
-			}
+			// if (std::holds_alternative<std::unique_ptr<DownloadPage>>(m_pages))
+			// {
+			// 	return std::get<std::unique_ptr<DownloadPage>>(m_pages).get();
+			// }
 			if (std::holds_alternative<std::unique_ptr<HomePage>>(m_pages))
 			{
 				return std::get<std::unique_ptr<HomePage>>(m_pages).get();
@@ -86,7 +86,8 @@ namespace ui
 		}
 
 	private:
-		std::variant<std::monostate, std::unique_ptr<DownloadPage>, std::unique_ptr<HomePage>> m_pages;
+		// std::variant<std::monostate, std::unique_ptr<DownloadPage>, std::unique_ptr<HomePage>> m_pages;
+		std::variant<std::monostate, std::unique_ptr<HomePage>> m_pages;
 
 	private:
 		MARGINS m_physicalMargins{};

@@ -245,20 +245,20 @@ namespace ui
 
 	bool MainWindow::onClose()
 	{
-		if (isPage<DownloadPage>())
-		{
-			const DownloadPage& downloadPage = getPage<DownloadPage>();
-			if (!downloadPage.isCancelled())
-			{
-				downloadPage.cancelTask();
-				[](MainWindow& self, const DownloadPage& page) -> coro::OnewayTask
-				{
-					co_await page.joinAsync();
-					self.destroyWindow();
-				}(*this, downloadPage);
-			}
-			return true;
-		}
+		// if (isPage<DownloadPage>())
+		// {
+		// 	const DownloadPage& downloadPage = getPage<DownloadPage>();
+		// 	if (!downloadPage.isCancelled())
+		// 	{
+		// 		downloadPage.cancelTask();
+		// 		[](MainWindow& self, const DownloadPage& page) -> coro::OnewayTask
+		// 		{
+		// 			co_await page.joinAsync();
+		// 			self.destroyWindow();
+		// 		}(*this, downloadPage);
+		// 	}
+		// 	return true;
+		// }
 		return false;
 	}
 
@@ -507,12 +507,12 @@ namespace ui
 			const D2D_RECT_F rc = rect();
 			getPage<HomePage>().onResize(rc.right - rc.left, rc.bottom - rc.top);
 		}
-		else if (isPage<DownloadPage>())
-		{
-			getPage<DownloadPage>().setMargins(m_margins);
-			const D2D_RECT_F rc = rect();
-			getPage<HomePage>().onResize(rc.right - rc.left, rc.bottom - rc.top);
-		}
+		// else if (isPage<DownloadPage>())
+		// {
+		// 	getPage<DownloadPage>().setMargins(m_margins);
+		// 	const D2D_RECT_F rc = rect();
+		// 	getPage<HomePage>().onResize(rc.right - rc.left, rc.bottom - rc.top);
+		// }
 		invalidateRect();
 	}
 
@@ -634,18 +634,18 @@ namespace ui
 		return nullptr;
 	}
 
-	coro::LazyTask<void> MainWindow::initSymbols()
-	{
-		changePageTo<DownloadPage>();
-
-		co_await getPage<DownloadPage>().untilSuccess();
-
-		if (getPage<DownloadPage>().isFileVerified())
-		{
-			changePageTo<HomePage>();
-		}
-		co_return;
-	}
+	// coro::LazyTask<void> MainWindow::initSymbols()
+	// {
+	// 	changePageTo<DownloadPage>();
+	//
+	// 	co_await getPage<DownloadPage>().untilSuccess();
+	//
+	// 	if (getPage<DownloadPage>().isFileVerified())
+	// 	{
+	// 		changePageTo<HomePage>();
+	// 	}
+	// 	co_return;
+	// }
 
 	bool MainWindow::ncBtnHitTest(POINT pt) const
 	{

@@ -188,11 +188,31 @@
     <ClCompile Include="coroutine\Coroutine.ixx" />
     <ClCompile Include="coroutine\Coroutine-LazyTask.ixx" />
     <ClCompile Include="dynamic_win_api\DynamicWin32Api.ixx" />
-    <ClCompile Include="pe_loader\PELoader-Exceptions.ixx" />
-    <ClCompile Include="pe_loader\PELoader-Loader.ixx" />
+    <ClCompile Include="pe_loader\PELoader-Exceptions.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Loader.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="pe_loader\PELoader-Parser.ixx" />
-    <ClCompile Include="pe_loader\PELoader-StaticTLS.ixx" />
-    <ClCompile Include="pe_loader\PELoader-Symbol.ixx" />
+    <ClCompile Include="pe_loader\PELoader-StaticTLS.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Symbol.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="pe_loader\PELoader-SystemInfo.ixx" />
     <ClCompile Include="pe_loader\PELoader.ixx" />
     <ClCompile Include="scheduler\Scheduler-EventLoop.ixx" />
@@ -202,7 +222,12 @@
     <ClCompile Include="state_machine\StateMachine.ixx" />
     <ClCompile Include="utility\Utility.LiteralName.ixx" />
     <ClCompile Include="utility\Utility.SystemInfo.ixx" />
-    <ClCompile Include="utility\Utility.Toolhelp.ixx" />
+    <ClCompile Include="utility\Utility.Toolhelp.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

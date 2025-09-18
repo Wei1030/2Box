@@ -12,8 +12,8 @@
 #include <winternl.h>
 #include <WinIoCtl.h>
 #include <VersionHelpers.h>
-#include <tlhelp32.h>
-#include <winhttp.h>
+//#include <tlhelp32.h>
+//#include <winhttp.h>
 #include <dbghelp.h>
 #include <detours.h>
 #if defined(_MSC_VER) && defined(__INTELLISENSE__)

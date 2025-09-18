@@ -45,12 +45,27 @@
     <ClCompile Include="biz\env\Env-Reg.ixx" />
     <ClCompile Include="biz\env\Env.ixx" />
     <ClCompile Include="biz\essential_data\EssentialData.ixx" />
-    <ClCompile Include="biz\http\WinHttp.ixx" />
-    <ClCompile Include="biz\injector\Injector.ixx" />
+    <ClCompile Include="biz\http\WinHttp.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="biz\injector\Injector.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="biz\launcher\Launcher.cpp" />
     <ClCompile Include="biz\launcher\Launcher.ixx" />
     <ClCompile Include="biz\rpc\RpcServer.cpp" />
-    <ClCompile Include="biz\symbols\SymbolLoader.ixx" />
+    <ClCompile Include="biz\symbols\SymbolLoader.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="biz\wnd_enumerator\WndEnumerator.cpp" />
     <ClCompile Include="biz\wnd_enumerator\WndEnumerator.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.cpp" />
@@ -59,8 +74,18 @@
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.ixx" />
-    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp" />
-    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx" />
+    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.cpp" />
     <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.ixx" />
     <ClCompile Include="ui\control\biz_ctrl\UI.EnvDetail.cpp" />
@@ -71,14 +96,29 @@
     <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.ixx" />
     <ClCompile Include="ui\control\UI.Button.cpp" />
     <ClCompile Include="ui\control\UI.Button.ixx" />
-    <ClCompile Include="ui\control\UI.LoadingIndicator.cpp" />
-    <ClCompile Include="ui\control\UI.LoadingIndicator.ixx" />
+    <ClCompile Include="ui\control\UI.LoadingIndicator.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.LoadingIndicator.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="ui\control\UI.ScrollBar.cpp" />
     <ClCompile Include="ui\control\UI.ScrollBar.ixx" />
     <ClCompile Include="ui\core\UI.Core-CommonDlg.cpp" />
     <ClCompile Include="ui\core\UI.Core-WindowBase.cpp" />
     <ClCompile Include="ui\core\UI.Core.ixx" />
-    <ClCompile Include="ui\page\UI.Page-Download.ixx" />
+    <ClCompile Include="ui\page\UI.Page-Download.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="ui\page\UI.Page-Home.ixx" />
     <ClCompile Include="ui\page\UI.Page.ixx" />
     <ClCompile Include="ui\UI.MainWindow.cpp" />
@@ -190,7 +230,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;Dwmapi.lib;winhttp.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;Dwmapi.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
@@ -223,7 +263,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;Dwmapi.lib;winhttp.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;Dwmapi.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
@@ -254,7 +294,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;Dwmapi.lib;winhttp.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;Dwmapi.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
@@ -288,7 +328,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;Dwmapi.lib;winhttp.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;Dwmapi.lib;dbghelp.lib;detours.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\Detours\lib.X64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
