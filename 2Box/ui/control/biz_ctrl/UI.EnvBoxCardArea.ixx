@@ -27,6 +27,7 @@ namespace ui
 
 		bool isNoEnvs() const noexcept { return m_envs.empty(); }
 		void launchProcess(const std::wstring& procFullPath);
+		bool hasAnyProcesses() const;
 
 		using OnSelected = std::function<void(const std::shared_ptr<biz::Env>&, bool)>;
 		void setOnSelect(OnSelected fn) { m_pfnOnSelect = std::move(fn); }

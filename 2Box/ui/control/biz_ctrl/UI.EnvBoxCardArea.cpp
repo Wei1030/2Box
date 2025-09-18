@@ -61,6 +61,18 @@ namespace ui
 		biz::launcher().runInNewEnv(procFullPath);
 	}
 
+	bool EnvBoxCardArea::hasAnyProcesses() const
+	{
+		for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
+		{
+			if (!it->second->isEmpty())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	void EnvBoxCardArea::onResize(float width, float height)
 	{
 		m_scrollBar->setVisibleSize(height);
