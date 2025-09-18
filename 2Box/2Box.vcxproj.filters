@@ -1,0 +1,236 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{8080b650-21e2-488d-8cda-a053b4fbea8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="res">
+      <UniqueIdentifier>{c749b57a-57be-4026-bc38-212a7ebbef5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\app">
+      <UniqueIdentifier>{d33625a2-b29f-4443-a4ae-437087759324}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui">
+      <UniqueIdentifier>{bb1f8071-90c2-4638-91dc-bd54f4ec4d1a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz">
+      <UniqueIdentifier>{af2a130e-d7cf-4d1b-a8d6-62f2ba6a665b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\symbols">
+      <UniqueIdentifier>{33dae407-75cd-43d2-a3a4-b81e7f265166}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\http">
+      <UniqueIdentifier>{edba45d9-9768-4807-baa8-27e78d82b1c7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\control">
+      <UniqueIdentifier>{b19ca715-430d-4a47-adf9-eb5732c917eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\page">
+      <UniqueIdentifier>{095e2e98-aeb8-4520-8f09-3c4847487ba4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\control\biz_ctrl">
+      <UniqueIdentifier>{89547748-09e1-4c2c-988e-dff53e2d4417}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\core">
+      <UniqueIdentifier>{e00ae490-4214-47ff-b69c-49b80ac2f25d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\essential_data">
+      <UniqueIdentifier>{6ef5c558-8456-4fbb-ae6b-32929649643a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\rpc">
+      <UniqueIdentifier>{c9cee27b-da84-45a0-bda2-1843c12fb83f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\launcher">
+      <UniqueIdentifier>{bb503e38-f837-4f75-a053-ffcc8427ced0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\injector">
+      <UniqueIdentifier>{50ff2df4-4d29-472c-b741-0b1d9a3eeda2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\env">
+      <UniqueIdentifier>{88a1b02f-1a35-401b-99b7-d41eae0bb104}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\core">
+      <UniqueIdentifier>{f61f5d4a-e115-44ec-b02c-1357c1f2cf4c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\biz\wnd_enumerator">
+      <UniqueIdentifier>{d7e7153a-bcd4-4ec3-8dfd-a7c99f0a3c1f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\2Box.ico">
+      <Filter>res</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="res\2Box.rc">
+      <Filter>res</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="res\resource.h">
+      <Filter>res</Filter>
+    </ClInclude>
+    <ClInclude Include="biz\rpc\RpcServer.h">
+      <Filter>src\biz\rpc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="app\MainApp.ixx">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="app\MainApp.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\symbols\SymbolLoader.ixx">
+      <Filter>src\biz\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\http\WinHttp.ixx">
+      <Filter>src\biz\http</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\page\UI.Page-Home.ixx">
+      <Filter>src\ui\page</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\page\UI.Page-Download.ixx">
+      <Filter>src\ui\page</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\page\UI.Page.ixx">
+      <Filter>src\ui\page</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.LoadingIndicator.ixx">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FileStatusCtrl.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.LoadingIndicator.cpp">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\core\UI.Core.ixx">
+      <Filter>src\ui\core</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\core\UI.Core-WindowBase.cpp">
+      <Filter>src\ui\core</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\UI.MainWindow.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\UI.MainWindow.ixx">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.Button.ixx">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.Button.cpp">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\essential_data\EssentialData.ixx">
+      <Filter>src\biz\essential_data</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\rpc\RpcServer.cpp">
+      <Filter>src\biz\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.LeftSidebar.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.RightContent.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.StartAppDiv.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\launcher\Launcher.ixx">
+      <Filter>src\biz\launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\launcher\Launcher.cpp">
+      <Filter>src\biz\launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\injector\Injector.ixx">
+      <Filter>src\biz\injector</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env.ixx">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-Reg.ixx">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-Reg.cpp">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-Envrironment.ixx">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-Envrironment.cpp">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-EnvManager.ixx">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\env\Env-EnvManager.cpp">
+      <Filter>src\biz\env</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCard.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\core\Biz.Core.ixx">
+      <Filter>src\biz\core</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvBoxCardArea.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.ScrollBar.ixx">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\UI.ScrollBar.cpp">
+      <Filter>src\ui\control</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\core\UI.Core-CommonDlg.cpp">
+      <Filter>src\ui\core</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.FeaturesArea.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvDetail.ixx">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\control\biz_ctrl\UI.EnvDetail.cpp">
+      <Filter>src\ui\control\biz_ctrl</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\wnd_enumerator\WndEnumerator.ixx">
+      <Filter>src\biz\wnd_enumerator</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\wnd_enumerator\WndEnumerator.cpp">
+      <Filter>src\biz\wnd_enumerator</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\embed_dll.rc">
+      <Filter>res</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="res\extra.manifest">
+      <Filter>res</Filter>
+    </Manifest>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,31 @@
+#ifdef APSTUDIO_INVOKED
+#error 此文件不能用 Microsoft Visual C++ 编辑
+#endif //APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+// 在此处添加手动编辑的资源...
+#ifndef RC_WIN64
+#ifndef RC_NDEBUG
+// debug x86
+IDR_MEM_DLL_32          RCDATA                  "embed_dll\\Debug\\x86\\MemoryDll32.dll"
+IDR_MEM_DLL_64          RCDATA                  "embed_dll\\Debug\\x64\\MemoryDll64.dll"
+#else // RC_NDEBUG
+// release x86
+IDR_MEM_DLL_32          RCDATA                  "embed_dll\\x86\\MemoryDll32.dll"
+IDR_MEM_DLL_64          RCDATA                  "embed_dll\\x64\\MemoryDll64.dll"
+#endif
+#else // RC_WIN64
+#ifndef RC_NDEBUG
+// debug x64
+IDR_MEM_DLL_32          RCDATA                  "embed_dll\\Debug\\x86\\MemoryDll32.dll"
+IDR_MEM_DLL_64          RCDATA                  "embed_dll\\Debug\\x64\\MemoryDll64.dll"
+#else // RC_NDEBUG
+// release x64
+IDR_MEM_DLL_32          RCDATA                  "embed_dll\\x86\\MemoryDll32.dll"
+IDR_MEM_DLL_64          RCDATA                  "embed_dll\\x64\\MemoryDll64.dll"
+#endif
+#endif 
+
+/////////////////////////////////////////////////////////////////////////////
+

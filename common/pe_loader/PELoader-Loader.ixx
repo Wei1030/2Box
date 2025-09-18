@@ -1,0 +1,167 @@
+export module PELoader:Loader;
+import std;
+import "sys_defs.h";
+import :Parser;
+
+namespace pe
+{
+	namespace detail
+	{
+		template <size_t Alignment>
+			requires (std::has_single_bit(Alignment))
+		constexpr size_t align_value_up(size_t value)
+		{
+			return (value + Alignment - 1) & ~(Alignment - 1);
+		}
+	}
+
+	export class MemoryModule
+	{
+	public:
+		explicit MemoryModule(const Parser<parser_flag::HasFileAligned>& parser)
+		{
+			const DWORD sizeOfImage = parser.getSizeOfImage();
+			m_dataGuard.allocateData(sizeOfImage);
+
+			// 拷贝所有头
+			const DWORD sizeOfHeaders = parser.getSizeOfHeaders();
+			m_dataGuard.writeData(0, parser.getBaseAddr(), sizeOfHeaders);
+
+			// 拷贝所有节
+			for (int i = 0; i < parser.getNumberOfSections(); ++i)
+			{
+				const IMAGE_SECTION_HEADER& currentSection = parser.getSectionHeader()[i];
+				if (currentSection.VirtualAddress == 0 || currentSection.SizeOfRawData == 0)
+				{
+					continue;
+				}
+				const void* pSrc = parser.getBaseAddr() + currentSection.PointerToRawData;
+				m_dataGuard.writeData(currentSection.VirtualAddress, pSrc, currentSection.SizeOfRawData);
+			}
+
+			m_dataParser = Parser<parser_flag::HasSectionAligned>(m_dataGuard.pData);
+		}
+
+		explicit MemoryModule(Parser<parser_flag::HasSectionAligned> parser)
+		{
+			m_dataParser = std::move(parser);
+		}
+
+		MemoryModule(const MemoryModule&) = delete;
+		MemoryModule(MemoryModule&&) = delete;
+		MemoryModule& operator=(const MemoryModule&) = delete;
+		MemoryModule& operator=(MemoryModule&&) = delete;
+
+		char* getRawPtr() const noexcept { return const_cast<char*>(m_dataParser.getBaseAddr()); }
+		const char* getBaseAddr() const noexcept { return m_dataParser.getBaseAddr(); }
+		std::uint32_t getSizeOfImage() const noexcept { return m_dataParser.getSizeOfImage(); }
+		std::uint32_t getSizeOfHeaders() const noexcept { return m_dataParser.getSizeOfHeaders(); }
+
+		const Parser<parser_flag::HasSectionAligned>& getParser() const { return m_dataParser; }
+
+	private:
+		class DataGuard
+		{
+		public:
+			char* pData{nullptr};
+
+
+			void allocateData(std::uint32_t size)
+			{
+				pData = static_cast<char*>(VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+			}
+
+			~DataGuard()
+			{
+				if (pData)
+				{
+					VirtualFree(pData, 0, MEM_RELEASE);
+				}
+			}
+
+			void writeData(std::uint32_t dstOffset, void const* src, std::uint32_t size)
+			{
+				std::memcpy(pData + dstOffset, src, size);
+			}
+		};
+
+		DataGuard m_dataGuard;
+		Parser<parser_flag::HasSectionAligned> m_dataParser;
+	};
+
+	export std::unique_ptr<MemoryModule> create_module_from_file_memory(const void* fileMemory)
+	{
+		return std::make_unique<MemoryModule>(Parser{static_cast<const char*>(fileMemory)});
+	}
+
+	export std::unique_ptr<MemoryModule> create_module_from_mapped_memory(const void* mappedMemory)
+	{
+		return std::make_unique<MemoryModule>(Parser<parser_flag::HasSectionAligned>{static_cast<const char*>(mappedMemory)});
+	}
+
+	export void set_section_protection(const MemoryModule& module)
+	{
+		char* pBase = const_cast<char*>(module.getBaseAddr());
+		PIMAGE_NT_HEADERS pNTHeader = module.getParser().getNtHeader<PIMAGE_NT_HEADERS>();
+		IMAGE_SECTION_HEADER* pSectionHeader = IMAGE_FIRST_SECTION(pNTHeader);
+		// 设置各个节的可读、可写、可执行属性
+		for (DWORD i = 0; i < pNTHeader->FileHeader.NumberOfSections; ++i, ++pSectionHeader)
+		{
+			const LPVOID address = pBase + pSectionHeader->VirtualAddress;
+			const SIZE_T size = pSectionHeader->Misc.VirtualSize;
+			DWORD dwOldProtect = 0;
+			DWORD dwNewProtect = PAGE_NOACCESS;
+			// executable
+			if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0)
+			{
+				// writeable
+				if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_WRITE) != 0)
+				{
+					dwNewProtect = PAGE_EXECUTE_READWRITE;
+				}
+				// readable
+				else if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_READ) != 0)
+				{
+					dwNewProtect = PAGE_EXECUTE_READ;
+				}
+				else
+				{
+					dwNewProtect = PAGE_EXECUTE;
+				}
+			}
+			else
+			{
+				// writeable
+				if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_WRITE) != 0)
+				{
+					dwNewProtect = PAGE_READWRITE;
+				}
+				// readable
+				else if ((pSectionHeader->Characteristics & IMAGE_SCN_MEM_READ) != 0)
+				{
+					dwNewProtect = PAGE_READONLY;
+				}
+			}
+			if (pSectionHeader->Characteristics & IMAGE_SCN_MEM_NOT_CACHED)
+			{
+				dwNewProtect |= PAGE_NOCACHE;
+			}
+
+			VirtualProtect(address, size, dwNewProtect, &dwOldProtect);
+		}
+	}
+
+	export BOOL flush_instruction_cache()
+	{
+		return FlushInstructionCache(reinterpret_cast<HANDLE>(-1), nullptr, 0);
+	}
+
+	export void wipe_header_memory(const MemoryModule& module)
+	{
+		const std::size_t size = detail::align_value_up<0x1000>(module.getSizeOfHeaders());
+		memset(module.getRawPtr(), 0, size);
+		DWORD dwOldProtect = 0;
+		VirtualProtect(module.getRawPtr(), size, PAGE_NOACCESS, &dwOldProtect);
+		VirtualFree(module.getRawPtr(), size, MEM_DECOMMIT);
+	}
+}

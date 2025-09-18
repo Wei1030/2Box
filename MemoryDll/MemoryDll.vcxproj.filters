@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{c5b78b12-1845-4a0c-ab4c-3d6ac84bb07a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\rpc">
+      <UniqueIdentifier>{32744e25-02a0-44e8-bd86-41febf18d2c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\load_self">
+      <UniqueIdentifier>{485ab3d9-735b-4630-b3cb-8025a2aee408}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\global_data">
+      <UniqueIdentifier>{5888b607-907c-450f-b9f2-0f420e069933}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\hook">
+      <UniqueIdentifier>{67f197d6-87fe-473a-90d4-de0affa6e28f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="biz_initializer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="rpc\RpcClient.ixx">
+      <Filter>src\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="rpc\RpcImplRequirement.cpp">
+      <Filter>src\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="load_self\LoadSelf.cpp">
+      <Filter>src\load_self</Filter>
+    </ClCompile>
+    <ClCompile Include="global_data\GlobalData.ixx">
+      <Filter>src\global_data</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-Core.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-All.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-Ntdll.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-Kernel32.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-Advapi32.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="global_data\GlobalData.cpp">
+      <Filter>src\global_data</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-Ole32.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-Netapi32.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-Iphlpapi.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-User32.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook\Hook-Shell32.ixx">
+      <Filter>src\hook</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="biz_initializer.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

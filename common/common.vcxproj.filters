@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="dynamic_win_api">
+      <UniqueIdentifier>{9f35bda1-81fc-4046-a61b-600c25380c97}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="header_units">
+      <UniqueIdentifier>{1948dcc2-32ad-4b22-8666-7e850c85e78a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utility">
+      <UniqueIdentifier>{04d6f205-e026-4445-a0cf-9c98929ba85d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="coroutine">
+      <UniqueIdentifier>{6761fb7b-3ada-4c7a-8384-b58113120075}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="scheduler">
+      <UniqueIdentifier>{9d7fbf77-8e43-4d75-a99f-100fe499fee1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="state_machine">
+      <UniqueIdentifier>{d7d8dc34-a218-45de-ad04-ec016ab45be3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="pe_loader">
+      <UniqueIdentifier>{d9d94734-7b34-47f9-a211-c5080f712bc0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="header_units\sys_defs.h">
+      <Filter>header_units</Filter>
+    </ClInclude>
+    <ClInclude Include="header_units\sys_defs.hpp">
+      <Filter>header_units</Filter>
+    </ClInclude>
+    <ClInclude Include="header_units\targetver.h">
+      <Filter>header_units</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dynamic_win_api\DynamicWin32Api.ixx">
+      <Filter>dynamic_win_api</Filter>
+    </ClCompile>
+    <ClCompile Include="Common.ixx" />
+    <ClCompile Include="utility\Utility.LiteralName.ixx">
+      <Filter>utility</Filter>
+    </ClCompile>
+    <ClCompile Include="utility\Utility.Toolhelp.ixx">
+      <Filter>utility</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-LazyTask.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-SharedTask.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-PromiseBase.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="scheduler\Scheduler.ixx">
+      <Filter>scheduler</Filter>
+    </ClCompile>
+    <ClCompile Include="scheduler\Scheduler-TimedQueue.ixx">
+      <Filter>scheduler</Filter>
+    </ClCompile>
+    <ClCompile Include="scheduler\Scheduler-EventLoop.ixx">
+      <Filter>scheduler</Filter>
+    </ClCompile>
+    <ClCompile Include="scheduler\Scheduler-ExecutionContext.ixx">
+      <Filter>scheduler</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-Concept.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-Cancellation.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-WhenAll.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-WhenAllSettled.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-WhenAny.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="utility\Utility.SystemInfo.ixx">
+      <Filter>utility</Filter>
+    </ClCompile>
+    <ClCompile Include="state_machine\StateMachine.ixx">
+      <Filter>state_machine</Filter>
+    </ClCompile>
+    <ClCompile Include="coroutine\Coroutine-AsyncScope.ixx">
+      <Filter>coroutine</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Loader.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Parser.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Exceptions.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-StaticTLS.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-Symbol.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+    <ClCompile Include="pe_loader\PELoader-SystemInfo.ixx">
+      <Filter>pe_loader</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

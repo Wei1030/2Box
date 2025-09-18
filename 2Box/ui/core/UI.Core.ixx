@@ -1,0 +1,609 @@
+export module UI.Core;
+
+import "sys_defs.h";
+import std;
+
+namespace ui
+{
+	export using HResult = HRESULT;
+	export using LResult = LRESULT;
+	export using WParam = WPARAM;
+	export using LParam = LPARAM;
+	export class WindowBase;
+
+	export struct RenderContext
+	{
+		UniqueComPtr<ID2D1HwndRenderTarget> renderTarget;
+		UniqueComPtr<ID2D1SolidColorBrush> brush;
+	};
+
+	export struct Event
+	{
+		mutable bool accept = true;
+		bool bubble = false;
+	};
+
+	enum ButtonDownState
+	{
+		LeftButtonDown = 0x0001,
+		RightButtonDown = 0x0002,
+		ShiftDown = 0x0004,
+		ControlDown = 0x0008,
+		MiddleButtonDown = 0x0010,
+		XButton1Down = 0x0020,
+		XButton2Down = 0x0040,
+	};
+
+	export struct MouseEvent : public Event
+	{
+		D2D1_POINT_2F point;
+
+		enum class ButtonType : std::uint8_t
+		{
+			NotInvolved,
+			Left,
+			Right,
+			Middle,
+			X1,
+			X2,
+		};
+
+		ButtonType button;
+
+		std::size_t downState;
+
+		MouseEvent(D2D1_POINT_2F pt, ButtonType btn, std::size_t down)
+			: point(pt), button(btn), downState(down)
+		{
+		}
+	};
+
+	export struct MouseWheelEvent : public Event
+	{
+		D2D1_POINT_2F point;
+		short zDelta;
+		std::size_t downState;
+
+		MouseWheelEvent(D2D1_POINT_2F pt, short zd, std::size_t down)
+			: point(pt), zDelta(zd), downState(down)
+		{
+		}
+	};
+
+	export class RendererInterface
+	{
+	public:
+		virtual ~RendererInterface() = default;
+
+		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget)
+		{
+			return S_OK;
+		}
+
+		virtual void onDiscardDeviceResources()
+		{
+		}
+
+		virtual void onResize(float width, float height)
+		{
+		}
+
+		virtual void draw(const RenderContext& renderCtx)
+		{
+		}
+	};
+
+	export class ControlBase : public RendererInterface
+	{
+	public:
+		explicit ControlBase(WindowBase* owner) noexcept;
+		explicit ControlBase(ControlBase* parent) noexcept;
+		virtual ~ControlBase();
+
+		ControlBase(const ControlBase&) = delete;
+		ControlBase& operator=(const ControlBase&) = delete;
+		ControlBase(ControlBase&& other) = delete;
+		ControlBase& operator=(ControlBase&& other) = delete;
+
+	public:
+		WindowBase* owner() const noexcept
+		{
+			return m_ownerWnd;
+		}
+
+		ControlBase* parent() const noexcept
+		{
+			return m_parent;
+		}
+
+		void setBounds(const D2D1_RECT_F& newBounds)
+		{
+			m_bounds = newBounds;
+			const float width = m_bounds.right - m_bounds.left;
+			const float height = m_bounds.bottom - m_bounds.top;
+			m_boundsInOwner = mapToOwner(D2D1::RectF(0, 0, width, height));
+			onResize(width, height);
+		}
+
+		const D2D1_RECT_F& getBounds() const noexcept { return m_bounds; }
+		const D2D1_RECT_F& getBoundsInOwner() const noexcept { return m_boundsInOwner; }
+
+		D2D1_SIZE_F size() const
+		{
+			return D2D1::SizeF(m_bounds.right - m_bounds.left, m_bounds.bottom - m_bounds.top);
+		}
+
+		D2D1_RECT_F mapToParent(const D2D1_RECT_F& rect) const
+		{
+			return D2D1::RectF(
+				rect.left + m_bounds.left,
+				rect.top + m_bounds.top,
+				rect.right + m_bounds.left,
+				rect.bottom + m_bounds.top
+			);
+		}
+
+		D2D1_RECT_F mapToOwner(const D2D1_RECT_F& rect) const
+		{
+			D2D1_RECT_F result = mapToParent(rect);
+			const ControlBase* parent = m_parent;
+			while (parent)
+			{
+				result = parent->mapToParent(result);
+				parent = parent->m_parent;
+			}
+			return result;
+		}
+
+		void update() const;
+		void updateWholeWnd() const;
+
+		bool hitTest(D2D1_POINT_2F point) const
+		{
+			const ControlBase* current = this;
+			while (current)
+			{
+				if (!current->hitTestInternal(point))
+				{
+					return false;
+				}
+				current = current->m_parent;
+			}
+			return true;
+		}
+
+	public:
+		virtual void draw(const RenderContext& renderCtx) override
+		{
+			const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+
+			renderTarget->PushAxisAlignedClip(m_bounds, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+
+			D2D1_MATRIX_3X2_F oldTransform;
+			renderTarget->GetTransform(&oldTransform);
+			renderTarget->SetTransform(D2D1::Matrix3x2F::Translation(m_bounds.left, m_bounds.top) * oldTransform);
+
+			drawImpl(renderCtx);
+
+			renderTarget->SetTransform(oldTransform);
+
+			renderTarget->PopAxisAlignedClip();
+		}
+
+	protected:
+		friend class ControlManager;
+
+		virtual void onMouseMove(const MouseEvent& e)
+		{
+		}
+
+		virtual void onMouseEnter(const MouseEvent& e)
+		{
+		}
+
+		virtual void onMouseLeave(const MouseEvent& e)
+		{
+		}
+
+		virtual void onMouseDown(const MouseEvent& e)
+		{
+		}
+
+		virtual void onMouseUp(const MouseEvent& e)
+		{
+		}
+
+		virtual void onClick(const MouseEvent& e)
+		{
+		}
+
+		virtual void onMouseWheel(const MouseWheelEvent& e)
+		{
+		}
+
+	private:
+		virtual void drawImpl(const RenderContext& renderCtx)
+		{
+		}
+
+	private:
+		bool hitTestInternal(D2D1_POINT_2F point) const
+		{
+			return point.x >= m_boundsInOwner.left && point.x <= m_boundsInOwner.right &&
+				point.y >= m_boundsInOwner.top && point.y <= m_boundsInOwner.bottom;
+		}
+
+	protected:
+		WindowBase* m_ownerWnd;
+		ControlBase* m_parent;
+		D2D1_RECT_F m_bounds{};
+		D2D1_RECT_F m_boundsInOwner{};
+	};
+
+	class ControlManager
+	{
+	public:
+		void reserveControls(std::size_t numControls)
+		{
+			m_controls.reserve(numControls);
+		}
+
+		void addControl(ControlBase* control)
+		{
+			m_controls.push_back(control);
+		}
+
+		void removeControl(const ControlBase* control)
+		{
+			if (m_currentHovered == control)
+			{
+				m_currentHovered = nullptr;
+			}
+			if (m_currentPressed == control)
+			{
+				m_currentPressed = nullptr;
+			}
+			for (auto it = m_controls.begin(); it != m_controls.end(); ++it)
+			{
+				if (*it == control)
+				{
+					m_controls.erase(it);
+					break;
+				}
+			}
+		}
+
+		std::vector<ControlBase*>& getControls() { return m_controls; }
+
+		void onMouseMove(const MouseEvent& e)
+		{
+			ControlBase* hovered = nullptr;
+
+			// 从最上层开始检测
+			for (auto it = m_controls.rbegin(); it != m_controls.rend(); ++it)
+			{
+				if ((*it)->hitTest(e.point))
+				{
+					hovered = *it;
+					break;
+				}
+			}
+			if (hovered != m_currentHovered)
+			{
+				if (m_currentHovered)
+				{
+					processEvent(m_currentHovered, &ControlBase::onMouseLeave, e, false);
+				}
+				if (hovered)
+				{
+					processEvent(hovered, &ControlBase::onMouseEnter, e, false);
+				}
+				m_currentHovered = hovered;
+			}
+			if (m_currentPressed)
+			{
+				processEvent(m_currentPressed, &ControlBase::onMouseMove, e, false);
+			}
+		}
+
+		void onMouseDown(const MouseEvent& e)
+		{
+			if (m_currentHovered)
+			{
+				processEvent(m_currentHovered, &ControlBase::onMouseDown, e);
+				if (e.button == MouseEvent::ButtonType::Left)
+				{
+					m_currentPressed = m_currentHovered;
+				}
+			}
+		}
+
+		void onMouseUp(const MouseEvent& e)
+		{
+			if (m_currentHovered)
+			{
+				processEvent(m_currentHovered, &ControlBase::onMouseUp, e);
+			}
+			if (m_currentPressed && e.button == MouseEvent::ButtonType::Left)
+			{
+				if (m_currentPressed == m_currentHovered)
+				{
+					processEvent(m_currentPressed, &ControlBase::onClick, e);
+				}
+				else
+				{
+					processEvent(m_currentPressed, &ControlBase::onMouseUp, e);
+				}
+				m_currentPressed = nullptr;
+			}
+		}
+
+		void onMouseLeave()
+		{
+			if (m_currentHovered)
+			{
+				processEvent(m_currentHovered, &ControlBase::onMouseLeave, MouseEvent{D2D1::Point2F(-1.f, -1.f), MouseEvent::ButtonType::NotInvolved, 0}, false);
+				m_currentHovered = nullptr;
+			}
+			if (m_currentPressed)
+			{
+				processEvent(m_currentPressed, &ControlBase::onMouseUp, MouseEvent{D2D1::Point2F(-1.f, -1.f), MouseEvent::ButtonType::Left, 0});
+				m_currentPressed = nullptr;
+			}
+		}
+
+		void onMouseWheel(const MouseWheelEvent& e)
+		{
+			if (m_currentHovered)
+			{
+				processEvent(m_currentHovered, &ControlBase::onMouseWheel, e, false);
+			}
+		}
+
+	private:
+		template <typename Fn, typename E>
+		void processEvent(ControlBase* ctrl, Fn&& fn, const E& e, bool defaultAccept = true)
+		{
+			e.accept = defaultAccept;
+			std::invoke(std::forward<Fn>(fn), ctrl, e);
+			if (!e.accept)
+			{
+				const_cast<E&>(e).bubble = true;
+				ControlBase* current = ctrl->parent();
+				while (current)
+				{
+					std::invoke(std::forward<Fn>(fn), current, e);
+					if (e.accept)
+					{
+						break;
+					}
+					current = current->parent();
+				}
+			}
+		}
+
+	private:
+		std::vector<ControlBase*> m_controls;
+		ControlBase* m_currentHovered{nullptr};
+		ControlBase* m_currentPressed{nullptr};
+	};
+
+	export struct DpiInfo
+	{
+		float dpi{96.f};
+		float physicalToDevice{1.f};
+		float deviceToPhysical{1.f};
+	};
+
+	export class WindowBase : public RendererInterface
+	{
+	public:
+		struct WindowCreateParam
+		{
+			std::wstring_view title;
+			DWORD dwStyle = WS_OVERLAPPEDWINDOW;
+			DWORD dwExStyle = 0;
+			int x = CW_USEDEFAULT;
+			int y = 0;
+			int nWidth = CW_USEDEFAULT;
+			int nHeight = 0;
+			HMENU hMenu = nullptr;
+		};
+
+		explicit WindowBase(const WindowCreateParam& param = {});
+		// 创建子窗口还需要做管理，如果之后有需要时再实现吧
+		// explicit WindowBase(WindowBase* parentWnd, const WindowCreateParam& param = {});
+	public:
+		virtual ~WindowBase();
+
+		WindowBase(const WindowBase&) = delete;
+		WindowBase& operator=(const WindowBase&) = delete;
+		WindowBase(WindowBase&&) = delete;
+		WindowBase& operator=(WindowBase&&) = delete;
+
+	public:
+		void show(int nCmdShow = SW_SHOW) const;
+		void destroyWindow();
+		void setExitAppWhenWindowDestroyed(bool exit) { m_bIsExitAppWhenWindowDestroyed = exit; }
+		bool setMouseTracking();
+		bool isMouseTracking() const { return m_bIsMouseTracking; }
+		HWND nativeHandle() const { return m_hWnd; }
+		const DpiInfo& dpiInfo() const { return m_dpiInfo; }
+		D2D_RECT_F rect() const;
+		void setRect(const D2D_RECT_F& rect, int flag = SWP_NOZORDER | SWP_NOACTIVATE);
+		D2D_RECT_F physicalRect() const;
+		void setPhysicalRect(const D2D_RECT_F& rect, int flag = SWP_NOZORDER | SWP_NOACTIVATE);
+		void invalidateRect(const D2D_RECT_F& rect);
+		void invalidateRect();
+		D2D_RECT_F rectNeedUpdate() const;
+
+		void reserveRenderers(std::size_t numExcludeControls, std::size_t numControls);
+		void addRenderer(RendererInterface* renderer);
+		void addControl(ControlBase* control);
+		void removeControl(const ControlBase* control);
+		void removeRenderer(const RendererInterface* renderer);
+
+		bool isCompositionEnabled() const { return m_bIsCompositionEnabled ? true : false; }
+
+	protected:
+		const RenderContext& renderContext() const { return m_renderCtx; }
+
+	protected:
+		virtual HResult onRender();
+
+		virtual void onActivate(WParam wParam, LParam lParam)
+		{
+		}
+
+		// 返回true表示不要调用默认实现销毁窗口,而是自己处理
+		// 返回false表示默认处理(直接销毁窗口)
+		virtual bool onClose()
+		{
+			return false;
+		}
+
+		virtual void onBeforeWindowDestroy()
+		{
+		}
+
+		virtual bool onNcCalcSize(WParam wParam, LParam lParam)
+		{
+			return false;
+		}
+
+		virtual LResult onNcHitTest(WPARAM wParam, LParam lParam, LResult dwmProcessedResult)
+		{
+			return 0;
+		}
+
+		virtual void onNcPaint(WParam wParam, LParam lParam)
+		{
+		}
+
+		virtual void onDropFiles(WParam wParam)
+		{
+		}
+
+		virtual void onDwmCompositionChanged()
+		{
+		}
+
+		virtual void onUserMsg(UINT message, WParam wParam, LParam lParam)
+		{
+		}
+
+	private:
+		HWND createWindowInternal(DWORD dwExStyle, LPCWSTR lpWindowName, DWORD dwStyle,
+		                          int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu);
+		void destroyWindowInternal();
+		HResult prepareDeviceResources();
+		void releaseDeviceResources();
+		void updateDpi();
+		void resize(std::uint32_t width, std::uint32_t height);
+		void mouseMove(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
+		void mouseDown(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
+		void mouseUp(int physicalX, int physicalY, MouseEvent::ButtonType button, std::size_t downState);
+		void mouseLeave();
+		void mouseWheel(int physicalScreenX, int physicalScreenY, short zDelta, std::size_t downState);
+		// 这个不做成虚函数，因为窗口有可能在基类析构中销毁，此时无法调用到子类的虚函数。索性不要这个时机了，反正有子类析构可以用
+		void onAfterWindowDestroy();
+
+	private:
+		static void registerWndClassOnce();
+		static LRESULT CALLBACK wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+	private:
+		HWND m_hWnd{nullptr};
+		bool m_bIsExitAppWhenWindowDestroyed{false};
+		bool m_bIsMouseTracking{false};
+		DpiInfo m_dpiInfo{};
+		BOOL m_bIsCompositionEnabled{true};
+		RenderContext m_renderCtx{};
+		std::vector<RendererInterface*> m_renderersExcludeControls;
+		std::vector<RendererInterface*> m_pendingNoDeviceResources;
+		ControlManager m_controlManager{};
+	};
+
+	ControlBase::ControlBase(WindowBase* owner) noexcept
+		: m_ownerWnd(owner)
+		  , m_parent(nullptr)
+	{
+		if (!m_ownerWnd)
+		{
+			std::unreachable();
+		}
+		m_ownerWnd->addControl(this);
+	}
+
+	ControlBase::ControlBase(ControlBase* parent) noexcept
+		: m_parent(parent)
+	{
+		if (!m_parent)
+		{
+			std::unreachable();
+		}
+
+		m_ownerWnd = parent->m_ownerWnd;
+		if (!m_ownerWnd)
+		{
+			std::unreachable();
+		}
+		m_ownerWnd->addControl(this);
+	}
+
+	ControlBase::~ControlBase()
+	{
+		m_ownerWnd->removeControl(this);
+	}
+
+	void ControlBase::update() const
+	{
+		m_ownerWnd->invalidateRect(m_boundsInOwner);
+	}
+
+	void ControlBase::updateWholeWnd() const
+	{
+		m_ownerWnd->invalidateRect();
+	}
+
+	export struct DrawBoxShadowParams
+	{
+		D2D1_POINT_2F offset{};
+		float size = 3.f;
+		int layers = 3;
+		D2D1_COLOR_F color = D2D1::ColorF{0x000000, 0.05f};
+		float radius = 0.0f;
+	};
+
+	export void draw_box_shadow(const RenderContext& renderCtx, const D2D1_RECT_F& rect, const DrawBoxShadowParams& params)
+	{
+		const UniqueComPtr<ID2D1HwndRenderTarget>& renderTarget = renderCtx.renderTarget;
+		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
+
+		const float maxAlpha = params.color.a;
+		D2D1_COLOR_F shadowColor = params.color;
+		const D2D1_POINT_2F& offset = params.offset;
+		for (int i = 0; i < params.layers; ++i)
+		{
+			const float sizeOffset = params.size * (params.layers - i) / params.layers;
+			D2D1_RECT_F shadowRect = {
+				rect.left + offset.x - sizeOffset,
+				rect.top + offset.y - sizeOffset,
+				rect.right + offset.x + sizeOffset,
+				rect.bottom + offset.y + sizeOffset
+			};
+			shadowColor.a = maxAlpha * (i + 1) / params.layers;
+			solidBrush->SetColor(shadowColor);
+			if (params.radius > 0.f)
+			{
+				renderTarget->FillRoundedRectangle(D2D1::RoundedRect(shadowRect, params.radius, params.radius), solidBrush);
+			}
+			else
+			{
+				renderTarget->FillRectangle(shadowRect, solidBrush);
+			}
+		}
+	}
+
+	export std::optional<std::wstring> select_file(const WindowBase* owner);
+}
