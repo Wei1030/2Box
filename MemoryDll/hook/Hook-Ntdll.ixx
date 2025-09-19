@@ -200,10 +200,10 @@ namespace hook
 	// 	return result;
 	// }
 
-	template <auto trampoline, typename... Args>
-	NTSTATUS NTAPI MyCreateOrOpenFile(POBJECT_ATTRIBUTES ObjectAttributes, Args&&... args)
+	inline win32_api::ApiProxy<utils::make_literal_name<L"ntdll">(), utils::make_literal_name<"NtClose">(), NTSTATUS (NTAPI)(_In_ _Post_ptr_invalid_ HANDLE Handle)> NtClose;
+
+	std::wstring_view viewFileObjectName(POBJECT_ATTRIBUTES ObjectAttributes)
 	{
-		NTSTATUS ret = STATUS_ACCESS_DENIED;
 		do
 		{
 			if (!ObjectAttributes)
@@ -222,42 +222,10 @@ namespace hook
 			{
 				break;
 			}
-
-			std::wstring_view strCmpName(ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t));
-			//管道;
-			if (strCmpName.starts_with(L"\\??\\pipe\\"))
-			{
-				/* \??\pipe\ */
-				std::wstring strNewName = std::format(L"{}{}", strCmpName, global::Data::get().envFlagName());
-				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
-				UNICODE_STRING newObjName;
-				newObjName.Buffer = strNewName.data();
-				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(strNewName.length() * sizeof(wchar_t));
-				ObjectAttributes->ObjectName = &newObjName;
-				ret = trampoline(std::forward<Args>(args)...);
-				ObjectAttributes->ObjectName = pOldName;
-				break;
-			}
-			// 符合条件的特定路径重定向
-			if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(strCmpName))
-			{
-				const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
-				UNICODE_STRING newObjName;
-				newObjName.Buffer = result.value().data();
-				newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
-				ObjectAttributes->ObjectName = &newObjName;
-				ret = trampoline(std::forward<Args>(args)...);
-				ObjectAttributes->ObjectName = pOldName;
-				return ret;
-			}
+			return {ObjectAttributes->ObjectName->Buffer, ObjectAttributes->ObjectName->Length / sizeof(wchar_t)};
 		}
 		while (false);
-
-		if (!NT_SUCCESS(ret))
-		{
-			ret = trampoline(std::forward<Args>(args)...);
-		}
-		return ret;
+		return {};
 	}
 
 	template <auto trampoline>
@@ -266,9 +234,96 @@ namespace hook
 	                            IN ULONG ShareAccess, IN ULONG CreateDisposition, IN ULONG CreateOptions,
 	                            IN PVOID EaBuffer OPTIONAL, IN ULONG EaLength)
 	{
-		return MyCreateOrOpenFile<trampoline>(ObjectAttributes, FileHandle, DesiredAccess, ObjectAttributes,
-		                                      IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
-		                                      CreateDisposition, CreateOptions, EaBuffer, EaLength);
+		const std::wstring_view fileName = viewFileObjectName(ObjectAttributes);
+		//管道;
+		if (fileName.starts_with(L"\\??\\pipe\\"))
+		{
+			/* \??\pipe\ */
+			std::wstring strNewName = std::format(L"{}{}", fileName, global::Data::get().envFlagName());
+			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
+			UNICODE_STRING newObjName;
+			newObjName.Buffer = strNewName.data();
+			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(strNewName.length() * sizeof(wchar_t));
+			ObjectAttributes->ObjectName = &newObjName;
+			NTSTATUS ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes,
+			                          IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+			                          CreateDisposition, CreateOptions, EaBuffer, EaLength);
+			ObjectAttributes->ObjectName = pOldName;
+			if (!NT_SUCCESS(ret))
+			{
+				ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes,
+				                 IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+				                 CreateDisposition, CreateOptions, EaBuffer, EaLength);
+			}
+			return ret;
+		}
+		// 符合条件的特定路径重定向
+		if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(fileName))
+		{
+			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
+			UNICODE_STRING newObjName;
+			newObjName.Buffer = result.value().data();
+			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
+			ULONG TempCreateDisposition = CreateDisposition;
+			// 把有可能会创建文件的Disposition改成FILE_OPEN， 先不要创建文件，后面要请求2box去copy源文件过来（FILE_SUPERSEDE和 FILE_OVERWRITE_IF就无所谓了，反正是覆盖，直接创建）
+			if (CreateDisposition == FILE_OPEN_IF || CreateDisposition == FILE_CREATE)
+			{
+				TempCreateDisposition = FILE_OPEN;
+			}
+			HANDLE tempDstHandle{};
+			ObjectAttributes->ObjectName = &newObjName;
+			NTSTATUS ret = trampoline(&tempDstHandle, DesiredAccess, ObjectAttributes,
+			                          IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+			                          TempCreateDisposition, CreateOptions, EaBuffer, EaLength);
+			ObjectAttributes->ObjectName = pOldName;
+			if (NT_SUCCESS(ret))
+			{
+				// 原先如果是 FILE_CREATE， 那应该要失败，再用原参数调一遍好了
+				if (CreateDisposition == FILE_CREATE)
+				{
+					NtClose(tempDstHandle);
+					return trampoline(FileHandle, DesiredAccess, ObjectAttributes,
+					                  IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+					                  TempCreateDisposition, CreateOptions, EaBuffer, EaLength);
+				}
+				*FileHandle = tempDstHandle;
+				return ret;
+			}
+			// 不是找不到文件的错误也直接返回
+			if (ret != STATUS_OBJECT_NAME_NOT_FOUND)
+			{
+				static std::wofstream outFile(std::format(L"E:\\_log\\NtCreateFile{}.txt", GetCurrentProcessId()), std::ios::trunc);
+				outFile << std::format(L"create fail:{},  status:{:08x}", fileName, static_cast<UINT>(ret));
+				return ret;
+			}
+			// 找不到文件， 试试源路径，原参数是否可以成功
+			HANDLE tempSrcHandle{nullptr};
+			ret = trampoline(&tempSrcHandle, DesiredAccess, ObjectAttributes,
+			                 IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+			                 CreateDisposition, CreateOptions, EaBuffer, EaLength);
+			// 用源路径尝试都失败了，直接返回
+			if (!NT_SUCCESS(ret))
+			{
+				return ret;
+			}
+			NtClose(tempSrcHandle);
+
+			// 到这里，重定向的文件不存在，但原始文件成功，请求2box去copy源文件过来
+			// 为什么不直接在这里创建文件并copy?
+			// 因为要考虑多进程架构的软件可能同时都要访问同一个文件，在这里做并发限制比较困难，而且NtCreateFile还被hook了，用不了高阶接口。干脆用2box做
+			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, global::Data::get().envFlag(), std::wstring{fileName}.c_str(), result.value().c_str());
+
+			// 最终再次尝试重定向位置
+			ObjectAttributes->ObjectName = &newObjName;
+			ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes,
+			                 IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+			                 CreateDisposition, CreateOptions, EaBuffer, EaLength);
+			ObjectAttributes->ObjectName = pOldName;
+			return ret;
+		}
+		return trampoline(FileHandle, DesiredAccess, ObjectAttributes,
+		                  IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+		                  CreateDisposition, CreateOptions, EaBuffer, EaLength);
 	}
 
 	template <auto trampoline>
@@ -276,8 +331,49 @@ namespace hook
 	                          IN POBJECT_ATTRIBUTES ObjectAttributes, OUT PIO_STATUS_BLOCK IoStatusBlock,
 	                          IN ULONG ShareAccess, IN ULONG OpenOptions)
 	{
-		return MyCreateOrOpenFile<trampoline>(ObjectAttributes, FileHandle, DesiredAccess, ObjectAttributes,
-		                                      IoStatusBlock, ShareAccess, OpenOptions);
+		const std::wstring_view fileName = viewFileObjectName(ObjectAttributes);
+		// 符合条件的特定路径重定向
+		if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(fileName))
+		{
+			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
+			UNICODE_STRING newObjName;
+			newObjName.Buffer = result.value().data();
+			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
+			HANDLE tempDstHandle{};
+			ObjectAttributes->ObjectName = &newObjName;
+			NTSTATUS ret = trampoline(&tempDstHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
+			ObjectAttributes->ObjectName = pOldName;
+			if (NT_SUCCESS(ret))
+			{
+				*FileHandle = tempDstHandle;
+				return ret;
+			}
+			// 不是找不到文件的错误也直接返回
+			if (ret != STATUS_OBJECT_NAME_NOT_FOUND)
+			{
+				static std::wofstream outFile(std::format(L"E:\\_log\\NtOpenFile{}.txt", GetCurrentProcessId()), std::ios::trunc);
+				outFile << std::format(L"open fail:{},  status:{:08x}", fileName, static_cast<UINT>(ret));
+				return ret;
+			}
+			// 源路径是否可以成功
+			HANDLE tempSrcHandle{nullptr};
+			ret = trampoline(&tempSrcHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
+			// 用源路径尝试都失败了，直接返回
+			if (!NT_SUCCESS(ret))
+			{
+				return ret;
+			}
+			NtClose(tempSrcHandle);
+
+			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, global::Data::get().envFlag(), std::wstring{fileName}.c_str(), result.value().c_str());
+
+			// 最终再次尝试重定向位置
+			ObjectAttributes->ObjectName = &newObjName;
+			ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
+			ObjectAttributes->ObjectName = pOldName;
+			return ret;
+		}
+		return trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
 	}
 
 	std::unordered_set<std::uint64_t> GetAllProcessInEnv()

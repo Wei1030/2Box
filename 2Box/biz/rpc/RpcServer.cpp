@@ -197,6 +197,19 @@ void get_all_toplevel_window_exclude(handle_t /*IDL_handle*/, unsigned long long
 		RpcRaiseException(0xE06D7363);
 	}
 }
+
+void create_redirect_file(handle_t /*IDL_handle*/, unsigned long long envFlag, const wchar_t originalFile[], const wchar_t redirectFile[])
+{
+	try
+	{
+		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
+		
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
+}
 }
 
 extern "C" {

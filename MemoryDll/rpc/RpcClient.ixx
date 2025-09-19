@@ -207,6 +207,11 @@ namespace rpc
 		{
 			return get_all_toplevel_window_exclude(handle(), excludeEnvFlag, hWnds, count);
 		}
+
+		decltype(auto) createRedirectFile(unsigned long long envFlag, const wchar_t originalFile[], const wchar_t redirectFile[]) const
+		{
+			return create_redirect_file(handle(), envFlag, originalFile, redirectFile);
+		}
 	};
 
 	// 多线程使用同一个ClientDefault进行远程调用是线程安全的. see: https://learn.microsoft.com/en-us/windows/win32/rpc/rpc-binding-handle
