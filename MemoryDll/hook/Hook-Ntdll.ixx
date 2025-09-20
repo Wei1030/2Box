@@ -234,12 +234,12 @@ namespace hook
 	                            IN ULONG ShareAccess, IN ULONG CreateDisposition, IN ULONG CreateOptions,
 	                            IN PVOID EaBuffer OPTIONAL, IN ULONG EaLength)
 	{
-		const std::wstring_view fileName = viewFileObjectName(ObjectAttributes);
+		const std::wstring_view filePath = viewFileObjectName(ObjectAttributes);
 		//管道;
-		if (fileName.starts_with(L"\\??\\pipe\\"))
+		if (filePath.starts_with(L"\\??\\pipe\\"))
 		{
 			/* \??\pipe\ */
-			std::wstring strNewName = std::format(L"{}{}", fileName, global::Data::get().envFlagName());
+			std::wstring strNewName = std::format(L"{}{}", filePath, global::Data::get().envFlagName());
 			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
 			UNICODE_STRING newObjName;
 			newObjName.Buffer = strNewName.data();
@@ -257,13 +257,25 @@ namespace hook
 			}
 			return ret;
 		}
-		// 符合条件的特定路径重定向
-		if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(fileName))
+		auto processRedirect = [&]()-> std::optional<NTSTATUS>
 		{
+			if (!global::Data::get().isInKnownFolderPath(filePath))
+			{
+				return std::nullopt;
+			}
+			std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
+			if (!redirectPath)
+			{
+				return std::nullopt;
+			}
+			if (!global::ensure_dir_exists(redirectPath.value(), CreateOptions & FILE_DIRECTORY_FILE))
+			{
+				return std::nullopt;
+			}
 			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
 			UNICODE_STRING newObjName;
-			newObjName.Buffer = result.value().data();
-			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
+			newObjName.Buffer = redirectPath.value().data();
+			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(redirectPath.value().length() * sizeof(wchar_t));
 			ULONG TempCreateDisposition = CreateDisposition;
 			// 把有可能会创建文件的Disposition改成FILE_OPEN， 先不要创建文件，后面要请求2box去copy源文件过来（FILE_SUPERSEDE和 FILE_OVERWRITE_IF就无所谓了，反正是覆盖，直接创建）
 			if (CreateDisposition == FILE_OPEN_IF || CreateDisposition == FILE_CREATE)
@@ -292,8 +304,6 @@ namespace hook
 			// 不是找不到文件的错误也直接返回
 			if (ret != STATUS_OBJECT_NAME_NOT_FOUND)
 			{
-				static std::wofstream outFile(std::format(L"E:\\_log\\NtCreateFile{}.txt", GetCurrentProcessId()), std::ios::trunc);
-				outFile << std::format(L"create fail:{},  status:{:08x}", fileName, static_cast<UINT>(ret));
 				return ret;
 			}
 			// 找不到文件， 试试源路径，原参数是否可以成功
@@ -311,7 +321,7 @@ namespace hook
 			// 到这里，重定向的文件不存在，但原始文件成功，请求2box去copy源文件过来
 			// 为什么不直接在这里创建文件并copy?
 			// 因为要考虑多进程架构的软件可能同时都要访问同一个文件，在这里做并发限制比较困难，而且NtCreateFile还被hook了，用不了高阶接口。干脆用2box做
-			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, global::Data::get().envFlag(), std::wstring{fileName}.c_str(), result.value().c_str());
+			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, global::Data::get().envFlag(), std::wstring{filePath}.c_str(), redirectPath.value().c_str());
 
 			// 最终再次尝试重定向位置
 			ObjectAttributes->ObjectName = &newObjName;
@@ -320,6 +330,12 @@ namespace hook
 			                 CreateDisposition, CreateOptions, EaBuffer, EaLength);
 			ObjectAttributes->ObjectName = pOldName;
 			return ret;
+		};
+
+		// 符合条件的特定路径重定向
+		if (const std::optional<NTSTATUS> result = processRedirect())
+		{
+			return result.value();
 		}
 		return trampoline(FileHandle, DesiredAccess, ObjectAttributes,
 		                  IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
@@ -331,14 +347,26 @@ namespace hook
 	                          IN POBJECT_ATTRIBUTES ObjectAttributes, OUT PIO_STATUS_BLOCK IoStatusBlock,
 	                          IN ULONG ShareAccess, IN ULONG OpenOptions)
 	{
-		const std::wstring_view fileName = viewFileObjectName(ObjectAttributes);
-		// 符合条件的特定路径重定向
-		if (std::optional<std::wstring> result = global::Data::get().redirectKnownFolderPath(fileName))
+		const std::wstring_view filePath = viewFileObjectName(ObjectAttributes);
+		auto processRedirect = [&]()-> std::optional<NTSTATUS>
 		{
+			if (!global::Data::get().isInKnownFolderPath(filePath))
+			{
+				return std::nullopt;
+			}
+			std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
+			if (!redirectPath)
+			{
+				return std::nullopt;
+			}
+			if (!global::ensure_dir_exists(redirectPath.value(), OpenOptions & FILE_DIRECTORY_FILE))
+			{
+				return std::nullopt;
+			}
 			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
 			UNICODE_STRING newObjName;
-			newObjName.Buffer = result.value().data();
-			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(result.value().length() * sizeof(wchar_t));
+			newObjName.Buffer = redirectPath.value().data();
+			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(redirectPath.value().length() * sizeof(wchar_t));
 			HANDLE tempDstHandle{};
 			ObjectAttributes->ObjectName = &newObjName;
 			NTSTATUS ret = trampoline(&tempDstHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
@@ -351,8 +379,6 @@ namespace hook
 			// 不是找不到文件的错误也直接返回
 			if (ret != STATUS_OBJECT_NAME_NOT_FOUND)
 			{
-				static std::wofstream outFile(std::format(L"E:\\_log\\NtOpenFile{}.txt", GetCurrentProcessId()), std::ios::trunc);
-				outFile << std::format(L"open fail:{},  status:{:08x}", fileName, static_cast<UINT>(ret));
 				return ret;
 			}
 			// 源路径是否可以成功
@@ -365,13 +391,19 @@ namespace hook
 			}
 			NtClose(tempSrcHandle);
 
-			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, global::Data::get().envFlag(), std::wstring{fileName}.c_str(), result.value().c_str());
+			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, global::Data::get().envFlag(), std::wstring{filePath}.c_str(), redirectPath.value().c_str());
 
 			// 最终再次尝试重定向位置
 			ObjectAttributes->ObjectName = &newObjName;
 			ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
 			ObjectAttributes->ObjectName = pOldName;
 			return ret;
+		};
+
+		// 符合条件的特定路径重定向
+		if (const std::optional<NTSTATUS> result = processRedirect())
+		{
+			return result.value();
 		}
 		return trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
 	}

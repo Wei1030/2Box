@@ -202,8 +202,7 @@ void create_redirect_file(handle_t /*IDL_handle*/, unsigned long long envFlag, c
 {
 	try
 	{
-		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
-		
+		biz::FileRedirect::instance().requestCreateRedirectFile(originalFile, redirectFile);
 	}
 	catch (...)
 	{

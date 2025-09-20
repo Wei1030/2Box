@@ -22,51 +22,6 @@ namespace
 	// 	freopen("CONOUT$", "w", stdout);
 	// }
 
-	template <bool IsDirectory = false>
-	std::optional<std::filesystem::path> try_to_create_redirect_path(std::wstring_view knownFolderPath)
-	{
-		static constexpr std::wstring_view driverMarker(LR"(:\)");
-
-		try
-		{
-			namespace fs = std::filesystem;
-			if (const size_t driverPos = knownFolderPath.find(driverMarker); driverPos != std::wstring_view::npos)
-			{
-				const fs::path rootPath{global::Data::get().rootPath()};
-				const fs::path indexPath{std::format(L"{}", global::Data::get().envIndex())};
-				const fs::path relativePath{knownFolderPath.substr(driverPos + driverMarker.length())};
-				const fs::path redirectPath{fs::weakly_canonical(rootPath / fs::path{L"Env"} / indexPath / relativePath)};
-				if (fs::exists(redirectPath))
-				{
-					return redirectPath;
-				}
-				if constexpr (!IsDirectory)
-				{
-					const fs::path redirectDir{redirectPath.parent_path()};
-					if (fs::exists(redirectDir))
-					{
-						return redirectPath;
-					}
-					if (fs::create_directories(redirectDir))
-					{
-						return redirectPath;
-					}
-				}
-				else
-				{
-					if (fs::create_directories(redirectPath))
-					{
-						return redirectPath;
-					}
-				}
-			}
-		}
-		catch (...)
-		{
-		}
-		return std::nullopt;
-	}
-
 	BOOL get_process_elevation(TOKEN_ELEVATION_TYPE* pElevationType, BOOL* pIsAdmin)
 	{
 		HANDLE hToken{nullptr};
@@ -134,21 +89,21 @@ namespace global
 		// InitConsole();
 	}
 
-	std::optional<std::wstring> Data::redirectKnownFolderPath(std::wstring_view fullPath) const
+	static constexpr std::wstring_view PREFIX_TO_CHECK(LR"(\??\)");
+	
+	bool Data::isInKnownFolderPath(std::wstring_view path) const
 	{
-		static constexpr std::wstring_view prefixToCheck(LR"(\??\)");
-
 		if (m_knownFolders.empty())
 		{
-			return std::nullopt;
+			return false;
 		}
 
-		if (!fullPath.starts_with(prefixToCheck))
+		if (!path.starts_with(PREFIX_TO_CHECK))
 		{
-			return std::nullopt;
+			return false;
 		}
 
-		std::wstring_view pathToCheck = fullPath.substr(prefixToCheck.length());
+		std::wstring_view pathToCheck = path.substr(PREFIX_TO_CHECK.length());
 		std::wstring lowerPath(pathToCheck);
 		std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), std::towlower);
 
@@ -157,7 +112,7 @@ namespace global
 			|| lowerPath.contains(L"amd")
 			|| lowerPath.contains(L"2box\\env\\"))
 		{
-			return std::nullopt;
+			return false;
 		}
 		//auto toLowerIterNow = lowerPath.begin();
 		for (const std::wstring& knownFolder : m_knownFolders)
@@ -178,11 +133,28 @@ namespace global
 			{
 				continue;
 			}
-			if (const std::optional<std::filesystem::path> result = try_to_create_redirect_path(pathToCheck))
+			return true;
+		}
+		return false;
+	}
+
+	std::optional<std::wstring> Data::getRedirectPath(std::wstring_view knownFolderPath) const
+	{
+		static constexpr std::wstring_view driverMarker(LR"(:\)");
+
+		try
+		{
+			namespace fs = std::filesystem;
+			if (const size_t driverPos = knownFolderPath.find(driverMarker); driverPos != std::wstring_view::npos)
 			{
-				return std::format(L"{}{}", prefixToCheck, result.value().native());
+				const fs::path indexPath{std::format(L"{}", m_envIndex)};
+				const fs::path relativePath{knownFolderPath.substr(driverPos + driverMarker.length())};
+				const fs::path redirectPath{fs::weakly_canonical(fs::path{m_rootPath} / fs::path{L"Env"} / indexPath / relativePath)};
+				return std::format(L"{}{}", PREFIX_TO_CHECK, redirectPath.native());
 			}
-			break;
+		}
+		catch (...)
+		{
 		}
 		return std::nullopt;
 	}
@@ -253,13 +225,38 @@ namespace global
 			{
 				std::wstring_view sv{out};
 				std::transform(sv.begin(), sv.end(), out, std::towlower);
-				if (try_to_create_redirect_path<true>(sv))
+				if (std::optional<std::wstring> redirectPath = getRedirectPath(sv))
 				{
-					// 再最后加上\, 这样能区分Local\和LocalLow 我们不需要LocalLow 
-					m_knownFolders.push_back(std::format(L"{}\\", sv));
+					if (ensure_dir_exists(redirectPath.value(), true))
+					{
+						// 再最后加上\, 这样能区分Local\和LocalLow 我们不需要LocalLow 
+						m_knownFolders.push_back(std::format(L"{}\\", sv));
+					}
 				}
 				CoTaskMemFree(out);
 			}
 		}
+	}
+
+	bool ensure_dir_exists(std::wstring_view fullName, bool bIsDir)
+	{
+		try
+		{
+			namespace fs = std::filesystem;
+			const fs::path path{fullName};
+			if (bIsDir)
+			{
+				fs::create_directories(path);
+			}
+			else
+			{
+				fs::create_directories(path.parent_path());
+			}
+			return true;
+		}
+		catch (...)
+		{
+		}
+		return false;
 	}
 }

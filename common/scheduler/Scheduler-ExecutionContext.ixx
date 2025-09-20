@@ -61,7 +61,7 @@ namespace sched
 	export class ThreadContext
 	{
 	public:
-		explicit ThreadContext(unsigned int initialThreadCount = std::thread::hardware_concurrency() * 2)
+		explicit ThreadContext(unsigned int initialThreadCount = std::thread::hardware_concurrency())
 		{
 			for (unsigned int i = 0; i < initialThreadCount; ++i)
 			{

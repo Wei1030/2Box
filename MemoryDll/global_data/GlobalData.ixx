@@ -100,7 +100,8 @@ namespace global
 			return m_appKey;
 		}
 
-		std::optional<std::wstring> redirectKnownFolderPath(std::wstring_view fullPath) const;
+		bool isInKnownFolderPath(std::wstring_view path) const;
+		std::optional<std::wstring> getRedirectPath(std::wstring_view knownFolderPath) const;
 
 	private:
 		Data() = default;
@@ -141,4 +142,6 @@ namespace global
 		}
 		return sv.substr(std::distance(sv.begin(), it));
 	}
+
+	export bool ensure_dir_exists(std::wstring_view fullName, bool bIsDir);
 }

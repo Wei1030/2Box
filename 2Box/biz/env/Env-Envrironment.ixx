@@ -2,6 +2,8 @@ export module Env:Envrironment;
 
 import "sys_defs.h";
 import std;
+import Coroutine;
+import Scheduler;
 
 namespace biz
 {
@@ -165,6 +167,25 @@ namespace biz
 	private:
 		std::vector<void*> m_denseHandles;
 		std::unordered_map<void*, TopLevelWindow> m_sparse;
+	};
+
+	export class FileRedirect
+	{
+	public:
+		static FileRedirect& instance()
+		{
+			static FileRedirect instance;
+			return instance;
+		}
+
+		void requestCreateRedirectFile(const std::wstring& originalFile, const std::wstring& redirectFile);
+
+		void endTask(const std::wstring& redirectFile);
+
+	private:
+		sched::ThreadContext m_ctx{1};
+		std::mutex m_mutex;
+		std::unordered_map<std::wstring, coro::SharedTask<void>> m_tasks;
 	};
 
 	export class Env
