@@ -55,6 +55,9 @@
     <Filter Include="src\biz\wnd_enumerator">
       <UniqueIdentifier>{d7e7153a-bcd4-4ec3-8dfd-a7c99f0a3c1f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\biz\file_redirect">
+      <UniqueIdentifier>{2be84fa0-d49b-4a45-b389-0feac46c0c0c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\2Box.ico">
@@ -221,6 +224,12 @@
     </ClCompile>
     <ClCompile Include="biz\wnd_enumerator\WndEnumerator.cpp">
       <Filter>src\biz\wnd_enumerator</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\file_redirect\FileRedirect.ixx">
+      <Filter>src\biz\file_redirect</Filter>
+    </ClCompile>
+    <ClCompile Include="biz\file_redirect\FileRedirect.cpp">
+      <Filter>src\biz\file_redirect</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -268,7 +268,11 @@ namespace hook
 			{
 				return std::nullopt;
 			}
-			if (!global::ensure_dir_exists(redirectPath.value(), CreateOptions & FILE_DIRECTORY_FILE))
+			if (CreateOptions & FILE_DIRECTORY_FILE)
+			{
+				return std::nullopt;
+			}
+			if (!global::ensure_dir_exists(redirectPath.value(), false))
 			{
 				return std::nullopt;
 			}
@@ -294,9 +298,12 @@ namespace hook
 				if (CreateDisposition == FILE_CREATE)
 				{
 					NtClose(tempDstHandle);
-					return trampoline(FileHandle, DesiredAccess, ObjectAttributes,
-					                  IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
-					                  TempCreateDisposition, CreateOptions, EaBuffer, EaLength);
+					ObjectAttributes->ObjectName = &newObjName;
+					ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes,
+					                 IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+					                 CreateDisposition, CreateOptions, EaBuffer, EaLength);
+					ObjectAttributes->ObjectName = pOldName;
+					return ret;
 				}
 				*FileHandle = tempDstHandle;
 				return ret;
@@ -321,7 +328,7 @@ namespace hook
 			// 到这里，重定向的文件不存在，但原始文件成功，请求2box去copy源文件过来
 			// 为什么不直接在这里创建文件并copy?
 			// 因为要考虑多进程架构的软件可能同时都要访问同一个文件，在这里做并发限制比较困难，而且NtCreateFile还被hook了，用不了高阶接口。干脆用2box做
-			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, global::Data::get().envFlag(), std::wstring{filePath}.c_str(), redirectPath.value().c_str());
+			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, std::wstring{filePath}.c_str(), redirectPath.value().c_str());
 
 			// 最终再次尝试重定向位置
 			ObjectAttributes->ObjectName = &newObjName;
@@ -359,7 +366,11 @@ namespace hook
 			{
 				return std::nullopt;
 			}
-			if (!global::ensure_dir_exists(redirectPath.value(), OpenOptions & FILE_DIRECTORY_FILE))
+			if (OpenOptions & FILE_DIRECTORY_FILE)
+			{
+				return std::nullopt;
+			}
+			if (!global::ensure_dir_exists(redirectPath.value(), false))
 			{
 				return std::nullopt;
 			}
@@ -391,7 +402,7 @@ namespace hook
 			}
 			NtClose(tempSrcHandle);
 
-			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, global::Data::get().envFlag(), std::wstring{filePath}.c_str(), redirectPath.value().c_str());
+			rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, std::wstring{filePath}.c_str(), redirectPath.value().c_str());
 
 			// 最终再次尝试重定向位置
 			ObjectAttributes->ObjectName = &newObjName;

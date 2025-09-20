@@ -208,9 +208,9 @@ namespace rpc
 			return get_all_toplevel_window_exclude(handle(), excludeEnvFlag, hWnds, count);
 		}
 
-		decltype(auto) createRedirectFile(unsigned long long envFlag, const wchar_t originalFile[], const wchar_t redirectFile[]) const
+		decltype(auto) createRedirectFile(const wchar_t originalFile[], const wchar_t redirectFile[]) const
 		{
-			return create_redirect_file(handle(), envFlag, originalFile, redirectFile);
+			return create_redirect_file(handle(), originalFile, redirectFile);
 		}
 	};
 

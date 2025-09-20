@@ -246,50 +246,6 @@ namespace biz
 		return true;
 	}
 
-	coro::SharedTask<void> co_create_redirect_file(const sched::ThreadContext& ctx, const std::wstring originalFile, const std::wstring redirectFile)
-	{
-		try
-		{
-			co_await sched::transfer_to(ctx.get_scheduler());
-			namespace fs = std::filesystem;
-			if (fs::exists(originalFile) && !fs::exists(redirectFile))
-			{
-				const fs::path tempPath{std::format(L"{}temp", redirectFile)};
-				fs::copy(originalFile, tempPath);
-				fs::rename(tempPath, fs::path{redirectFile});
-			}
-		}
-		catch (const std::exception& e)
-		{
-			std::ofstream outFile(L"log.txt", std::ios::out | std::ios::app);
-			outFile.imbue(std::locale(""));
-			outFile << std::format("msg:{}\n", e.what());
-		}		
-		FileRedirect::instance().endTask(redirectFile);
-		co_return;
-	}
-
-	void FileRedirect::requestCreateRedirectFile(const std::wstring& originalFile, const std::wstring& redirectFile)
-	{
-		m_mutex.lock();
-		auto it = m_tasks.find(redirectFile);
-		if (it == m_tasks.end())
-		{
-			it = m_tasks.insert(std::make_pair(redirectFile, co_create_redirect_file(m_ctx, originalFile, redirectFile))).first;
-		}
-		coro::SharedTask<void> task = it->second;
-		m_mutex.unlock();
-
-		task.waitUntilDone();
-	}
-
-	void FileRedirect::endTask(const std::wstring& redirectFile)
-	{
-		m_mutex.lock();
-		m_tasks.erase(redirectFile);
-		m_mutex.unlock();
-	}
-
 	std::shared_ptr<ProcessInfo> Env::addProcess(DWORD pid)
 	{
 		const std::shared_ptr<ProcessInfo> newProcInfo = std::make_shared<ProcessInfo>(pid);

@@ -23,5 +23,5 @@ interface service
 		[out, length_is(*count), size_is(MAX_TOPLEVEL_WINDOW)] unsigned long long hWnds[],
 		[out] unsigned int* count);
 
-	void create_redirect_file([in] unsigned long long envFlag, [in, string] const wchar_t originalFile[], [in, string] const wchar_t redirectFile[]);
+	void create_redirect_file([in, string] const wchar_t originalFile[], [in, string] const wchar_t redirectFile[]);
 }

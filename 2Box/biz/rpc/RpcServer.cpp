@@ -198,11 +198,11 @@ void get_all_toplevel_window_exclude(handle_t /*IDL_handle*/, unsigned long long
 	}
 }
 
-void create_redirect_file(handle_t /*IDL_handle*/, unsigned long long envFlag, const wchar_t originalFile[], const wchar_t redirectFile[])
+void create_redirect_file(handle_t /*IDL_handle*/, const wchar_t originalFile[], const wchar_t redirectFile[])
 {
 	try
 	{
-		biz::FileRedirect::instance().requestCreateRedirectFile(originalFile, redirectFile);
+		biz::file_redirect().requestCreateRedirectFile(originalFile, redirectFile);
 	}
 	catch (...)
 	{
