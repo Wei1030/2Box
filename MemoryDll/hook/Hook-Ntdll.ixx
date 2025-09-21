@@ -259,16 +259,16 @@ namespace hook
 		}
 		auto processRedirect = [&]()-> std::optional<NTSTATUS>
 		{
+			if (CreateOptions & FILE_DIRECTORY_FILE)
+			{
+				return std::nullopt;
+			}
 			if (!global::Data::get().isInKnownFolderPath(filePath))
 			{
 				return std::nullopt;
 			}
 			std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
 			if (!redirectPath)
-			{
-				return std::nullopt;
-			}
-			if (CreateOptions & FILE_DIRECTORY_FILE)
 			{
 				return std::nullopt;
 			}
@@ -280,31 +280,14 @@ namespace hook
 			UNICODE_STRING newObjName;
 			newObjName.Buffer = redirectPath.value().data();
 			newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(redirectPath.value().length() * sizeof(wchar_t));
-			ULONG TempCreateDisposition = CreateDisposition;
-			// 把有可能会创建文件的Disposition改成FILE_OPEN， 先不要创建文件，后面要请求2box去copy源文件过来（FILE_SUPERSEDE和 FILE_OVERWRITE_IF就无所谓了，反正是覆盖，直接创建）
-			if (CreateDisposition == FILE_OPEN_IF || CreateDisposition == FILE_CREATE)
-			{
-				TempCreateDisposition = FILE_OPEN;
-			}
 			HANDLE tempDstHandle{};
 			ObjectAttributes->ObjectName = &newObjName;
 			NTSTATUS ret = trampoline(&tempDstHandle, DesiredAccess, ObjectAttributes,
 			                          IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
-			                          TempCreateDisposition, CreateOptions, EaBuffer, EaLength);
+			                          CreateDisposition, CreateOptions, EaBuffer, EaLength);
 			ObjectAttributes->ObjectName = pOldName;
 			if (NT_SUCCESS(ret))
 			{
-				// 原先如果是 FILE_CREATE， 那应该要失败，再用原参数调一遍好了
-				if (CreateDisposition == FILE_CREATE)
-				{
-					NtClose(tempDstHandle);
-					ObjectAttributes->ObjectName = &newObjName;
-					ret = trampoline(FileHandle, DesiredAccess, ObjectAttributes,
-					                 IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
-					                 CreateDisposition, CreateOptions, EaBuffer, EaLength);
-					ObjectAttributes->ObjectName = pOldName;
-					return ret;
-				}
 				*FileHandle = tempDstHandle;
 				return ret;
 			}
@@ -357,16 +340,16 @@ namespace hook
 		const std::wstring_view filePath = viewFileObjectName(ObjectAttributes);
 		auto processRedirect = [&]()-> std::optional<NTSTATUS>
 		{
+			if (OpenOptions & FILE_DIRECTORY_FILE)
+			{
+				return std::nullopt;
+			}
 			if (!global::Data::get().isInKnownFolderPath(filePath))
 			{
 				return std::nullopt;
 			}
 			std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
 			if (!redirectPath)
-			{
-				return std::nullopt;
-			}
-			if (OpenOptions & FILE_DIRECTORY_FILE)
 			{
 				return std::nullopt;
 			}

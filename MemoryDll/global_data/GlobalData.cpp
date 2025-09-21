@@ -90,7 +90,7 @@ namespace global
 	}
 
 	static constexpr std::wstring_view PREFIX_TO_CHECK(LR"(\??\)");
-	
+
 	bool Data::isInKnownFolderPath(std::wstring_view path) const
 	{
 		if (m_knownFolders.empty())
@@ -110,7 +110,7 @@ namespace global
 		if (lowerPath.contains(L"microsoft")
 			|| lowerPath.contains(L"nvidia")
 			|| lowerPath.contains(L"amd")
-			|| lowerPath.contains(L"2box\\env\\"))
+			|| lowerPath.contains(LR"(\2box\env\)"))
 		{
 			return false;
 		}
