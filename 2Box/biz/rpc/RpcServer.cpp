@@ -197,6 +197,18 @@ void get_all_toplevel_window_exclude(handle_t /*IDL_handle*/, unsigned long long
 		RpcRaiseException(0xE06D7363);
 	}
 }
+
+void create_redirect_file(handle_t /*IDL_handle*/, const wchar_t originalFile[], const wchar_t redirectFile[])
+{
+	try
+	{
+		biz::file_redirect().requestCreateRedirectFile(originalFile, redirectFile);
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
+}
 }
 
 extern "C" {
