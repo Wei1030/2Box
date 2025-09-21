@@ -286,7 +286,7 @@ namespace hook
 			                          IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
 			                          CreateDisposition, CreateOptions, EaBuffer, EaLength);
 			ObjectAttributes->ObjectName = pOldName;
-			if (NT_SUCCESS(ret))
+			if (NT_SUCCESS(ret) || CreateDisposition == FILE_CREATE)
 			{
 				*FileHandle = tempDstHandle;
 				return ret;
@@ -296,13 +296,14 @@ namespace hook
 			{
 				return ret;
 			}
-			// 找不到文件， 试试源路径，原参数是否可以成功
+			// 找不到文件， 试试源路径，但是用FILE_OPEN（不允许创建文件）是否可以成功
 			HANDLE tempSrcHandle{nullptr};
-			ret = trampoline(&tempSrcHandle, DesiredAccess, ObjectAttributes,
-			                 IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
-			                 CreateDisposition, CreateOptions, EaBuffer, EaLength);
+			IO_STATUS_BLOCK srcStatusBlock{};
+			const NTSTATUS srcRet = trampoline(&tempSrcHandle, DesiredAccess, ObjectAttributes,
+			                                   &srcStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+			                                   FILE_OPEN, CreateOptions, EaBuffer, EaLength);
 			// 用源路径尝试都失败了，直接返回
-			if (!NT_SUCCESS(ret))
+			if (!NT_SUCCESS(srcRet))
 			{
 				return ret;
 			}
