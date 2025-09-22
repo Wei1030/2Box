@@ -1,4 +1,5 @@
 // ReSharper disable CppInconsistentNaming
+// ReSharper disable CommentTypo
 module;
 #include <ntstatus.h>
 export module Hook:Ntdll;
@@ -169,11 +170,14 @@ namespace hook
 	//
 	// struct OBJECT_NAME_INFORMATION
 	// {
-	// 	UNICODE_STRING Name; // The object name (when present) includes a NULL-terminator and all path separators "\" in the name.
+	
+	// 	 UNICODE_STRING Name; // The object name (when present) includes a NULL-terminator and all path separators "\" in the name.
+	
 	// };
+	
 	//
 	// inline win32_api::ApiProxy<utils::make_literal_name<L"ntdll">(), utils::make_literal_name<"NtQueryObject">(), NTSTATUS (NTAPI)(
-	// 	                           _In_opt_ HANDLE Handle,
+	// 	                           _In_opt_ HANDLE h,
 	// 	                           _In_ OBJECT_INFORMATION_CLASS ObjectInformationClass,
 	// 	                           _Out_writes_bytes_opt_(ObjectInformationLength) PVOID ObjectInformation,
 	// 	                           _In_ ULONG ObjectInformationLength,
@@ -195,6 +199,20 @@ namespace hook
 	// 				OBJECT_NAME_INFORMATION& info = *reinterpret_cast<OBJECT_NAME_INFORMATION*>(buffer.data());
 	// 				result = std::wstring_view{info.Name.Buffer, info.Name.Length / sizeof(wchar_t)};
 	// 			}
+	// 		}
+	// 	}
+	// 	return result;
+	// }
+
+	// std::wstring get_file_name_by_handle(HANDLE handle)
+	// {
+	// 	std::wstring result;
+	// 	if (const DWORD size = GetFinalPathNameByHandleW(handle, nullptr, 0, 0))
+	// 	{
+	// 		result.resize(size);
+	// 		if (!GetFinalPathNameByHandleW(handle, result.data(), size, 0))
+	// 		{
+	// 			result.clear();
 	// 		}
 	// 	}
 	// 	return result;
@@ -402,6 +420,177 @@ namespace hook
 		}
 		return trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
 	}
+
+	// NtQueryAttributesFile 在win10后貌似不走 ntdll的NtCreateFile， 也hook一下
+	template <auto trampoline>
+	std::optional<NTSTATUS> MyQueryAttributesFile(_In_ POBJECT_ATTRIBUTES ObjectAttributes, _Out_ void* FileInformation)
+	{
+		const std::wstring_view filePath = viewFileObjectName(ObjectAttributes);
+		if (!global::Data::get().isInKnownFolderPath(filePath))
+		{
+			return std::nullopt;
+		}
+		std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
+		if (!redirectPath)
+		{
+			return std::nullopt;
+		}
+		if (!global::ensure_dir_exists(redirectPath.value(), false))
+		{
+			return std::nullopt;
+		}
+		const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
+		UNICODE_STRING newObjName;
+		newObjName.Buffer = redirectPath.value().data();
+		newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(redirectPath.value().length() * sizeof(wchar_t));
+		ObjectAttributes->ObjectName = &newObjName;
+		NTSTATUS ret = trampoline(ObjectAttributes, FileInformation);
+		ObjectAttributes->ObjectName = pOldName;
+		if (NT_SUCCESS(ret))
+		{
+			return ret;
+		}
+
+		// 不是找不到文件的错误也直接返回
+		if (ret != STATUS_OBJECT_NAME_NOT_FOUND)
+		{
+			return ret;
+		}
+		// 源路径是否可以成功
+		ret = trampoline(ObjectAttributes, FileInformation);
+		// 用源路径尝试都失败了，直接返回
+		if (!NT_SUCCESS(ret))
+		{
+			return ret;
+		}
+
+		rpc::default_call_ignore_error(&rpc::ClientDefault::createRedirectFile, std::wstring{filePath}.c_str(), redirectPath.value().c_str());
+
+		// 最终再次尝试重定向位置
+		ObjectAttributes->ObjectName = &newObjName;
+		ret = trampoline(ObjectAttributes, FileInformation);
+		ObjectAttributes->ObjectName = pOldName;
+		return ret;
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtQueryAttributesFile(_In_ POBJECT_ATTRIBUTES ObjectAttributes, _Out_ void* FileInformation)
+	{
+		if (const std::optional<NTSTATUS> result = MyQueryAttributesFile<trampoline>(ObjectAttributes, FileInformation))
+		{
+			return result.value();
+		}
+		return trampoline(ObjectAttributes, FileInformation);
+	}
+
+	template <auto trampoline>
+	NTSTATUS NTAPI NtQueryFullAttributesFile(_In_ POBJECT_ATTRIBUTES ObjectAttributes, _Out_ void* FileInformation)
+	{
+		if (const std::optional<NTSTATUS> result = MyQueryAttributesFile<trampoline>(ObjectAttributes, FileInformation))
+		{
+			return result.value();
+		}
+		return trampoline(ObjectAttributes, FileInformation);
+	}
+
+	enum FILE_INFORMATION_CLASS
+	{
+		FileRenameInformation = 10, // s: FILE_RENAME_INFORMATION (requires DELETE) // 10
+		// FileDispositionInformation = 13, // s: FILE_DISPOSITION_INFORMATION (requires DELETE)
+		// FileShortNameInformation = 40, // s: FILE_NAME_INFORMATION (requires DELETE) // 40
+		// FileDispositionInformationEx = 64, // s: FILE_DISPOSITION_INFO_EX (requires DELETE) // since REDSTONE
+	};
+
+	struct FILE_RENAME_INFORMATION
+	{
+		BOOLEAN ReplaceIfExists;
+		HANDLE RootDirectory;
+		ULONG FileNameLength;
+		WCHAR FileName[1];
+	};
+
+	// win7中，改名时貌似NtCreateFile拦不到，也hook一下(仅win7)
+	template <auto trampoline>
+	NTSTATUS NTAPI NtSetInformationFile(_In_ HANDLE FileHandle, _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+	                                    _In_reads_bytes_(Length) PVOID FileInformation, _In_ ULONG Length, _In_ FILE_INFORMATION_CLASS FileInformationClass)
+	{
+		if (FileInformationClass == FileRenameInformation && FileInformation && Length)
+		{
+			auto processRedirect = [&]()-> std::optional<NTSTATUS>
+			{
+				FILE_RENAME_INFORMATION& fileInfo = *static_cast<FILE_RENAME_INFORMATION*>(FileInformation);
+				if (fileInfo.RootDirectory)
+				{
+					// 有RootDirectory情况很少，是否有必要处理？
+					return std::nullopt;
+				}
+				if (!fileInfo.FileNameLength)
+				{
+					return std::nullopt;
+				}
+				const std::wstring_view filePath{fileInfo.FileName, fileInfo.FileNameLength / sizeof(wchar_t)};
+				if (!global::Data::get().isInKnownFolderPath(filePath))
+				{
+					return std::nullopt;
+				}
+				std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
+				if (!redirectPath)
+				{
+					return std::nullopt;
+				}
+				if (!global::ensure_dir_exists(redirectPath.value(), false))
+				{
+					return std::nullopt;
+				}
+				const ULONG newFileNameLength = static_cast<ULONG>(redirectPath.value().length() * sizeof(wchar_t));
+				std::vector<std::byte> newFileInfoBuffer(sizeof(FILE_RENAME_INFORMATION) + newFileNameLength);
+				FILE_RENAME_INFORMATION& newFileInfo = *reinterpret_cast<FILE_RENAME_INFORMATION*>(newFileInfoBuffer.data());
+				newFileInfo.ReplaceIfExists = fileInfo.ReplaceIfExists;
+				newFileInfo.RootDirectory = fileInfo.RootDirectory;
+				newFileInfo.FileNameLength = newFileNameLength;
+				memcpy(newFileInfo.FileName, redirectPath.value().data(), newFileNameLength);
+				return trampoline(FileHandle, IoStatusBlock, &newFileInfo, static_cast<ULONG>(newFileInfoBuffer.size()), FileInformationClass);
+			};
+			if (const std::optional<NTSTATUS> result = processRedirect())
+			{
+				return result.value();
+			}
+			return trampoline(FileHandle, IoStatusBlock, FileInformation, Length, FileInformationClass);
+		}
+		return trampoline(FileHandle, IoStatusBlock, FileInformation, Length, FileInformationClass);
+	}
+
+	// 貌似没什么调用会走 NtDeleteFile ? 
+	// template <auto trampoline>
+	// NTSTATUS NTAPI NtDeleteFile(_In_ POBJECT_ATTRIBUTES ObjectAttributes)
+	// {
+	// 	auto processRedirect = [&]()-> std::optional<NTSTATUS>
+	// 	{
+	// 		const std::wstring_view filePath = viewFileObjectName(ObjectAttributes);
+	// 		if (!global::Data::get().isInKnownFolderPath(filePath))
+	// 		{
+	// 			return std::nullopt;
+	// 		}
+	// 		std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
+	// 		if (!redirectPath)
+	// 		{
+	// 			return std::nullopt;
+	// 		}
+	// 		const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
+	// 		UNICODE_STRING newObjName;
+	// 		newObjName.Buffer = redirectPath.value().data();
+	// 		newObjName.Length = newObjName.MaximumLength = static_cast<USHORT>(redirectPath.value().length() * sizeof(wchar_t));
+	// 		ObjectAttributes->ObjectName = &newObjName;
+	// 		NTSTATUS ret = trampoline(ObjectAttributes);
+	// 		ObjectAttributes->ObjectName = pOldName;
+	// 		return ret;
+	// 	};
+	// 	if (const std::optional<NTSTATUS> result = processRedirect())
+	// 	{
+	// 		return result.value();
+	// 	}
+	// 	return trampoline(ObjectAttributes);
+	// }
 
 	std::unordered_set<std::uint64_t> GetAllProcessInEnv()
 	{
@@ -709,6 +898,13 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtCreateNamedPipeFile);
 		CREATE_HOOK_BY_NAME(NtCreateFile);
 		CREATE_HOOK_BY_NAME(NtOpenFile);
+		CREATE_HOOK_BY_NAME(NtQueryAttributesFile);
+		CREATE_HOOK_BY_NAME(NtQueryFullAttributesFile);
+		if (!pe::g_os_version.isWindows8OrGreater)
+		{
+			CREATE_HOOK_BY_NAME(NtSetInformationFile);
+		}
+		// CREATE_HOOK_BY_NAME(NtDeleteFile);
 		CREATE_HOOK_BY_NAME(NtQuerySystemInformation);
 
 		// 简单做一个虚拟注册表：将所有的写入操作都copy一份到自己的环境中，查询优先查询虚拟环境中的，找不到的话再从真实注册表查

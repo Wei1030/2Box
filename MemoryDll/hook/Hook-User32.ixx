@@ -173,9 +173,21 @@ namespace hook
 
 		void postMsg(UINT uMsg, WPARAM wParam, LPARAM lParam, bool bForceAll = false) const
 		{
+			auto filterWnd = [](HWND hWnd)
+			{
+				if (IsWindowVisible(hWnd) && IsWindowEnabled(hWnd) && !IsMinimized(hWnd) && (GetWindowExStyle(hWnd) & WS_EX_TOOLWINDOW) == 0)
+				{
+					if (const HWND owner = GetWindow(hWnd, GW_OWNER); owner && !IsWindowVisible(owner))
+					{
+						return false;
+					}
+					return true;
+				}
+				return false;
+			};
 			for (const HWND& hWnd : m_others)
 			{
-				if (bForceAll || (IsWindowVisible(hWnd) && IsWindowEnabled(hWnd) && !IsMinimized(hWnd)))
+				if (bForceAll || filterWnd(hWnd))
 				{
 					PostMessageW(hWnd, uMsg, wParam, lParam);
 				}
@@ -220,6 +232,7 @@ namespace hook
 		if (lpMsg->message == WM_INPUT_SYNC)
 		{
 			SyncInput::instPerThread().startSync(lpMsg->wParam ? true : false);
+			PostMessageW(lpMsg->hwnd, WM_SETFOCUS, 0, 0);
 		}
 		else if (lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
 		{
@@ -261,7 +274,7 @@ namespace hook
 				}
 			}
 		}
-		else if (lpMsg->message == WM_MOUSELEAVE)
+		else if (lpMsg->message == WM_MOUSELEAVE || lpMsg->message == WM_KILLFOCUS)
 		{
 			if (SyncInput::instPerThread().isSync())
 			{
@@ -339,6 +352,36 @@ namespace hook
 			pci->ptScreenPos.y = lastPt.y + clientOffset.y;
 		}
 		return bRet;
+	}
+
+	template <auto Trampoline>
+	BOOL WINAPI SetCursorPos(_In_ int X, _In_ int Y)
+	{
+		if (SyncInput::instPerThread().isSync())
+		{
+			return TRUE;
+		}
+		return Trampoline(X, Y);
+	}
+
+	template <auto Trampoline>
+	BOOL WINAPI ClipCursor(_In_opt_ CONST RECT* lpRect)
+	{
+		if (SyncInput::instPerThread().isSync())
+		{
+			return TRUE;
+		}
+		return Trampoline(lpRect);
+	}
+
+	template <auto Trampoline>
+	HWND WINAPI GetForegroundWindow()
+	{
+		if (SyncInput::instPerThread().isSync())
+		{
+			return SyncInput::instPerThread().getLastProcessMouseMsgWnd();
+		}
+		return Trampoline();
 	}
 
 	template <auto Trampoline>
@@ -560,6 +603,18 @@ namespace hook
 		create_hook_by_func_ptr<&::GetCursorInfo>().setHookFromGetter([&](auto trampolineConst)
 		{
 			return HookInfo{&GetCursorInfo<trampolineConst.value>};
+		});
+		create_hook_by_func_ptr<&::SetCursorPos>().setHookFromGetter([&](auto trampolineConst)
+		{
+			return HookInfo{&SetCursorPos<trampolineConst.value>};
+		});
+		create_hook_by_func_ptr<&::ClipCursor>().setHookFromGetter([&](auto trampolineConst)
+		{
+			return HookInfo{&ClipCursor<trampolineConst.value>};
+		});
+		create_hook_by_func_ptr<&::GetForegroundWindow>().setHookFromGetter([&](auto trampolineConst)
+		{
+			return HookInfo{&GetForegroundWindow<trampolineConst.value>};
 		});
 
 		// 限制窗口访问
