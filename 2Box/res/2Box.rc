@@ -70,8 +70,8 @@ IDI_APP_ICON            ICON                    "2Box.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,0,1
- PRODUCTVERSION 2,0,1
+ FILEVERSION 2,0,2
+ PRODUCTVERSION 2,0,2
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -88,12 +88,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Wei"
             VALUE "FileDescription", "2Box"
-            VALUE "FileVersion", "2.0.1"
+            VALUE "FileVersion", "2.0.2"
             VALUE "InternalName", "2Box.exe"
             VALUE "LegalCopyright", "Copyright (C) 2025 Wei.All Rights Reserved."
             VALUE "OriginalFilename", "2Box.exe"
             VALUE "ProductName", "2Box"
-            VALUE "ProductVersion", "2.0.1"
+            VALUE "ProductVersion", "2.0.2"
         END
     END
     BLOCK "VarFileInfo"
