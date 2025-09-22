@@ -170,11 +170,11 @@ namespace hook
 	//
 	// struct OBJECT_NAME_INFORMATION
 	// {
-	
+
 	// 	 UNICODE_STRING Name; // The object name (when present) includes a NULL-terminator and all path separators "\" in the name.
-	
+
 	// };
-	
+
 	//
 	// inline win32_api::ApiProxy<utils::make_literal_name<L"ntdll">(), utils::make_literal_name<"NtQueryObject">(), NTSTATUS (NTAPI)(
 	// 	                           _In_opt_ HANDLE h,
@@ -277,22 +277,33 @@ namespace hook
 		}
 		auto processRedirect = [&]()-> std::optional<NTSTATUS>
 		{
-			if (CreateOptions & FILE_DIRECTORY_FILE)
+			std::optional<NTSTATUS> defaultRet = std::nullopt;
+			const bool bIsDir = CreateOptions & FILE_DIRECTORY_FILE;
+			if (bIsDir)
 			{
-				return std::nullopt;
+				defaultRet = trampoline(FileHandle, DesiredAccess, ObjectAttributes,
+				                        IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
+				                        CreateDisposition, CreateOptions, EaBuffer, EaLength);
+				if (NT_SUCCESS(defaultRet.value()))
+				{
+					return defaultRet;
+				}
 			}
 			if (!global::Data::get().isInKnownFolderPath(filePath))
 			{
-				return std::nullopt;
+				return defaultRet;
 			}
 			std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
 			if (!redirectPath)
 			{
-				return std::nullopt;
+				return defaultRet;
 			}
-			if (!global::ensure_dir_exists(redirectPath.value(), false))
+			if (!bIsDir)
 			{
-				return std::nullopt;
+				if (!global::ensure_dir_exists(redirectPath.value(), false))
+				{
+					return defaultRet;
+				}
 			}
 			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
 			UNICODE_STRING newObjName;
@@ -304,7 +315,7 @@ namespace hook
 			                          IoStatusBlock, AllocationSize, FileAttributes, ShareAccess,
 			                          CreateDisposition, CreateOptions, EaBuffer, EaLength);
 			ObjectAttributes->ObjectName = pOldName;
-			if (NT_SUCCESS(ret) || CreateDisposition == FILE_CREATE)
+			if (NT_SUCCESS(ret) || bIsDir || CreateDisposition == FILE_CREATE)
 			{
 				*FileHandle = tempDstHandle;
 				return ret;
@@ -359,22 +370,31 @@ namespace hook
 		const std::wstring_view filePath = viewFileObjectName(ObjectAttributes);
 		auto processRedirect = [&]()-> std::optional<NTSTATUS>
 		{
-			if (OpenOptions & FILE_DIRECTORY_FILE)
+			std::optional<NTSTATUS> defaultRet = std::nullopt;
+			const bool bIsDir = OpenOptions & FILE_DIRECTORY_FILE;
+			if (bIsDir)
 			{
-				return std::nullopt;
+				defaultRet = trampoline(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
+				if (NT_SUCCESS(defaultRet.value()))
+				{
+					return defaultRet;
+				}
 			}
 			if (!global::Data::get().isInKnownFolderPath(filePath))
 			{
-				return std::nullopt;
+				return defaultRet;
 			}
 			std::optional<std::wstring> redirectPath = global::Data::get().getRedirectPath(filePath);
 			if (!redirectPath)
 			{
-				return std::nullopt;
+				return defaultRet;
 			}
-			if (!global::ensure_dir_exists(redirectPath.value(), false))
+			if (!bIsDir)
 			{
-				return std::nullopt;
+				if (!global::ensure_dir_exists(redirectPath.value(), false))
+				{
+					return defaultRet;
+				}
 			}
 			const PUNICODE_STRING pOldName = ObjectAttributes->ObjectName;
 			UNICODE_STRING newObjName;
@@ -384,7 +404,7 @@ namespace hook
 			ObjectAttributes->ObjectName = &newObjName;
 			NTSTATUS ret = trampoline(&tempDstHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
 			ObjectAttributes->ObjectName = pOldName;
-			if (NT_SUCCESS(ret))
+			if (NT_SUCCESS(ret) || bIsDir)
 			{
 				*FileHandle = tempDstHandle;
 				return ret;
