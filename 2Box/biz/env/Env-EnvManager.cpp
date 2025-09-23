@@ -8,6 +8,7 @@ import "sys_defs.hpp";
 
 import std;
 import MainApp;
+import UI.MainWindow;
 import :Reg;
 import EssentialData;
 import Utility.SystemInfo;
@@ -179,6 +180,10 @@ namespace biz
 
 	bool EnvManager::containsToplevelWindowExcludingByFlag(void* hWnd, std::uint64_t excludeEnvFlag) const
 	{
+		if (hWnd == ui::main_wnd().nativeHandle())
+		{
+			return true;
+		}
 		std::vector<std::shared_ptr<Env>> allEnv = getAllEnv();
 		for (const std::shared_ptr<Env>& env : allEnv)
 		{
