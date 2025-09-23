@@ -28,7 +28,7 @@ namespace ui
 		bool isIdle() const noexcept { return m_bIdle; }
 		bool isEmpty() const noexcept { return m_env->getAllProcessesCount() == 0; }
 		bool contains(const std::wstring& procFullPath) const { return m_env->contains(procFullPath); }
-		void launchProcess(std::wstring_view procFullPath);
+		void launchProcess(std::wstring_view procFullPath, std::wstring_view params);
 
 		using OnSelected = std::function<void(bool)>;
 		void setOnSelect(OnSelected fn) { m_pfnOnSelect = std::move(fn); }

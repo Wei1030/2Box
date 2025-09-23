@@ -14,7 +14,7 @@ import Biz.Core;
 
 namespace
 {
-	PROCESS_INFORMATION create_and_inject(const biz::Env* env, std::wstring_view exePath)
+	PROCESS_INFORMATION create_and_inject(const biz::Env* env, std::wstring_view exePath, std::wstring_view params)
 	{
 		PROCESS_INFORMATION procInfo = {nullptr};
 		STARTUPINFOW startupInfo = {sizeof(startupInfo)};
@@ -23,7 +23,7 @@ namespace
 
 		namespace fs = std::filesystem;
 		const fs::path cmdPath{fs::weakly_canonical(fs::path{sys_info::get_system_dir()} / fs::path{L"cmd.exe"})};
-		std::wstring cmdLine = std::format(LR"(/c start "" "{}")", exePath);
+		std::wstring cmdLine = params.empty() ? std::format(LR"(/c start "" "{}")", exePath) : std::format(LR"(/c start "" "{}" {})", exePath, params);
 		if (!DetourCreateProcessWithDllExW(cmdPath.c_str(), cmdLine.data(), nullptr, nullptr, 0,
 		                                   CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, nullptr,
 		                                   std::filesystem::path{exePath}.parent_path().native().c_str(), &startupInfo, &procInfo,
@@ -62,17 +62,17 @@ namespace
 
 namespace biz
 {
-	void Launcher::run(const std::shared_ptr<Env>& env, std::wstring_view exePath)
+	void Launcher::run(const std::shared_ptr<Env>& env, std::wstring_view exePath, std::wstring_view params /*= L""*/)
 	{
-		m_asyncScope.spawn(launch(env, std::wstring{exePath}));
+		m_asyncScope.spawn(launch(env, std::wstring{exePath}, std::wstring{params}));
 	}
 
-	void Launcher::runInNewEnv(std::wstring_view exePath)
+	void Launcher::runInNewEnv(std::wstring_view exePath, std::wstring_view params /*= L""*/)
 	{
-		m_asyncScope.spawn(launch(std::shared_ptr<Env>{}, std::wstring{exePath}));
+		m_asyncScope.spawn(launch(std::shared_ptr<Env>{}, std::wstring{exePath}, std::wstring{params}));
 	}
 
-	coro::LazyTask<void> Launcher::launch(std::shared_ptr<Env> env, std::wstring exePath) const
+	coro::LazyTask<void> Launcher::launch(std::shared_ptr<Env> env, std::wstring exePath, std::wstring params) const
 	{
 		try
 		{
@@ -82,7 +82,7 @@ namespace biz
 			{
 				env = env_mgr().createEnv();
 			}
-			const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath);
+			const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath, params);
 			ResumeThread(procInfo.hThread);
 			CloseHandle(procInfo.hThread);
 			CloseHandle(procInfo.hProcess);
