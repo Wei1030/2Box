@@ -46,15 +46,12 @@ namespace ui
 		});
 	}
 
-	void EnvBoxCard::launchProcess(std::wstring_view procFullPath, std::wstring_view params)
+	void EnvBoxCard::setBusyTemp()
 	{
-		// 由于无法保证启动的进程一定能立即反映在env中，所以简单设置一个是否空闲的标志，env在启动任意一个进程后的3s内属于非空闲状态
+		// 由于无法保证启动的进程一定能立即反映在env中，所以简单设置一个是否空闲的标志，env在启动任意一个进程后的1.6s内属于非空闲状态
 		// 非空闲的env无法被 “点击总启动按钮时” 挑选到
 		m_stopSource.request_stop();
 		m_bIdle = false;
-
-		biz::launcher().run(m_env, procFullPath, params);
-
 		m_stopSource = std::stop_source{};
 		m_asyncScope.spawn(coro::co_with_cancellation(resetToIdleLater(), m_stopSource.get_token()));
 	}

@@ -6,6 +6,7 @@ import std;
 import EssentialData;
 import Biz.Core;
 import MainApp;
+import UI.MainWindow;
 
 namespace rpc
 {
@@ -185,6 +186,19 @@ void create_redirect_file(handle_t /*IDL_handle*/, const wchar_t originalFile[],
 	try
 	{
 		biz::file_redirect().requestCreateRedirectFile(originalFile, redirectFile);
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
+}
+
+unsigned int create_process(handle_t /*IDL_handle*/, const wchar_t appPath[], const wchar_t params[])
+{
+	try
+	{
+		coro::LazyTask<unsigned int> task = ui::main_wnd().cliCreateProcess(appPath, params);
+		return task.syncAwait();
 	}
 	catch (...)
 	{

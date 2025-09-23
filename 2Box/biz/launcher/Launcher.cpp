@@ -72,7 +72,14 @@ namespace biz
 		m_asyncScope.spawn(launch(std::shared_ptr<Env>{}, std::wstring{exePath}, std::wstring{params}));
 	}
 
-	coro::LazyTask<void> Launcher::launch(std::shared_ptr<Env> env, std::wstring exePath, std::wstring params) const
+	coro::LazyTask<std::uint32_t> Launcher::coRun(std::shared_ptr<Env> env, std::wstring_view exePath, std::wstring_view params)
+	{
+		coro::SharedTask<std::uint32_t> sharedTask = coro::start_and_shared(launch(env, std::wstring{exePath}, std::wstring{params}));
+		m_asyncScope.spawn(sharedTask);
+		co_return co_await sharedTask;
+	}
+
+	coro::LazyTask<std::uint32_t> Launcher::launch(std::shared_ptr<Env> env, std::wstring exePath, std::wstring params) const
 	{
 		try
 		{
@@ -86,6 +93,7 @@ namespace biz
 			ResumeThread(procInfo.hThread);
 			CloseHandle(procInfo.hThread);
 			CloseHandle(procInfo.hProcess);
+			co_return procInfo.dwProcessId;
 		}
 		catch (const std::exception& e)
 		{
@@ -95,6 +103,6 @@ namespace biz
 		{
 			show_error_message(L"启动进程失败：发生未知错误");
 		}
-		co_return;
+		co_return 0;
 	}
 }

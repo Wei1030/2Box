@@ -26,6 +26,7 @@ namespace ui
 		virtual ~EnvBoxCardArea();
 
 		bool isNoEnvs() const noexcept { return m_envs.empty(); }
+		std::shared_ptr<biz::Env> selectSuitableEnvAndSetItBusyTemp(const std::wstring& procFullPath);
 		void launchProcess(const std::wstring& procFullPath, std::wstring_view params = L"");
 		bool hasAnyProcesses() const;
 

@@ -23,4 +23,6 @@ interface service
 		[out] unsigned int* count);
 
 	void create_redirect_file([in, string] const wchar_t originalFile[], [in, string] const wchar_t redirectFile[]);
+
+	unsigned int create_process([in, string] const wchar_t appPath[], [in, string] const wchar_t params[]);
 }

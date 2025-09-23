@@ -26,8 +26,9 @@ namespace ui
 		m_asyncScope.join();
 	}
 
-	void EnvBoxCardArea::launchProcess(const std::wstring& procFullPath, std::wstring_view params /*= L""*/)
+	std::shared_ptr<biz::Env> EnvBoxCardArea::selectSuitableEnvAndSetItBusyTemp(const std::wstring& procFullPath)
 	{
+		std::shared_ptr<biz::Env> result;
 		namespace fs = std::filesystem;
 		fs::path path{procFullPath};
 		const bool isExe = path.extension().native() == L".exe";
@@ -52,13 +53,25 @@ namespace ui
 					continue;
 				}
 			}
-			box->launchProcess(procFullPath, params);
-			return;
+			result = box->getEnv();
+			box->setBusyTemp();
+			break;
 		}
+		return result;
+	}
 
-		// 没有合适的env，则创建新的
-		// 这里不考虑m_envs了，env的创建回调中会加入m_envs，这里直接使用launcher接口启动进程
-		biz::launcher().runInNewEnv(procFullPath, params);
+	void EnvBoxCardArea::launchProcess(const std::wstring& procFullPath, std::wstring_view params /*= L""*/)
+	{
+		if (const std::shared_ptr<biz::Env> suitableEnv = selectSuitableEnvAndSetItBusyTemp(procFullPath))
+		{
+			biz::launcher().run(suitableEnv, procFullPath, params);
+		}
+		else
+		{
+			// 没有合适的env，则创建新的
+			// 这里不考虑m_envs了，env的创建回调中会加入m_envs，这里直接使用launcher接口启动进程
+			biz::launcher().runInNewEnv(procFullPath, params);
+		}
 	}
 
 	bool EnvBoxCardArea::hasAnyProcesses() const
