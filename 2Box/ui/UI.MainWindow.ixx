@@ -15,7 +15,7 @@ namespace ui
 		MainWindow();
 		virtual ~MainWindow();
 
-		coro::LazyTask<std::uint32_t> cliCreateProcess(std::wstring exePath, std::wstring params) const;
+		coro::LazyTask<void> cliCreateProcess(std::wstring exePath, std::wstring params) const;
 
 	public:
 		virtual HResult onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget) override;

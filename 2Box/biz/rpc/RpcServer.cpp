@@ -193,12 +193,12 @@ void create_redirect_file(handle_t /*IDL_handle*/, const wchar_t originalFile[],
 	}
 }
 
-unsigned int create_process(handle_t /*IDL_handle*/, const wchar_t appPath[], const wchar_t params[])
+void create_process(handle_t /*IDL_handle*/, const wchar_t appPath[], const wchar_t params[])
 {
 	try
 	{
-		coro::LazyTask<unsigned int> task = ui::main_wnd().cliCreateProcess(appPath, params);
-		return task.syncAwait();
+		coro::LazyTask<void> task = ui::main_wnd().cliCreateProcess(appPath, params);
+		task.syncAwait();
 	}
 	catch (...)
 	{

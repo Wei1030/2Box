@@ -65,11 +65,12 @@ namespace ui
 		}
 	}
 
-	coro::LazyTask<std::uint32_t> MainWindow::cliCreateProcess(std::wstring exePath, std::wstring params) const
+	coro::LazyTask<void> MainWindow::cliCreateProcess(std::wstring exePath, std::wstring params) const
 	{
 		co_await sched::transfer_to(app().get_scheduler());
 		const std::shared_ptr<biz::Env> env = getPage<HomePage>().getLeftSidebar()->getEnvBoxCardArea()->selectSuitableEnvAndSetItBusyTemp(exePath);
-		co_return co_await biz::launcher().coRun(env, exePath, params);
+		co_await biz::launcher().coRun(env, exePath, params);
+		co_return;
 	}
 
 	HResult MainWindow::onCreateDeviceResources(ID2D1HwndRenderTarget* renderTarget)

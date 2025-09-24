@@ -7,7 +7,6 @@ import "sys_defs.hpp";
 #endif
 
 import MainApp;
-import PELoader;
 import EssentialData;
 import Utility.SystemInfo;
 import Biz.Core;
@@ -64,36 +63,27 @@ namespace biz
 {
 	void Launcher::run(const std::shared_ptr<Env>& env, std::wstring_view exePath, std::wstring_view params /*= L""*/)
 	{
-		m_asyncScope.spawn(launch(env, std::wstring{exePath}, std::wstring{params}));
+		m_asyncScope.spawn(launch(env, exePath, params));
 	}
 
 	void Launcher::runInNewEnv(std::wstring_view exePath, std::wstring_view params /*= L""*/)
 	{
-		m_asyncScope.spawn(launch(std::shared_ptr<Env>{}, std::wstring{exePath}, std::wstring{params}));
+		m_asyncScope.spawn(launch(std::shared_ptr<Env>{}, exePath, params));
 	}
 
-	coro::LazyTask<std::uint32_t> Launcher::coRun(std::shared_ptr<Env> env, std::wstring_view exePath, std::wstring_view params)
+	coro::LazyTask<void> Launcher::coRun(std::shared_ptr<Env> env, std::wstring_view exePath, std::wstring_view params)
 	{
-		coro::SharedTask<std::uint32_t> sharedTask = coro::start_and_shared(launch(env, std::wstring{exePath}, std::wstring{params}));
+		coro::SharedTask<void> sharedTask = coro::start_and_shared(launchInternal(env, std::wstring{exePath}, std::wstring{params}));
 		m_asyncScope.spawn(sharedTask);
-		co_return co_await sharedTask;
+		co_await sharedTask;
+		co_return;
 	}
 
-	coro::LazyTask<std::uint32_t> Launcher::launch(std::shared_ptr<Env> env, std::wstring exePath, std::wstring params) const
+	coro::LazyTask<void> Launcher::launch(const std::shared_ptr<Env>& env, std::wstring_view exePath, std::wstring_view params) const
 	{
 		try
 		{
-			co_await sched::transfer_to(m_execCtx);
-
-			if (!env)
-			{
-				env = env_mgr().createEnv();
-			}
-			const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath, params);
-			ResumeThread(procInfo.hThread);
-			CloseHandle(procInfo.hThread);
-			CloseHandle(procInfo.hProcess);
-			co_return procInfo.dwProcessId;
+			co_await launchInternal(env, std::wstring{exePath}, std::wstring{params});
 		}
 		catch (const std::exception& e)
 		{
@@ -103,6 +93,21 @@ namespace biz
 		{
 			show_error_message(L"启动进程失败：发生未知错误");
 		}
-		co_return 0;
+		co_return;
+	}
+
+	coro::LazyTask<void> Launcher::launchInternal(std::shared_ptr<Env> env, std::wstring exePath, std::wstring params) const
+	{
+		co_await sched::transfer_to(m_execCtx);
+
+		if (!env)
+		{
+			env = env_mgr().createEnv();
+		}
+		const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath, params);
+		ResumeThread(procInfo.hThread);
+		CloseHandle(procInfo.hThread);
+		CloseHandle(procInfo.hProcess);
+		co_return;
 	}
 }
