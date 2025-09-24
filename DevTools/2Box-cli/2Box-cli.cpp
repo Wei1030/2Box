@@ -238,7 +238,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			return -4;
 		}
 		std::wstring app = cmdArray[0];
-		std::wstring params = numArgs >= 2 ? cmdArray[1] : L"";
+		std::wstring params;
+
+		for (int i = 1; i < numArgs; ++i)
+		{
+			params.append(cmdArray[i]);
+			if (i == numArgs - 1)
+			{
+				break;
+			}
+			params.push_back(' ');
+		}
 		LocalFree(cmdArray);
 
 		if (cli_create_process(app, params))
