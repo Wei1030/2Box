@@ -6,6 +6,7 @@ import std;
 import EssentialData;
 import Biz.Core;
 import MainApp;
+import UI.MainWindow;
 
 namespace rpc
 {
@@ -150,24 +151,6 @@ void remove_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, un
 	}
 }
 
-int contains_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned long long envFlag)
-{
-	try
-	{
-		static unsigned long long hDesktopWindow = reinterpret_cast<unsigned long long>(GetDesktopWindow());
-		if (hDesktopWindow == hWnd)
-		{
-			return 1;
-		}
-		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
-		return pEnv->containsToplevelWindow(reinterpret_cast<void*>(hWnd)) ? 1 : 0;
-	}
-	catch (...)
-	{
-		RpcRaiseException(0xE06D7363);
-	}
-}
-
 int contains_toplevel_window_excluding_by_flag(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned long long excludeEnvFlag)
 {
 	try
@@ -203,6 +186,19 @@ void create_redirect_file(handle_t /*IDL_handle*/, const wchar_t originalFile[],
 	try
 	{
 		biz::file_redirect().requestCreateRedirectFile(originalFile, redirectFile);
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
+}
+
+void create_process(handle_t /*IDL_handle*/, const wchar_t appPath[], const wchar_t params[])
+{
+	try
+	{
+		coro::LazyTask<void> task = ui::main_wnd().cliCreateProcess(appPath, params);
+		task.syncAwait();
 	}
 	catch (...)
 	{

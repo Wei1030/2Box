@@ -193,11 +193,6 @@ namespace rpc
 			return remove_toplevel_window(handle(), reinterpret_cast<unsigned long long>(hWnd), pid, envFlag);
 		}
 
-		decltype(auto) containsToplevelWindow(void* hWnd, unsigned long long envFlag) const
-		{
-			return contains_toplevel_window(handle(), reinterpret_cast<unsigned long long>(hWnd), envFlag) ? true : false;
-		}
-
 		decltype(auto) containsToplevelWindowExcludingByFlag(void* hWnd, unsigned long long excludeEnvFlag) const
 		{
 			return contains_toplevel_window_excluding_by_flag(handle(), reinterpret_cast<unsigned long long>(hWnd), excludeEnvFlag) ? true : false;

@@ -31,19 +31,6 @@ namespace hook
 		}
 	}
 
-	bool contains_toplevel_window(void* hWnd)
-	{
-		try
-		{
-			const rpc::ClientDefault c;
-			return c.containsToplevelWindow(hWnd, global::Data::get().envFlag());
-		}
-		catch (...)
-		{
-		}
-		return false;
-	}
-
 	bool contains_toplevel_window_in_other_env(void* hWnd)
 	{
 		try
@@ -69,7 +56,16 @@ namespace hook
 			result.reserve(count);
 			for (std::uint32_t i = 0; i < count; ++i)
 			{
-				result.push_back(reinterpret_cast<HWND>(hWnds[i]));
+				HWND hWnd = reinterpret_cast<HWND>(hWnds[i]);
+				if (GetWindowExStyle(hWnd) & WS_EX_TOOLWINDOW)
+				{
+					continue;
+				}
+				if (const HWND owner = GetWindow(hWnd, GW_OWNER); owner && !IsWindowVisible(owner))
+				{
+					continue;
+				}
+				result.push_back(hWnd);
 			}
 		}
 		catch (...)
@@ -171,20 +167,13 @@ namespace hook
 			m_wndLastProcessMouseMsg = hWnd;
 		}
 
+		static bool filterWnd(HWND hWnd)
+		{
+			return IsWindowVisible(hWnd) && IsWindowEnabled(hWnd) && !IsMinimized(hWnd);
+		}
+
 		void postMsg(UINT uMsg, WPARAM wParam, LPARAM lParam, bool bForceAll = false) const
 		{
-			auto filterWnd = [](HWND hWnd)
-			{
-				if (IsWindowVisible(hWnd) && IsWindowEnabled(hWnd) && !IsMinimized(hWnd) && (GetWindowExStyle(hWnd) & WS_EX_TOOLWINDOW) == 0)
-				{
-					if (const HWND owner = GetWindow(hWnd, GW_OWNER); owner && !IsWindowVisible(owner))
-					{
-						return false;
-					}
-					return true;
-				}
-				return false;
-			};
 			for (const HWND& hWnd : m_others)
 			{
 				if (bForceAll || filterWnd(hWnd))
@@ -205,7 +194,7 @@ namespace hook
 
 			for (const HWND& hWnd : m_others)
 			{
-				if (IsWindowVisible(hWnd) && IsWindowEnabled(hWnd) && !IsMinimized(hWnd))
+				if (filterWnd(hWnd))
 				{
 					RECT rc;
 					GetClientRect(hWnd, &rc);

@@ -82,7 +82,7 @@ void MainApp::parseCmdLine() const
 	for (int i = 0; i < numArgs; ++i)
 	{
 		std::wstring_view arg{cmdArray[i]};
-		std::size_t delimiterPos = arg.find(L"=");
+		std::size_t delimiterPos = arg.find(L'=');
 		if (delimiterPos != std::wstring_view::npos)
 		{
 			std::wstring_view paramName = arg.substr(0, delimiterPos);

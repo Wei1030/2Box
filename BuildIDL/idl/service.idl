@@ -15,7 +15,6 @@ interface service
 
 	void add_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
 	void remove_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
-	int contains_toplevel_window([in] unsigned long long hWnd, [in] unsigned long long envFlag);
 	int contains_toplevel_window_excluding_by_flag([in] unsigned long long hWnd, [in] unsigned long long excludeEnvFlag);
 
 	inline const unsigned int MAX_TOPLEVEL_WINDOW = 2048;
@@ -24,4 +23,6 @@ interface service
 		[out] unsigned int* count);
 
 	void create_redirect_file([in, string] const wchar_t originalFile[], [in, string] const wchar_t redirectFile[]);
+
+	void create_process([in, string] const wchar_t appPath[], [in, string] const wchar_t params[]);
 }
