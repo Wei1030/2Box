@@ -2,6 +2,7 @@
 // ReSharper disable CppClangTidyClangDiagnosticUnusedMemberFunction
 // ReSharper disable CppClangTidyClangDiagnosticUnusedFunction
 // ReSharper disable CppClangTidyClangDiagnosticLanguageExtensionToken
+// ReSharper disable CppClangTidyBugproneEmptyCatch
 #include <winsdkver.h>
 
 // ReSharper disable once IdentifierTypo
@@ -14,11 +15,13 @@
 #define NOMINMAX
 // Windows 头文件
 #include <windows.h>
+#include <shellapi.h>
 
 #include <cstdlib>
 #include <string_view>
 #include <utility>
 #include <format>
+#include <filesystem>
 #include "service_h.h"
 
 // midl要求实现的函数:
@@ -200,16 +203,17 @@ namespace
 		return EXCEPTION_EXECUTE_HANDLER;
 	}
 
-	unsigned int cli_create_process(const std::wstring& path, const std::wstring& params)
+	bool cli_create_process(const std::wstring& path, const std::wstring& params)
 	{
 		__try
 		{
 			const ClientDefault c;
-			return c.createProcess(path.c_str(), params.c_str());
+			c.createProcess(path.c_str(), params.c_str());
+			return true;
 		}
 		__except (filter_offline_error(RpcExceptionCode()))
 		{
-			return 0;
+			return false;
 		}
 	}
 }
@@ -218,11 +222,59 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 {
 	try
 	{
-		cli_create_process(LR"()", LR"(asdasd)");
-		return 0;
+		if (!lpCmdLine || wcslen(lpCmdLine) == 0)
+		{
+			return -3;
+		}
+
+		int numArgs;
+		LPWSTR* cmdArray = CommandLineToArgvW(lpCmdLine, &numArgs);
+		if (!cmdArray)
+		{
+			return static_cast<int>(GetLastError());
+		}
+		if (numArgs == 0)
+		{
+			return -4;
+		}
+		std::wstring app = cmdArray[0];
+		std::wstring params = numArgs >= 2 ? cmdArray[1] : L"";
+		LocalFree(cmdArray);
+
+		if (cli_create_process(app, params))
+		{
+			return 0;
+		}
+		constexpr DWORD pathLength = std::numeric_limits<short>::max();
+		std::wstring selfFullName;
+		selfFullName.resize(pathLength);
+		const DWORD resultSize = GetModuleFileNameW(nullptr, selfFullName.data(), pathLength);
+		selfFullName.resize(resultSize);
+		selfFullName = std::wstring(selfFullName);
+
+		namespace fs = std::filesystem;
+		const fs::path fsPath = fs::absolute(fs::path(selfFullName));
+		std::wstring selfDir = fsPath.parent_path().native();
+
+		PROCESS_INFORMATION procInfo = {nullptr};
+		STARTUPINFOW startupInfo = {sizeof(startupInfo)};
+		startupInfo.dwFlags = STARTF_USESHOWWINDOW;
+		startupInfo.wShowWindow = SW_HIDE;
+
+		if (!CreateProcessW(fs::weakly_canonical(fs::path{selfDir} / fs::path{L"2Box.exe"}).native().c_str(),
+		                    nullptr, nullptr, nullptr,
+		                    FALSE, CREATE_DEFAULT_ERROR_MODE, nullptr,
+		                    selfDir.c_str(), &startupInfo, &procInfo))
+		{
+			return static_cast<int>(GetLastError());
+		}
+		WaitForInputIdle(procInfo.hProcess, 15000);
+		CloseHandle(procInfo.hThread);
+		CloseHandle(procInfo.hProcess);
+		return cli_create_process(app, params) ? 0 : -2;
 	}
 	catch (...)
 	{
-		return 1;
 	}
+	return -1;
 }
