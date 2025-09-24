@@ -70,8 +70,8 @@ IDI_APP_ICON            ICON                    "2Box.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,1,0
- PRODUCTVERSION 2,1,0
+ FILEVERSION 2,1,1,0
+ PRODUCTVERSION 2,1,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -88,12 +88,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Wei"
             VALUE "FileDescription", "2Box"
-            VALUE "FileVersion", "2.1.0"
+            VALUE "FileVersion", "2.1.1"
             VALUE "InternalName", "2Box.exe"
             VALUE "LegalCopyright", "Copyright (C) 2025 Wei.All Rights Reserved."
             VALUE "OriginalFilename", "2Box.exe"
             VALUE "ProductName", "2Box"
-            VALUE "ProductVersion", "2.1.0"
+            VALUE "ProductVersion", "2.1.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -112,7 +112,7 @@ END
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
-#include "embed_dll.rc"
+
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

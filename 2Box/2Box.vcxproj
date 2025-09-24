@@ -242,6 +242,9 @@
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)\common\header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /B /Y "$(OutputPath)$(TargetFileName)"+"$(SolutionDir)2Box\res\embed_dll\$(Configuration)\x64\MemoryDll64.dll"+"$(SolutionDir)2Box\res\embed_dll\$(Configuration)\x86\MemoryDll32.dll" "$(OutputPath)$(TargetFileName)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -276,6 +279,9 @@
       <AdditionalIncludeDirectories>$(SolutionDir)\common\header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>RC_NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /B /Y "$(OutputPath)$(TargetFileName)"+"$(SolutionDir)2Box\res\embed_dll\x64\MemoryDll64.dll"+"$(SolutionDir)2Box\res\embed_dll\x86\MemoryDll32.dll" "$(OutputPath)$(TargetFileName)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -307,6 +313,9 @@
       <AdditionalIncludeDirectories>$(SolutionDir)\common\header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>RC_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /B /Y "$(OutputPath)$(TargetFileName)"+"$(SolutionDir)2Box\res\embed_dll\$(Configuration)\x64\MemoryDll64.dll"+"$(SolutionDir)2Box\res\embed_dll\$(Configuration)\x86\MemoryDll32.dll" "$(OutputPath)$(TargetFileName)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -341,6 +350,9 @@
       <AdditionalIncludeDirectories>$(SolutionDir)\common\header_units\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>RC_NDEBUG;RC_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /B /Y "$(OutputPath)$(TargetFileName)"+"$(SolutionDir)2Box\res\embed_dll\x64\MemoryDll64.dll"+"$(SolutionDir)2Box\res\embed_dll\x86\MemoryDll32.dll" "$(OutputPath)$(TargetFileName)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -65,7 +65,7 @@ namespace pe
 		NtHeaderPtrType getNtHeader() const
 		{
 			using NtHeaderType = std::remove_cvref_t<std::remove_pointer_t<NtHeaderPtrType>>;
-			
+
 			if (m_optionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
 			{
 				if constexpr (!std::is_same_v<NtHeaderType, IMAGE_NT_HEADERS32>)
@@ -87,6 +87,22 @@ namespace pe
 
 		const IMAGE_SECTION_HEADER* getSectionHeader() const noexcept { return m_pSectionHeader; }
 		int getNumberOfSections() const noexcept { return m_numberOfSections; }
+
+		DWORD parseFileSize() const noexcept
+		{
+			DWORD endSectionAddress = 0;
+			DWORD endSectionSize = 0;
+			for (WORD wIndex = 0; wIndex < m_numberOfSections; wIndex++)
+			{
+				const IMAGE_SECTION_HEADER& currentSection = m_pSectionHeader[wIndex];
+				if (currentSection.PointerToRawData > endSectionAddress)
+				{
+					endSectionAddress = currentSection.PointerToRawData;
+					endSectionSize = currentSection.SizeOfRawData;
+				}
+			}
+			return endSectionAddress + endSectionSize;
+		}
 
 		DWORD getProcRVA(std::string_view procName) const
 		{
