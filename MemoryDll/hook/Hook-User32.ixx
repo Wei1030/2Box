@@ -127,8 +127,6 @@ namespace hook
 		return FALSE;
 	}
 
-	static constexpr UINT WM_INPUT_SYNC = 9527;
-
 	class SyncInput
 	{
 	public:
@@ -154,7 +152,7 @@ namespace hook
 			{
 				m_others = get_all_toplevel_window_in_other_env();
 			}
-			postMsg(WM_INPUT_SYNC, static_cast<WPARAM>(m_bLeaderStart), 0, true);
+			postMsg(global::Data::get().inputSyncMsgId(), static_cast<WPARAM>(m_bLeaderStart), 0, true);
 			MessageBeep(MB_OK);
 		}
 
@@ -218,10 +216,13 @@ namespace hook
 
 	void process_msg(_In_ CONST MSG* lpMsg)
 	{
-		if (lpMsg->message == WM_INPUT_SYNC)
+		if (lpMsg->message == global::Data::get().inputSyncMsgId())
 		{
 			SyncInput::instPerThread().startSync(lpMsg->wParam ? true : false);
-			PostMessageW(lpMsg->hwnd, WM_SETFOCUS, 0, 0);
+			if (lpMsg->wParam)
+			{
+				PostMessageW(lpMsg->hwnd, WM_SETFOCUS, 0, 0);
+			}
 		}
 		else if (lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
 		{

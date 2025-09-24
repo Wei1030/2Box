@@ -55,50 +55,16 @@ namespace global
 		void initialize(std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath);
 
 	public:
-		std::uint64_t envFlag() const
-		{
-			return m_envFlag;
-		}
-
-		std::uint32_t envIndex() const
-		{
-			return m_envIndex;
-		}
-
-		bool isNonLimitedAdmin() const
-		{
-			return m_bIsNonLimitedAdmin;
-		}
-
-		bool isCmd() const
-		{
-			return m_bIsCmd;
-		}
-
-		std::wstring_view envFlagName() const
-		{
-			return m_envFlagName;
-		}
-
-		std::string_view envFlagNameA() const
-		{
-			return m_envFlagNameA;
-		}
-
-		std::wstring_view rootPath() const
-		{
-			return m_rootPath;
-		}
-
-		std::string_view dllFullPath() const
-		{
-			return m_dllFullPath;
-		}
-
-		HKEY appKey() const
-		{
-			return m_appKey;
-		}
+		std::uint64_t envFlag() const { return m_envFlag; }
+		std::uint32_t envIndex() const { return m_envIndex; }
+		bool isNonLimitedAdmin() const { return m_bIsNonLimitedAdmin; }
+		bool isCmd() const { return m_bIsCmd; }
+		std::wstring_view envFlagName() const { return m_envFlagName; }
+		std::string_view envFlagNameA() const { return m_envFlagNameA; }
+		std::wstring_view rootPath() const { return m_rootPath; }
+		std::string_view dllFullPath() const { return m_dllFullPath; }
+		HKEY appKey() const { return m_appKey; }
+		std::uint32_t inputSyncMsgId() const { return m_inputSyncMsgId; }
 
 		bool isInKnownFolderPath(std::wstring_view path) const;
 		std::optional<std::wstring> getRedirectPath(std::wstring_view knownFolderPath) const;
@@ -111,6 +77,7 @@ namespace global
 		void initializeSelfPath();
 		void initializeDllFullPath();
 		void initializeKnownFolderPath();
+		void initializeMisc();
 
 	private:
 		std::uint64_t m_envFlag{0};
@@ -125,6 +92,7 @@ namespace global
 		std::wstring m_selfFileName;
 		RegKey m_appKey;
 		std::vector<std::wstring> m_knownFolders;
+		std::uint32_t m_inputSyncMsgId{0};
 	};
 
 	export bool is_app_key_name(std::wstring_view fullName)

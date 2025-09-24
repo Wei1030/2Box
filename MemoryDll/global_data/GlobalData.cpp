@@ -84,6 +84,7 @@ namespace global
 		initializeSelfPath();
 		initializeDllFullPath();
 		initializeKnownFolderPath();
+		initializeMisc();
 
 		// std::wcout.imbue(std::locale(""));
 		// InitConsole();
@@ -235,6 +236,15 @@ namespace global
 				}
 				CoTaskMemFree(out);
 			}
+		}
+	}
+
+	void Data::initializeMisc()
+	{
+		m_inputSyncMsgId = RegisterWindowMessageW(L"2Box_WM_INPUT_SYNC");
+		if (!m_inputSyncMsgId)
+		{
+			m_inputSyncMsgId = 9527;
 		}
 	}
 
