@@ -13,6 +13,30 @@ import Biz.Core;
 
 namespace
 {
+	void ensure_dll_in_device(std::wstring_view flagName)
+	{
+		namespace fs = std::filesystem;
+		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(flagName)}; !fs::exists(path32))
+		{
+			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp32.bin", flagName)})};
+			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit32>();
+			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
+			tempFile.write(address, size);
+			tempFile.close();
+			fs::rename(tempPath, path32);
+		}
+
+		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(flagName)}; !fs::exists(path64))
+		{
+			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp64.bin", flagName)})};
+			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit64>();
+			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
+			tempFile.write(address, size);
+			tempFile.close();
+			fs::rename(tempPath, path64);
+		}
+	}
+
 	PROCESS_INFORMATION create_and_inject(const biz::Env* env, std::wstring_view exePath, std::wstring_view params)
 	{
 		PROCESS_INFORMATION procInfo = {nullptr};
@@ -104,6 +128,7 @@ namespace biz
 		{
 			env = env_mgr().createEnv();
 		}
+		ensure_dll_in_device(env->getFlagName());
 		const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath, params);
 		ResumeThread(procInfo.hThread);
 		CloseHandle(procInfo.hThread);

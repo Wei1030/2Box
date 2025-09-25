@@ -22,30 +22,6 @@ namespace
 		return dis(rng);
 	}
 
-	void ensure_dll_in_device(std::wstring_view flagName)
-	{
-		namespace fs = std::filesystem;
-		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(flagName)}; !fs::exists(path32))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp32.bin", flagName)})};
-			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit32>();
-			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
-			tempFile.write(address, size);
-			tempFile.close();
-			fs::rename(tempPath, path32);
-		}
-
-		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(flagName)}; !fs::exists(path64))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp64.bin", flagName)})};
-			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit64>();
-			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
-			tempFile.write(address, size);
-			tempFile.close();
-			fs::rename(tempPath, path64);
-		}
-	}
-
 	void delete_dll_from_device(std::wstring_view flagName)
 	{
 		namespace fs = std::filesystem;
@@ -124,7 +100,7 @@ namespace biz
 		namespace fs = std::filesystem;
 		const fs::path envPath{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)})};
 		fs::create_directories(envPath);
-		ensure_dll_in_device(flagName);
+		// ensure_dll_in_device(flagName);
 		addEnv(std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName)));
 	}
 
@@ -307,7 +283,7 @@ namespace biz
 				continue;
 			}
 
-			ensure_dll_in_device(flagName);
+			// ensure_dll_in_device(flagName);
 			result.flag = flag;
 			result.flagName = flagName;
 			break;
