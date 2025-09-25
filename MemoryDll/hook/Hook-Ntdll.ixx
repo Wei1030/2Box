@@ -612,7 +612,7 @@ namespace hook
 	// 	return trampoline(ObjectAttributes);
 	// }
 
-	std::unordered_set<std::uint64_t> GetAllProcessInEnv()
+	std::unordered_set<std::uint64_t> GetAllProcessInOtherEnv()
 	{
 		std::unordered_set<std::uint64_t> allProc;
 		try
@@ -620,7 +620,7 @@ namespace hook
 			const rpc::ClientDefault c;
 			std::uint64_t pids[rpc::MAX_PID_COUNT]{};
 			std::uint32_t count = rpc::MAX_PID_COUNT;
-			c.getAllProcessIdInEnv(global::Data::get().envFlag(), pids, &count);
+			c.getAllProcessIdExclude(global::Data::get().envFlag(), pids, &count);
 			allProc.reserve(count);
 			for (std::uint32_t i = 0; i < count; ++i)
 			{
@@ -630,7 +630,6 @@ namespace hook
 		catch (...)
 		{
 		}
-		allProc.insert(GetCurrentProcessId());
 		return allProc;
 	}
 
@@ -645,13 +644,13 @@ namespace hook
 
 		if (SystemInformationClass == SystemProcessInformation)
 		{
-			const std::unordered_set<std::uint64_t> allProc = GetAllProcessInEnv();
+			const std::unordered_set<std::uint64_t> allProcInOtherEnv = GetAllProcessInOtherEnv();
 			PSYSTEM_PROCESS_INFORMATION pIndex = static_cast<PSYSTEM_PROCESS_INFORMATION>(SystemInformation);
 			PSYSTEM_PROCESS_INFORMATION pShow = pIndex;
 
 			do
 			{
-				if (pIndex->UniqueProcessId && !allProc.contains(reinterpret_cast<ULONG_PTR>(pIndex->UniqueProcessId)))
+				if (pIndex->UniqueProcessId && allProcInOtherEnv.contains(reinterpret_cast<ULONG_PTR>(pIndex->UniqueProcessId)))
 				{
 					if (pIndex->NextEntryOffset)
 					{

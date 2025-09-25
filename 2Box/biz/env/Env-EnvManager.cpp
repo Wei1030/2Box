@@ -178,7 +178,46 @@ namespace biz
 		delete_env_from_reg(env->getFlagName());
 	}
 
-	bool EnvManager::containsToplevelWindowExcludingByFlag(void* hWnd, std::uint64_t excludeEnvFlag) const
+	bool EnvManager::containsProcessIdExclude(std::uint32_t pid, std::uint64_t excludeEnvFlag) const
+	{
+		if (GetCurrentProcessId() == pid)
+		{
+			return true;
+		}
+		std::vector<std::shared_ptr<Env>> allEnv = getAllEnv();
+		for (const std::shared_ptr<Env>& env : allEnv)
+		{
+			if (env->getFlag() == excludeEnvFlag)
+			{
+				continue;
+			}
+			if (env->getProcess(pid))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	std::vector<DWORD> EnvManager::getAllProcessIdsExclude(std::uint64_t excludeEnvFlag) const
+	{
+		std::vector<std::shared_ptr<Env>> allEnv = getAllEnv();
+		std::vector<DWORD> result;
+		result.reserve(allEnv.size() * 2);
+		for (const std::shared_ptr<Env>& env : allEnv)
+		{
+			if (env->getFlag() == excludeEnvFlag)
+			{
+				continue;
+			}
+			std::vector<DWORD> temp = env->getAllProcessIds();
+			result.insert(result.end(), temp.begin(), temp.end());
+		}
+		result.push_back(GetCurrentProcessId());
+		return result;
+	}
+
+	bool EnvManager::containsToplevelWindowExclude(void* hWnd, std::uint64_t excludeEnvFlag) const
 	{
 		if (hWnd == ui::main_wnd().nativeHandle())
 		{

@@ -36,7 +36,7 @@ namespace hook
 		try
 		{
 			const rpc::ClientDefault c;
-			return c.containsToplevelWindowExcludingByFlag(hWnd, global::Data::get().envFlag());
+			return c.containsToplevelWindowExclude(hWnd, global::Data::get().envFlag());
 		}
 		catch (...)
 		{
