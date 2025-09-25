@@ -151,8 +151,9 @@ namespace hook
 			if (m_bLeaderStart)
 			{
 				m_others = get_all_toplevel_window_in_other_env();
+				LockSetForegroundWindow(LSFW_LOCK);
 			}
-			postMsg(global::Data::get().inputSyncMsgId(), static_cast<WPARAM>(m_bLeaderStart), 0, true);
+			postMsg(global::Data::get().inputSyncMsgId(), m_bLeaderStart, 0, true);
 			MessageBeep(MB_OK);
 		}
 
@@ -221,7 +222,7 @@ namespace hook
 			SyncInput::instPerThread().startSync(lpMsg->wParam ? true : false);
 			if (lpMsg->wParam)
 			{
-				PostMessageW(lpMsg->hwnd, WM_SETFOCUS, 0, 0);
+				SendMessageW(lpMsg->hwnd, WM_SETFOCUS, 0, 0);
 			}
 		}
 		else if (lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
