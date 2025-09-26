@@ -217,7 +217,7 @@ namespace global
 
 	void Data::initializeKnownFolderPath()
 	{
-		static const std::array rfidArray = {FOLDERID_LocalAppData, FOLDERID_RoamingAppData, FOLDERID_SavedGames, FOLDERID_ProgramData};
+		static const std::array rfidArray = {FOLDERID_LocalAppData, FOLDERID_LocalAppDataLow, FOLDERID_RoamingAppData, FOLDERID_SavedGames, FOLDERID_ProgramData};
 
 		for (size_t i = 0; i < rfidArray.size(); ++i)
 		{
@@ -231,7 +231,6 @@ namespace global
 				{
 					if (ensure_dir_exists(redirectPath.value(), true))
 					{
-						// 再最后加上\, 这样能区分Local\和LocalLow 我们不需要LocalLow 
 						m_knownFolders.push_back(std::format(L"{}\\", sv));
 					}
 				}
