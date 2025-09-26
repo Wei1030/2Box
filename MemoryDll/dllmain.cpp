@@ -6,7 +6,6 @@
 
 import "sys_defs.h";
 import std;
-import PELoader;
 
 #include "biz_initializer.h"
 
@@ -56,8 +55,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpRese
 			TerminateProcess(GetCurrentProcess(), 0);
 		}
 		const DetourInjectParams& injectParams = *static_cast<DetourInjectParams*>(payload);
-		pe::fill_os_version(injectParams.version);
-		biz_initialize(injectParams.envFlag, injectParams.envIndex, injectParams.rootPath, injectParams.rootPathCount);
+
+		biz_initialize(injectParams.version, injectParams.envFlag, injectParams.envIndex, injectParams.rootPath, injectParams.rootPathCount);
 		DetourFreePayload(payload);
 	}
 #endif

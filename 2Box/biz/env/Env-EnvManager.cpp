@@ -22,48 +22,6 @@ namespace
 		return dis(rng);
 	}
 
-	void ensure_dll_in_device(std::wstring_view flagName)
-	{
-		namespace fs = std::filesystem;
-		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(flagName)}; !fs::exists(path32))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp32.bin", flagName)})};
-			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit32>();
-			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
-			tempFile.write(address, size);
-			tempFile.close();
-			fs::rename(tempPath, path32);
-		}
-
-		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(flagName)}; !fs::exists(path64))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp64.bin", flagName)})};
-			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit64>();
-			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
-			tempFile.write(address, size);
-			tempFile.close();
-			fs::rename(tempPath, path64);
-		}
-	}
-
-	void delete_dll_from_device(std::wstring_view flagName)
-	{
-		namespace fs = std::filesystem;
-		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(flagName)}; fs::exists(path32))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp32.bin", flagName)})};
-			fs::rename(path32, tempPath);
-			fs::remove(tempPath);
-		}
-
-		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(flagName)}; fs::exists(path64))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp64.bin", flagName)})};
-			fs::rename(path64, tempPath);
-			fs::remove(tempPath);
-		}
-	}
-
 	void delete_dir_by_cmd(std::wstring_view dir)
 	{
 		PROCESS_INFORMATION procInfo = {nullptr};
@@ -87,8 +45,6 @@ namespace
 		namespace fs = std::filesystem;
 		try
 		{
-			delete_dll_from_device(flagName);
-
 			const fs::path envDir{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"})};
 			const fs::path envPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}", index)})};
 			const fs::path tempPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}_{}_to_delete", index, flagName)})};
@@ -124,8 +80,7 @@ namespace biz
 		namespace fs = std::filesystem;
 		const fs::path envPath{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)})};
 		fs::create_directories(envPath);
-		ensure_dll_in_device(flagName);
-		addEnv(std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName)));
+		addEnv(std::make_shared<Env>(index, flag, flagName, name));
 	}
 
 	std::shared_ptr<Env> EnvManager::createEnv()
@@ -138,7 +93,7 @@ namespace biz
 		const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
 		auto [flag, flagName] = ensureCreateNewEnvFlag(index);
 		const std::wstring name = std::format(L"环境{}", index);
-		envResult = std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName));
+		envResult = std::make_shared<Env>(index, flag, flagName, name);
 		add_env_to_reg(flagName, envResult.get());
 		addEnv(envResult);
 		return envResult;
@@ -171,14 +126,55 @@ namespace biz
 		return m_flagToEnv.size();
 	}
 
-	void EnvManager::deleteEnv(const std::shared_ptr<Env>& env)
+	// ReSharper disable once CppPassValueParameterByConstReference
+	void EnvManager::deleteEnv(std::shared_ptr<Env> env)
 	{
+		env->deleteDllFromDevice();
 		removeEnv(env->getFlag());
 		delete_env_dir(env->getIndex(), env->getFlagName());
 		delete_env_from_reg(env->getFlagName());
 	}
 
-	bool EnvManager::containsToplevelWindowExcludingByFlag(void* hWnd, std::uint64_t excludeEnvFlag) const
+	bool EnvManager::containsProcessIdExclude(std::uint32_t pid, std::uint64_t excludeEnvFlag) const
+	{
+		if (GetCurrentProcessId() == pid)
+		{
+			return true;
+		}
+		std::vector<std::shared_ptr<Env>> allEnv = getAllEnv();
+		for (const std::shared_ptr<Env>& env : allEnv)
+		{
+			if (env->getFlag() == excludeEnvFlag)
+			{
+				continue;
+			}
+			if (env->getProcess(pid))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	std::vector<DWORD> EnvManager::getAllProcessIdsExclude(std::uint64_t excludeEnvFlag) const
+	{
+		std::vector<std::shared_ptr<Env>> allEnv = getAllEnv();
+		std::vector<DWORD> result;
+		result.reserve(allEnv.size() * 2);
+		for (const std::shared_ptr<Env>& env : allEnv)
+		{
+			if (env->getFlag() == excludeEnvFlag)
+			{
+				continue;
+			}
+			std::vector<DWORD> temp = env->getAllProcessIds();
+			result.insert(result.end(), temp.begin(), temp.end());
+		}
+		result.push_back(GetCurrentProcessId());
+		return result;
+	}
+
+	bool EnvManager::containsToplevelWindowExclude(void* hWnd, std::uint64_t excludeEnvFlag) const
 	{
 		if (hWnd == ui::main_wnd().nativeHandle())
 		{
@@ -268,7 +264,6 @@ namespace biz
 				continue;
 			}
 
-			ensure_dll_in_device(flagName);
 			result.flag = flag;
 			result.flagName = flagName;
 			break;

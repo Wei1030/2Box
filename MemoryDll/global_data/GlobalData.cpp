@@ -71,8 +71,9 @@ namespace
 
 namespace global
 {
-	void Data::initialize(std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath)
+	void Data::initialize(SystemVersionInfo versionInfo, std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath)
 	{
+		m_sysVersion = versionInfo;
 		m_envFlag = envFlag;
 		m_envIndex = envIndex;
 		m_envFlagName = std::format(L"{:016X}", envFlag);
@@ -84,6 +85,7 @@ namespace global
 		initializeSelfPath();
 		initializeDllFullPath();
 		initializeKnownFolderPath();
+		initializeMisc();
 
 		// std::wcout.imbue(std::locale(""));
 		// InitConsole();
@@ -215,7 +217,7 @@ namespace global
 
 	void Data::initializeKnownFolderPath()
 	{
-		static const std::array rfidArray = {FOLDERID_LocalAppData, FOLDERID_RoamingAppData, FOLDERID_SavedGames, FOLDERID_ProgramData};
+		static const std::array rfidArray = {FOLDERID_LocalAppData, FOLDERID_LocalAppDataLow, FOLDERID_RoamingAppData, FOLDERID_SavedGames, FOLDERID_ProgramData};
 
 		for (size_t i = 0; i < rfidArray.size(); ++i)
 		{
@@ -229,12 +231,20 @@ namespace global
 				{
 					if (ensure_dir_exists(redirectPath.value(), true))
 					{
-						// 再最后加上\, 这样能区分Local\和LocalLow 我们不需要LocalLow 
 						m_knownFolders.push_back(std::format(L"{}\\", sv));
 					}
 				}
 				CoTaskMemFree(out);
 			}
+		}
+	}
+
+	void Data::initializeMisc()
+	{
+		m_inputSyncMsgId = RegisterWindowMessageW(L"2Box_WM_INPUT_SYNC");
+		if (!m_inputSyncMsgId)
+		{
+			m_inputSyncMsgId = 9527;
 		}
 	}
 

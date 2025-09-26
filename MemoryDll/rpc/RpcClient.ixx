@@ -178,9 +178,14 @@ namespace rpc
 			return require_elevation(handle(), pid, envFlag, path.data());
 		}
 
-		decltype(auto) getAllProcessIdInEnv(unsigned long long envFlag, unsigned long long pids[], unsigned int* count) const
+		decltype(auto) containsProcessIdExclude(unsigned long pid, unsigned long long excludeEnvFlag) const
 		{
-			return get_all_process_id_in_env(handle(), envFlag, pids, count);
+			return contains_process_id_exclude(handle(), pid, excludeEnvFlag) ? true : false;
+		}
+
+		decltype(auto) getAllProcessIdExclude(unsigned long long excludeEnvFlag, unsigned long long pids[], unsigned int* count) const
+		{
+			return get_all_process_id_exclude(handle(), excludeEnvFlag, pids, count);
 		}
 
 		decltype(auto) addToplevelWindow(void* hWnd, unsigned int pid, unsigned long long envFlag) const
@@ -193,9 +198,9 @@ namespace rpc
 			return remove_toplevel_window(handle(), reinterpret_cast<unsigned long long>(hWnd), pid, envFlag);
 		}
 
-		decltype(auto) containsToplevelWindowExcludingByFlag(void* hWnd, unsigned long long excludeEnvFlag) const
+		decltype(auto) containsToplevelWindowExclude(void* hWnd, unsigned long long excludeEnvFlag) const
 		{
-			return contains_toplevel_window_excluding_by_flag(handle(), reinterpret_cast<unsigned long long>(hWnd), excludeEnvFlag) ? true : false;
+			return contains_toplevel_window_exclude(handle(), reinterpret_cast<unsigned long long>(hWnd), excludeEnvFlag) ? true : false;
 		}
 
 		decltype(auto) getAllToplevelWindowExclude(unsigned long long excludeEnvFlag, unsigned long long hWnds[], unsigned int* count) const

@@ -76,7 +76,7 @@ namespace hook
 		const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
 		std::vector<std::byte> buffer(paramsSize);
 		DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
-		injectParams->version = pe::g_os_version;
+		injectParams->version = global::Data::get().sysVersion();
 		injectParams->envFlag = global::Data::get().envFlag();
 		injectParams->envIndex = global::Data::get().envIndex();
 		injectParams->rootPathCount = rootPathCount;
@@ -230,6 +230,30 @@ namespace hook
 			CloseHandle(ProcInfo.hProcess);
 		}
 		return 33;
+	}
+
+	bool contains_process_id_in_other_env(DWORD dwProcessId)
+	{
+		try
+		{
+			const rpc::ClientDefault c;
+			return c.containsProcessIdExclude(dwProcessId, global::Data::get().envFlag());
+		}
+		catch (...)
+		{
+		}
+		return true;
+	}
+
+	template <auto Trampoline>
+	HANDLE WINAPI OpenProcess(_In_ DWORD dwDesiredAccess, _In_ BOOL bInheritHandle, _In_ DWORD dwProcessId)
+	{
+		if (contains_process_id_in_other_env(dwProcessId))
+		{
+			SetLastError(ERROR_INVALID_PARAMETER);
+			return nullptr;
+		}
+		return Trampoline(dwDesiredAccess, bInheritHandle, dwProcessId);
 	}
 
 #define  IDE_ATAPI_IDENTIFY  0xA1  //  Returns ID sector for ATAPI.
@@ -501,6 +525,7 @@ namespace hook
 		CREATE_HOOK_BY_NAME(CreateProcessA);
 		pCreateProcessTrampolineW = std::addressof(CREATE_HOOK_BY_NAME(CreateProcessW).funcAddress);
 		CREATE_HOOK_BY_NAME(WinExec);
+		CREATE_HOOK_BY_NAME(OpenProcess);
 		CREATE_HOOK_BY_NAME(DeviceIoControl);
 	}
 }

@@ -4,12 +4,6 @@ export module EssentialData;
 
 import "sys_defs.h";
 import std;
-import Scheduler;
-import MainApp;
-import PELoader;
-// import SymbolLoader;
-// import Injector;
-import Utility.SystemInfo;
 
 namespace biz
 {
@@ -18,6 +12,15 @@ namespace biz
 		char* address;
 		unsigned int size;
 	};
+
+	export struct CoreData
+	{
+		SystemVersionInfo version;
+		DllResourceInfo dll32;
+		DllResourceInfo dll64;
+	};
+
+	inline CoreData g_core_data;
 
 	namespace detail
 	{
@@ -50,17 +53,17 @@ namespace biz
 			};
 		}
 
-		void init_os_version(SystemVersionInfo& version)
-		{
-			version.isWindows8Point1OrGreater = IsWindows8Point1OrGreater();
-			version.isWindows8OrGreater = IsWindows8OrGreater();
-			version.isWindowsVistaOrGreater = IsWindowsVistaOrGreater();
-
-			SYSTEM_INFO sysInfo{};
-			GetNativeSystemInfo(&sysInfo);
-			version.is32BitSystem = sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL || sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM;
-			pe::g_os_version = version;
-		}
+		// void init_os_version(SystemVersionInfo& version)
+		// {
+		// 	version.isWindows8Point1OrGreater = IsWindows8Point1OrGreater();
+		// 	version.isWindows8OrGreater = IsWindows8OrGreater();
+		// 	version.isWindowsVistaOrGreater = IsWindowsVistaOrGreater();
+		//
+		// 	SYSTEM_INFO sysInfo{};
+		// 	GetNativeSystemInfo(&sysInfo);
+		// 	version.is32BitSystem = sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL || sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM;
+		// 	pe::g_os_version = version;
+		// }
 
 		// template <ArchBit BitType = CURRENT_ARCH_BIT>
 		// void init_kernel32_info(Kernel32DllInfo& info)
@@ -73,50 +76,25 @@ namespace biz
 		// }
 	}
 
-	export
-	template <ArchBit BitType = CURRENT_ARCH_BIT>
-	const DllResourceInfo& get_dll_resource_inst()
+	export void init_system_version_info()
 	{
-		static DllResourceInfo instance = detail::get_dll_resource<BitType>();
-		return instance;
+		SystemVersionInfo& version = g_core_data.version;
+		version.isWindows8Point1OrGreater = IsWindows8Point1OrGreater();
+		version.isWindows8OrGreater = IsWindows8OrGreater();
+		version.isWindowsVistaOrGreater = IsWindowsVistaOrGreater();
+
+		SYSTEM_INFO sysInfo{};
+		GetNativeSystemInfo(&sysInfo);
+		version.is32BitSystem = sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL || sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM;
 	}
 
-	export std::filesystem::path& get_bin_path()
+	export void init_resource_info()
 	{
-		namespace fs = std::filesystem;
-		struct BinPathWrapper
-		{
-			BinPathWrapper()
-			{
-				path = fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"bin"});
-				fs::create_directories(path);
-			}
-
-			fs::path path;
-		};
-		static BinPathWrapper wrapper{};
-		return wrapper.path;
+		g_core_data.dll32 = detail::get_dll_resource<ArchBit::Bit32>();
+		g_core_data.dll64 = detail::get_dll_resource<ArchBit::Bit64>();
 	}
 
-	export
-	template <ArchBit BitType = CURRENT_ARCH_BIT>
-	std::filesystem::path get_dll_full_path(std::wstring_view flagName)
-	{
-		namespace fs = std::filesystem;
-		if constexpr (BitType == ArchBit::Bit64)
-		{
-			return fs::path{fs::weakly_canonical(get_bin_path() / fs::path{std::format(L"{}_64.bin", flagName)})};
-		}
-		else
-		{
-			return fs::path{fs::weakly_canonical(get_bin_path() / fs::path{std::format(L"{}_32.bin", flagName)})};
-		}
-	}
-
-	export std::string get_detours_injection_dll_name(std::wstring_view flagName)
-	{
-		return get_dll_full_path<CURRENT_ARCH_BIT>(flagName).string();
-	}
+	export const CoreData& get_core_data() noexcept { return g_core_data; }
 
 	// export
 	// template <ArchBit BitType = CURRENT_ARCH_BIT>
@@ -140,25 +118,25 @@ namespace biz
 	// 	}
 	// }
 
-	export EssentialData& get_essential_data()
-	{
-		struct EssentialDataWrapper
-		{
-			EssentialDataWrapper()
-			{
-				detail::init_os_version(data.version);
-				// detail::init_kernel32_info<ArchBit::Bit32>(data.kernelInfo32);
-				// if constexpr (IS_CURRENT_ARCH_64_BIT)
-				// {
-				// 	detail::init_kernel32_info<ArchBit::Bit64>(data.kernelInfo64);
-				// }
-			}
-
-			EssentialData data;
-		};
-		static EssentialDataWrapper wrapper;
-		return wrapper.data;
-	}
+	// export EssentialData& get_essential_data()
+	// {
+	// 	struct EssentialDataWrapper
+	// 	{
+	// 		EssentialDataWrapper()
+	// 		{
+	// 			detail::init_os_version(data.version);
+	// 			detail::init_kernel32_info<ArchBit::Bit32>(data.kernelInfo32);
+	// 			if constexpr (IS_CURRENT_ARCH_64_BIT)
+	// 			{
+	// 				detail::init_kernel32_info<ArchBit::Bit64>(data.kernelInfo64);
+	// 			}
+	// 		}
+	//
+	// 		EssentialData data;
+	// 	};
+	// 	static EssentialDataWrapper wrapper;
+	// 	return wrapper.data;
+	// }
 
 	namespace detail
 	{

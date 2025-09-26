@@ -8,14 +8,16 @@ interface service
 	void request_window_inspection([in] unsigned int pid, [in] unsigned long long envFlag);
 	void require_elevation([in] unsigned int pid, [in] unsigned long long envFlag, [in, string] const wchar_t path[]);
 	
-	inline const unsigned int MAX_PIDS = 1024;
-	void get_all_process_id_in_env([in] unsigned long long envFlag,
+	int contains_process_id_exclude([in] unsigned long pid, [in] unsigned long long excludeEnvFlag);
+
+	inline const unsigned int MAX_PIDS = 2048;
+	void get_all_process_id_exclude([in] unsigned long long excludeEnvFlag,
 		[out, length_is(*count), size_is(MAX_PIDS)] unsigned long long pids[],
 		[out] unsigned int* count);
 
 	void add_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
 	void remove_toplevel_window([in] unsigned long long hWnd, [in] unsigned int pid, [in] unsigned long long envFlag);
-	int contains_toplevel_window_excluding_by_flag([in] unsigned long long hWnd, [in] unsigned long long excludeEnvFlag);
+	int contains_toplevel_window_exclude([in] unsigned long long hWnd, [in] unsigned long long excludeEnvFlag);
 
 	inline const unsigned int MAX_TOPLEVEL_WINDOW = 2048;
 	void get_all_toplevel_window_exclude([in] unsigned long long excludeEnvFlag,

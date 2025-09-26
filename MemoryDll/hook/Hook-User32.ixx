@@ -36,7 +36,7 @@ namespace hook
 		try
 		{
 			const rpc::ClientDefault c;
-			return c.containsToplevelWindowExcludingByFlag(hWnd, global::Data::get().envFlag());
+			return c.containsToplevelWindowExclude(hWnd, global::Data::get().envFlag());
 		}
 		catch (...)
 		{
@@ -127,8 +127,6 @@ namespace hook
 		return FALSE;
 	}
 
-	static constexpr UINT WM_INPUT_SYNC = 9527;
-
 	class SyncInput
 	{
 	public:
@@ -153,8 +151,9 @@ namespace hook
 			if (m_bLeaderStart)
 			{
 				m_others = get_all_toplevel_window_in_other_env();
+				LockSetForegroundWindow(LSFW_LOCK);
 			}
-			postMsg(WM_INPUT_SYNC, static_cast<WPARAM>(m_bLeaderStart), 0, true);
+			postMsg(global::Data::get().inputSyncMsgId(), m_bLeaderStart, 0, true);
 			MessageBeep(MB_OK);
 		}
 
@@ -218,10 +217,14 @@ namespace hook
 
 	void process_msg(_In_ CONST MSG* lpMsg)
 	{
-		if (lpMsg->message == WM_INPUT_SYNC)
+		if (lpMsg->message == global::Data::get().inputSyncMsgId())
 		{
 			SyncInput::instPerThread().startSync(lpMsg->wParam ? true : false);
-			PostMessageW(lpMsg->hwnd, WM_SETFOCUS, 0, 0);
+			if (lpMsg->wParam && SyncInput::filterWnd(lpMsg->hwnd))
+			{
+				SetActiveWindow(lpMsg->hwnd);
+				SendMessageW(lpMsg->hwnd, WM_SETFOCUS, 0, 0);
+			}
 		}
 		else if (lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
 		{
