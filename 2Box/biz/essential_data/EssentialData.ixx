@@ -1,5 +1,3 @@
-module;
-#include "res/resource.h"
 export module EssentialData;
 
 import "sys_defs.h";
@@ -24,33 +22,54 @@ namespace biz
 
 	namespace detail
 	{
+		class DllResParser
+		{
+		public:
+			static DllResParser& instance()
+			{
+				static DllResParser instance;
+				return instance;
+			}
+
+		public:
+			DllResourceInfo dll64;
+			DllResourceInfo dll32;
+
+		private:
+			DllResParser()
+			{
+				std::ifstream in(app().exeFullName().data(), std::ios::binary);
+				in.seekg(0, std::ios::end);
+				const std::streamsize fileSize = in.tellg();
+				in.seekg(0, std::ios::beg);
+				m_buffer.resize(fileSize);
+				in.read(m_buffer.data(), fileSize);
+				in.close();
+				// exe
+				char* exeAddr = m_buffer.data();
+				const DWORD exeSize = pe::Parser{exeAddr}.parseFileSize();
+				// dll64
+				dll64.address = exeAddr + exeSize;
+				dll64.size = pe::Parser{dll64.address}.parseFileSize();
+				// dll32
+				dll32.address = dll64.address + dll64.size;
+				dll32.size = pe::Parser{dll32.address}.parseFileSize();
+			}
+		private:
+			std::vector<char> m_buffer;
+		};
+
 		template <ArchBit BitType = CURRENT_ARCH_BIT>
 		DllResourceInfo get_dll_resource()
 		{
-			HRSRC hRes;
 			if constexpr (BitType == ArchBit::Bit32)
 			{
-				hRes = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_MEM_DLL_32), RT_RCDATA);
+				return DllResParser::instance().dll32;
 			}
 			else
 			{
-				hRes = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_MEM_DLL_64), RT_RCDATA);
+				return DllResParser::instance().dll64;
 			}
-			if (!hRes)
-			{
-				throw std::runtime_error("failed to find resource");
-			}
-
-			const HGLOBAL hResourceLoaded = LoadResource(nullptr, hRes);
-			if (!hResourceLoaded)
-			{
-				throw std::runtime_error("failed to load resource");
-			}
-
-			return {
-				static_cast<char*>(LockResource(hResourceLoaded)),
-				SizeofResource(nullptr, hRes)
-			};
 		}
 
 		// void init_os_version(SystemVersionInfo& version)
