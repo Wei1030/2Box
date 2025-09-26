@@ -52,9 +52,10 @@ namespace global
 		}
 
 	public:
-		void initialize(std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath);
+		void initialize(SystemVersionInfo versionInfo, std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath);
 
 	public:
+		SystemVersionInfo sysVersion() const { return m_sysVersion; }
 		std::uint64_t envFlag() const { return m_envFlag; }
 		std::uint32_t envIndex() const { return m_envIndex; }
 		bool isNonLimitedAdmin() const { return m_bIsNonLimitedAdmin; }
@@ -80,6 +81,7 @@ namespace global
 		void initializeMisc();
 
 	private:
+		SystemVersionInfo m_sysVersion;
 		std::uint64_t m_envFlag{0};
 		std::uint32_t m_envIndex{0};
 		bool m_bIsNonLimitedAdmin{false};

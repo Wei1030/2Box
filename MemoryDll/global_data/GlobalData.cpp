@@ -71,8 +71,9 @@ namespace
 
 namespace global
 {
-	void Data::initialize(std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath)
+	void Data::initialize(SystemVersionInfo versionInfo, std::uint64_t envFlag, unsigned long envIndex, std::wstring_view rootPath)
 	{
+		m_sysVersion = versionInfo;
 		m_envFlag = envFlag;
 		m_envIndex = envIndex;
 		m_envFlagName = std::format(L"{:016X}", envFlag);

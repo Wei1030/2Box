@@ -76,7 +76,7 @@ namespace hook
 		const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
 		std::vector<std::byte> buffer(paramsSize);
 		DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
-		injectParams->version = pe::g_os_version;
+		injectParams->version = global::Data::get().sysVersion();
 		injectParams->envFlag = global::Data::get().envFlag();
 		injectParams->envIndex = global::Data::get().envIndex();
 		injectParams->rootPathCount = rootPathCount;

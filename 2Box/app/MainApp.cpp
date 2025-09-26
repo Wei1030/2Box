@@ -25,20 +25,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ [[maybe_unused]] HINSTA
 {
 	try
 	{
-		biz::get_essential_data();
-#ifndef _WIN64
-#if 0
-		if (!biz::get_essential_data().version.is32BitSystem)
-		{
-			MessageBoxW(nullptr, L"请使用本软件的64位版本", MainApp::appName.data(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
-			return 0;
-		}
-#endif
-#endif
+		biz::init_system_version_info();
 
 		MainApp app{hInstance, lpCmdLine, nCmdShow};
 		g_app = &app;
 
+		biz::init_resource_info();
 		biz::Core biz;
 
 		ui::MainWindow mainWnd;

@@ -13,30 +13,6 @@ import Biz.Core;
 
 namespace
 {
-	void ensure_dll_in_device(std::wstring_view flagName)
-	{
-		namespace fs = std::filesystem;
-		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(flagName)}; !fs::exists(path32))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp32.bin", flagName)})};
-			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit32>();
-			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
-			tempFile.write(address, size);
-			tempFile.close();
-			fs::rename(tempPath, path32);
-		}
-
-		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(flagName)}; !fs::exists(path64))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp64.bin", flagName)})};
-			const auto [address, size] = biz::get_dll_resource_inst<ArchBit::Bit64>();
-			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
-			tempFile.write(address, size);
-			tempFile.close();
-			fs::rename(tempPath, path64);
-		}
-	}
-
 	PROCESS_INFORMATION create_and_inject(const biz::Env* env, std::wstring_view exePath, std::wstring_view params)
 	{
 		PROCESS_INFORMATION procInfo = {nullptr};
@@ -50,7 +26,7 @@ namespace
 		if (!DetourCreateProcessWithDllExW(cmdPath.c_str(), cmdLine.data(), nullptr, nullptr, 0,
 		                                   CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, nullptr,
 		                                   std::filesystem::path{exePath}.parent_path().native().c_str(), &startupInfo, &procInfo,
-		                                   env->getDllFullPath().data(), &::CreateProcessW))
+		                                   env->ensureDllInDeviceAndReturnPath().c_str(), &::CreateProcessW))
 		{
 			throw std::runtime_error(std::format("CreateProcessW Failed, error code: {}", GetLastError()));
 		}
@@ -62,7 +38,7 @@ namespace
 			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
 			std::vector<std::byte> buffer(paramsSize);
 			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
-			injectParams->version = biz::get_essential_data().version;
+			injectParams->version = biz::get_core_data().version;
 			injectParams->envFlag = env->getFlag();
 			injectParams->envIndex = env->getIndex();
 			injectParams->rootPathCount = rootPathCount;
@@ -128,7 +104,6 @@ namespace biz
 		{
 			env = env_mgr().createEnv();
 		}
-		ensure_dll_in_device(env->getFlagName());
 		const PROCESS_INFORMATION procInfo = create_and_inject(env.get(), exePath, params);
 		ResumeThread(procInfo.hThread);
 		CloseHandle(procInfo.hThread);

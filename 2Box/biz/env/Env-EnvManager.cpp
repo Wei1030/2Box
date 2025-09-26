@@ -22,24 +22,6 @@ namespace
 		return dis(rng);
 	}
 
-	void delete_dll_from_device(std::wstring_view flagName)
-	{
-		namespace fs = std::filesystem;
-		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(flagName)}; fs::exists(path32))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp32.bin", flagName)})};
-			fs::rename(path32, tempPath);
-			fs::remove(tempPath);
-		}
-
-		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(flagName)}; fs::exists(path64))
-		{
-			const fs::path tempPath{fs::weakly_canonical(biz::get_bin_path() / fs::path{std::format(L"{}_temp64.bin", flagName)})};
-			fs::rename(path64, tempPath);
-			fs::remove(tempPath);
-		}
-	}
-
 	void delete_dir_by_cmd(std::wstring_view dir)
 	{
 		PROCESS_INFORMATION procInfo = {nullptr};
@@ -63,8 +45,6 @@ namespace
 		namespace fs = std::filesystem;
 		try
 		{
-			delete_dll_from_device(flagName);
-
 			const fs::path envDir{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"})};
 			const fs::path envPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}", index)})};
 			const fs::path tempPath{fs::weakly_canonical(envDir / fs::path{std::format(L"{}_{}_to_delete", index, flagName)})};
@@ -100,8 +80,7 @@ namespace biz
 		namespace fs = std::filesystem;
 		const fs::path envPath{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)})};
 		fs::create_directories(envPath);
-		// ensure_dll_in_device(flagName);
-		addEnv(std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName)));
+		addEnv(std::make_shared<Env>(index, flag, flagName, name));
 	}
 
 	std::shared_ptr<Env> EnvManager::createEnv()
@@ -114,7 +93,7 @@ namespace biz
 		const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
 		auto [flag, flagName] = ensureCreateNewEnvFlag(index);
 		const std::wstring name = std::format(L"环境{}", index);
-		envResult = std::make_shared<Env>(index, flag, flagName, name, get_detours_injection_dll_name(flagName));
+		envResult = std::make_shared<Env>(index, flag, flagName, name);
 		add_env_to_reg(flagName, envResult.get());
 		addEnv(envResult);
 		return envResult;
@@ -147,8 +126,10 @@ namespace biz
 		return m_flagToEnv.size();
 	}
 
-	void EnvManager::deleteEnv(const std::shared_ptr<Env>& env)
+	// ReSharper disable once CppPassValueParameterByConstReference
+	void EnvManager::deleteEnv(std::shared_ptr<Env> env)
 	{
+		env->deleteDllFromDevice();
 		removeEnv(env->getFlag());
 		delete_env_dir(env->getIndex(), env->getFlagName());
 		delete_env_from_reg(env->getFlagName());
@@ -283,7 +264,6 @@ namespace biz
 				continue;
 			}
 
-			// ensure_dll_in_device(flagName);
 			result.flag = flag;
 			result.flagName = flagName;
 			break;

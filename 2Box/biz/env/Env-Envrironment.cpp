@@ -6,6 +6,9 @@ import "sys_defs.h";
 import "sys_defs.hpp";
 #endif
 
+import MainApp;
+import EssentialData;
+
 namespace biz
 {
 	WaitObject::WaitObject()
@@ -244,6 +247,83 @@ namespace biz
 		m_denseHandles.pop_back();
 		m_sparse.erase(it);
 		return true;
+	}
+
+	template <ArchBit BitType = CURRENT_ARCH_BIT>
+	std::filesystem::path get_dll_full_path(const std::filesystem::path& binDir, std::wstring_view flagName, std::wstring_view extra = L"")
+	{
+		namespace fs = std::filesystem;
+		if constexpr (BitType == ArchBit::Bit64)
+		{
+			return fs::path{fs::weakly_canonical(binDir / fs::path{std::format(L"{}_{}64.bin", flagName, extra)})};
+		}
+		else
+		{
+			return fs::path{fs::weakly_canonical(binDir / fs::path{std::format(L"{}_{}32.bin", flagName, extra)})};
+		}
+	}
+
+	std::string Env::ensureDllInDeviceAndReturnPath() const
+	{
+		namespace fs = std::filesystem;
+		fs::path binDir{app().binDir()};
+		if (!fs::exists(binDir))
+		{
+			fs::create_directories(binDir);
+		}
+
+		std::string dllFullPath;
+		if (const fs::path path32{get_dll_full_path<ArchBit::Bit32>(binDir, m_flagName)}; !fs::exists(path32))
+		{
+			const fs::path tempPath{get_dll_full_path<ArchBit::Bit32>(binDir, m_flagName, L"temp")};
+			const auto [address, size] = get_core_data().dll32;
+			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
+			tempFile.write(address, size);
+			tempFile.close();
+			fs::rename(tempPath, path32);
+			if constexpr (CURRENT_ARCH_BIT == ArchBit::Bit32)
+			{
+				dllFullPath = path32.string();
+			}
+		}
+
+		if (const fs::path path64{get_dll_full_path<ArchBit::Bit64>(binDir, m_flagName)}; !fs::exists(path64))
+		{
+			const fs::path tempPath{get_dll_full_path<ArchBit::Bit64>(binDir, m_flagName, L"temp")};
+			const auto [address, size] = get_core_data().dll64;
+			std::ofstream tempFile{tempPath, std::ios::binary | std::ios::trunc};
+			tempFile.write(address, size);
+			tempFile.close();
+			fs::rename(tempPath, path64);
+			if constexpr (CURRENT_ARCH_BIT == ArchBit::Bit64)
+			{
+				dllFullPath = path64.string();
+			}
+		}
+		return dllFullPath;
+	}
+
+	void Env::deleteDllFromDevice() const
+	{
+		namespace fs = std::filesystem;
+		fs::path binDir{app().binDir()};
+		if (!fs::exists(binDir))
+		{
+			return;
+		}
+		if (const fs::path path32{biz::get_dll_full_path<ArchBit::Bit32>(binDir, m_flagName)}; fs::exists(path32))
+		{
+			const fs::path tempPath{biz::get_dll_full_path<ArchBit::Bit32>(binDir, m_flagName, L"temp_to_delete")};
+			fs::rename(path32, tempPath);
+			fs::remove(tempPath);
+		}
+
+		if (const fs::path path64{biz::get_dll_full_path<ArchBit::Bit64>(binDir, m_flagName)}; fs::exists(path64))
+		{
+			const fs::path tempPath{biz::get_dll_full_path<ArchBit::Bit64>(binDir, m_flagName, L"temp_to_delete")};
+			fs::rename(path64, tempPath);
+			fs::remove(tempPath);
+		}
 	}
 
 	std::shared_ptr<ProcessInfo> Env::addProcess(DWORD pid)

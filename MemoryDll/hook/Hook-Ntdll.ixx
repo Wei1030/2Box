@@ -919,7 +919,7 @@ namespace hook
 		CREATE_HOOK_BY_NAME(NtOpenFile);
 		CREATE_HOOK_BY_NAME(NtQueryAttributesFile);
 		CREATE_HOOK_BY_NAME(NtQueryFullAttributesFile);
-		if (!pe::g_os_version.isWindows8OrGreater)
+		if (!global::Data::get().sysVersion().isWindows8OrGreater)
 		{
 			CREATE_HOOK_BY_NAME(NtSetInformationFile);
 		}
