@@ -220,8 +220,9 @@ namespace hook
 		if (lpMsg->message == global::Data::get().inputSyncMsgId())
 		{
 			SyncInput::instPerThread().startSync(lpMsg->wParam ? true : false);
-			if (lpMsg->wParam)
+			if (lpMsg->wParam && SyncInput::filterWnd(lpMsg->hwnd))
 			{
+				SetActiveWindow(lpMsg->hwnd);
 				SendMessageW(lpMsg->hwnd, WM_SETFOCUS, 0, 0);
 			}
 		}
