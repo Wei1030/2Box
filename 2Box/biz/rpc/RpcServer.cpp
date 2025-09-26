@@ -106,12 +106,23 @@ void require_elevation(handle_t /*IDL_handle*/, unsigned int pid, unsigned long 
 	}
 }
 
-void get_all_process_id_in_env(handle_t /*IDL_handle*/, unsigned long long envFlag, unsigned long long pids[], unsigned int* count)
+int contains_process_id_exclude(handle_t /*IDL_handle*/, unsigned long pid, unsigned long long excludeEnvFlag)
 {
 	try
 	{
-		std::shared_ptr<biz::Env> pEnv = biz::env_mgr().findEnvByFlag(envFlag);
-		std::vector<DWORD> allPids = pEnv->getAllProcessIds();
+		return biz::env_mgr().containsProcessIdExclude(pid, excludeEnvFlag) ? 1 : 0;
+	}
+	catch (...)
+	{
+		RpcRaiseException(0xE06D7363);
+	}
+}
+
+void get_all_process_id_exclude(handle_t /*IDL_handle*/, unsigned long long excludeEnvFlag, unsigned long long pids[], unsigned int* count)
+{
+	try
+	{
+		std::vector<DWORD> allPids = biz::env_mgr().getAllProcessIdsExclude(excludeEnvFlag);
 		const unsigned int allCount = allPids.size() > MAX_PIDS ? MAX_PIDS : static_cast<unsigned int>(allPids.size());
 		for (unsigned int i = 0; i < allCount; ++i)
 		{
@@ -151,11 +162,11 @@ void remove_toplevel_window(handle_t /*IDL_handle*/, unsigned long long hWnd, un
 	}
 }
 
-int contains_toplevel_window_excluding_by_flag(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned long long excludeEnvFlag)
+int contains_toplevel_window_exclude(handle_t /*IDL_handle*/, unsigned long long hWnd, unsigned long long excludeEnvFlag)
 {
 	try
 	{
-		return biz::env_mgr().containsToplevelWindowExcludingByFlag(reinterpret_cast<void*>(hWnd), excludeEnvFlag) ? 1 : 0;
+		return biz::env_mgr().containsToplevelWindowExclude(reinterpret_cast<void*>(hWnd), excludeEnvFlag) ? 1 : 0;
 	}
 	catch (...)
 	{

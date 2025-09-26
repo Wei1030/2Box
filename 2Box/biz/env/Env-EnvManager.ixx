@@ -15,9 +15,12 @@ namespace biz
 		std::shared_ptr<Env> findEnvByFlag(std::uint64_t flag) const;
 		std::size_t getEnvCount() const;
 
-		void deleteEnv(const std::shared_ptr<Env>& env);
+		void deleteEnv(std::shared_ptr<Env> env);
 
-		bool containsToplevelWindowExcludingByFlag(void* hWnd, std::uint64_t excludeEnvFlag) const;
+		bool containsProcessIdExclude(std::uint32_t pid, std::uint64_t excludeEnvFlag) const;
+		std::vector<DWORD> getAllProcessIdsExclude(std::uint64_t excludeEnvFlag) const;
+
+		bool containsToplevelWindowExclude(void* hWnd, std::uint64_t excludeEnvFlag) const;
 		std::vector<void*> getAllToplevelWindows() const;
 		std::vector<void*> getAllToplevelWindowsExclude(std::uint64_t excludeEnvFlag) const;
 

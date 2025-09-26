@@ -26,7 +26,7 @@ namespace
 		if (!DetourCreateProcessWithDllExW(cmdPath.c_str(), cmdLine.data(), nullptr, nullptr, 0,
 		                                   CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, nullptr,
 		                                   std::filesystem::path{exePath}.parent_path().native().c_str(), &startupInfo, &procInfo,
-		                                   env->getDllFullPath().data(), &::CreateProcessW))
+		                                   env->ensureDllInDeviceAndReturnPath().c_str(), &::CreateProcessW))
 		{
 			throw std::runtime_error(std::format("CreateProcessW Failed, error code: {}", GetLastError()));
 		}
@@ -38,7 +38,7 @@ namespace
 			const std::uint32_t paramsSize = sizeof(DetourInjectParams) + rootPathSize;
 			std::vector<std::byte> buffer(paramsSize);
 			DetourInjectParams* injectParams = reinterpret_cast<DetourInjectParams*>(buffer.data());
-			injectParams->version = biz::get_essential_data().version;
+			injectParams->version = biz::get_core_data().version;
 			injectParams->envFlag = env->getFlag();
 			injectParams->envIndex = env->getIndex();
 			injectParams->rootPathCount = rootPathCount;

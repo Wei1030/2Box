@@ -155,45 +155,17 @@ public:
 	static constexpr std::string_view appNameA{"2Box"};
 
 public:
-	HINSTANCE moduleInstance() const noexcept
-	{
-		return m_hInstance;
-	}
+	HINSTANCE moduleInstance() const noexcept { return m_hInstance; }
+	std::wstring_view cmdLine() const noexcept { return m_strCmdLine; }
+	int cmdShow() const noexcept { return m_nCmdShow; }
 
-	std::wstring_view cmdLine() const noexcept
-	{
-		return m_strCmdLine;
-	}
+	ID2D1Factory* d2d1Factory() const noexcept { return m_pDirect2dFactory.get(); }
+	IDWriteFactory* dWriteFactory() const noexcept { return m_pDWriteFactory.get(); }
+	const AppCommonTextFormat& textFormat() const noexcept { return m_commonTextFormat; }
 
-	int cmdShow() const noexcept
-	{
-		return m_nCmdShow;
-	}
-
-	ID2D1Factory* d2d1Factory() const noexcept
-	{
-		return m_pDirect2dFactory.get();
-	}
-
-	IDWriteFactory* dWriteFactory() const noexcept
-	{
-		return m_pDWriteFactory.get();
-	}
-
-	const AppCommonTextFormat& textFormat() const noexcept
-	{
-		return m_commonTextFormat;
-	}
-
-	std::wstring_view exeFullName() const noexcept
-	{
-		return m_exeFullName;
-	}
-
-	std::wstring_view exeDir() const noexcept
-	{
-		return m_exeDir;
-	}
+	std::wstring_view exeFullName() const noexcept { return m_exeFullName; }
+	std::wstring_view exeDir() const noexcept { return m_exeDir; }
+	std::wstring_view binDir() const noexcept { return m_binDir; }
 
 	void exit() const noexcept
 	{
@@ -238,8 +210,10 @@ private:
 		m_exeFullName = std::wstring(m_exeFullName);
 
 		namespace fs = std::filesystem;
-		const fs::path fsPath = fs::absolute(fs::path(m_exeFullName));
-		m_exeDir = fsPath.parent_path().native();
+		const fs::path fsPath{m_exeFullName};
+		const fs::path fsDir{fsPath.parent_path()};
+		m_exeDir = fsDir.native();
+		m_binDir = fs::weakly_canonical(fsDir / fs::path{L"bin"}).native();
 
 		parseCmdLine();
 	}
@@ -258,6 +232,7 @@ private:
 	int m_nCmdShow{SW_HIDE};
 	std::wstring m_exeFullName;
 	std::wstring m_exeDir;
+	std::wstring m_binDir;
 
 private:
 	struct ComInitGuard

@@ -301,7 +301,7 @@ namespace hook
 	void hook_advapi32()
 	{
 		// win7 or earlier
-		if (!pe::g_os_version.isWindows8OrGreater)
+		if (!global::Data::get().sysVersion().isWindows8OrGreater)
 		{
 			create_hook_by_func_ptr<&::RegLoadAppKeyW>().setHook(&RegLoadAppKeyW);
 		}
