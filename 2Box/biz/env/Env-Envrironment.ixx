@@ -179,7 +179,8 @@ namespace biz
 		}
 
 	public:
-		std::uint32_t getIndex() const { return m_index; }
+		std::uint32_t getIndex() const { return m_index.load(std::memory_order_relaxed); }
+		void setIndex(std::uint32_t index) noexcept { m_index.store(index, std::memory_order_relaxed); }
 		std::uint64_t getFlag() const { return m_flag; }
 		std::wstring_view getFlagName() const { return m_flagName; }
 		std::wstring getName() const;
@@ -216,7 +217,7 @@ namespace biz
 		void removeToplevelWindowWhenProcessTerminate(const std::shared_ptr<ProcessInfo>& procInfo);
 
 	private:
-		std::uint32_t m_index{0};
+		std::atomic<std::uint32_t> m_index{0};
 		std::uint64_t m_flag{0};
 		std::wstring m_flagName;
 		std::wstring m_name;

@@ -147,7 +147,13 @@ namespace ui
 		}
 		else if (changeType == biz::EnvManager::EChangeType::Delete)
 		{
-			removeEnv(env->getIndex());
+			removeEnv(env);
+		}
+		else if (changeType == biz::EnvManager::EChangeType::Renumber)
+		{
+			// 容器数量不变，仅编号（及其显示顺序）发生变化
+			rekeyEnvs();
+			co_return;
 		}
 
 		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
@@ -171,13 +177,31 @@ namespace ui
 		m_envs.insert(std::make_pair(env->getIndex(), std::move(card)));
 	}
 
-	void EnvBoxCardArea::removeEnv(std::uint32_t envIndex)
+	void EnvBoxCardArea::removeEnv(const std::shared_ptr<biz::Env>& env)
 	{
-		if (const auto it = m_envs.find(envIndex); it != m_envs.end())
+		// 按 env 指针查找而不是按编号：删除通知与编号前移通知可能先后到达，编号键可能已过期
+		for (auto it = m_envs.begin(); it != m_envs.end(); ++it)
 		{
-			onEnvSelected(it->second.get(), false);
-			m_envs.erase(it);
+			if (it->second->getEnv() == env)
+			{
+				onEnvSelected(it->second.get(), false);
+				m_envs.erase(it);
+				break;
+			}
 		}
+	}
+
+	void EnvBoxCardArea::rekeyEnvs()
+	{
+		// 删除容器后，编号更大的容器编号已整体前移，这里按新的编号重建卡片索引
+		std::map<std::uint32_t, std::unique_ptr<EnvBoxCard>> newEnvs;
+		for (auto& item : m_envs)
+		{
+			newEnvs.insert(std::make_pair(item.second->getEnv()->getIndex(), std::move(item.second)));
+		}
+		m_envs = std::move(newEnvs);
+		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
+		updateAllEnvPos();
 	}
 
 	void EnvBoxCardArea::onEnvSelected(EnvBoxCard* card, bool bSelected)

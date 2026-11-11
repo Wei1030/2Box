@@ -59,6 +59,13 @@ namespace
 		{
 		}
 	}
+
+	// 返回 Env/<index> 目录路径
+	std::filesystem::path get_env_dir_path(std::uint32_t index)
+	{
+		namespace fs = std::filesystem;
+		return fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)});
+	}
 }
 
 namespace biz
@@ -73,10 +80,6 @@ namespace biz
 
 	void EnvManager::loadEnvFrom(std::uint32_t index, std::uint64_t flag, std::wstring_view flagName, std::wstring_view name)
 	{
-		if (index >= m_currentIndex.load(std::memory_order_relaxed))
-		{
-			m_currentIndex.store(index + 1, std::memory_order_relaxed);
-		}
 		namespace fs = std::filesystem;
 		const fs::path envPath{fs::weakly_canonical(fs::path{app().exeDir()} / fs::path{L"Env"} / fs::path{std::format(L"{}", index)})};
 		fs::create_directories(envPath);
@@ -89,14 +92,35 @@ namespace biz
 		{
 			throw std::runtime_error("最多只能创建100个环境");
 		}
-		std::shared_ptr<Env> envResult;
-		const std::uint32_t index = m_currentIndex.fetch_add(1, std::memory_order_relaxed);
-		auto [flag, flagName] = ensureCreateNewEnvFlag(index);
-		const std::wstring name = std::format(L"环境{}", index);
-		envResult = std::make_shared<Env>(index, flag, flagName, name);
-		add_env_to_reg(flagName, envResult.get());
-		addEnv(envResult);
-		return envResult;
+
+		// 优先复用被删除容器留下的最小空闲编号，保证编号连续（例如删除10号后再次创建仍得到10号）
+		std::uint32_t index = 0;
+		{
+			std::unique_lock lock(m_mutex);
+			while (m_usedIndices.contains(index))
+			{
+				++index;
+			}
+			// 先预留编号，避免并发创建时重复使用
+			m_usedIndices.insert(index);
+		}
+
+		try
+		{
+			auto [flag, flagName] = ensureCreateNewEnvFlag(index);
+			const std::wstring name = std::format(L"环境{}", index);
+			std::shared_ptr<Env> envResult = std::make_shared<Env>(index, flag, flagName, name);
+			add_env_to_reg(flagName, envResult.get());
+			addEnv(envResult);
+			return envResult;
+		}
+		catch (...)
+		{
+			// 创建失败时释放预留的编号
+			std::unique_lock lock(m_mutex);
+			m_usedIndices.erase(index);
+			throw;
+		}
 	}
 
 	std::shared_ptr<Env> EnvManager::findEnvByFlagNoExcept(std::uint64_t flag) const
@@ -129,10 +153,206 @@ namespace biz
 	// ReSharper disable once CppPassValueParameterByConstReference
 	void EnvManager::deleteEnv(std::shared_ptr<Env> env)
 	{
+		if (!env)
+		{
+			throw std::invalid_argument("env is null");
+		}
+		if (env->getAllProcessesCount() != 0)
+		{
+			throw std::runtime_error(std::format("环境{}中仍有正在运行的进程，无法删除", env->getIndex()));
+		}
+
+		// 删除后需要把编号更大的容器依次前移以保持编号连续。
+		// 这些容器中不能有运行中的进程：它们的进程已按旧编号/旧目录完成文件重定向，改名会破坏其运行状态。
+		std::vector<std::shared_ptr<Env>> envsToRenumber;
+		{
+			std::shared_lock lock(m_mutex);
+			for (const auto& item : m_flagToEnv)
+			{
+				const std::shared_ptr<Env>& other = item.second;
+				if (other.get() != env.get() && other->getIndex() > env->getIndex())
+				{
+					envsToRenumber.push_back(other);
+				}
+			}
+		}
+		for (const std::shared_ptr<Env>& other : envsToRenumber)
+		{
+			if (other->getAllProcessesCount() != 0)
+			{
+				throw std::runtime_error(std::format("无法保持编号连续：环境{}中仍有正在运行的进程，请先关闭后再删除", other->getIndex()));
+			}
+		}
+		std::sort(envsToRenumber.begin(), envsToRenumber.end(),
+		          [](const std::shared_ptr<Env>& lhs, const std::shared_ptr<Env>& rhs) { return lhs->getIndex() < rhs->getIndex(); });
+
+		const std::uint32_t deletedIndex = env->getIndex();
 		env->deleteDllFromDevice();
 		removeEnv(env->getFlag());
-		delete_env_dir(env->getIndex(), env->getFlagName());
+		delete_env_dir(deletedIndex, env->getFlagName());
 		delete_env_from_reg(env->getFlagName());
+
+		if (!envsToRenumber.empty())
+		{
+			renumberEnvsAfter(envsToRenumber, deletedIndex);
+
+			// 同步编号集合，并通知界面重建卡片索引
+			std::unique_lock lock(m_mutex);
+			m_usedIndices.clear();
+			for (const auto& item : m_flagToEnv)
+			{
+				m_usedIndices.insert(item.second->getIndex());
+			}
+			if (m_envChangeNotify)
+			{
+				m_envChangeNotify(EChangeType::Renumber, env);
+			}
+		}
+	}
+
+	void EnvManager::renumberEnvsAfter(const std::vector<std::shared_ptr<Env>>& envsToRenumber, std::uint32_t deletedIndex)
+	{
+		namespace fs = std::filesystem;
+
+		struct RenumberMove
+		{
+			std::shared_ptr<Env> env;
+			std::uint32_t oldIndex{0};
+			std::uint32_t newIndex{0};
+			fs::path oldPath;
+			fs::path tempPath;
+			fs::path newPath;
+		};
+
+		std::vector<RenumberMove> moves;
+		moves.reserve(envsToRenumber.size());
+		std::uint32_t nextIndex = deletedIndex;
+		for (const std::shared_ptr<Env>& env : envsToRenumber)
+		{
+			RenumberMove move;
+			move.env = env;
+			move.oldIndex = env->getIndex();
+			move.newIndex = nextIndex++;
+			move.oldPath = get_env_dir_path(move.oldIndex);
+			move.tempPath = move.oldPath.parent_path() / fs::path{std::format(L"{}_{}_renumbering", move.oldIndex, env->getFlagName())};
+			move.newPath = get_env_dir_path(move.newIndex);
+			moves.push_back(std::move(move));
+		}
+
+		// 第一阶段：旧编号目录 -> 临时目录，避免两两改名时的目标目录冲突
+		std::size_t movedToTemp = 0;
+		try
+		{
+			for (; movedToTemp < moves.size(); ++movedToTemp)
+			{
+				const RenumberMove& move = moves[movedToTemp];
+				if (fs::exists(move.oldPath))
+				{
+					fs::rename(move.oldPath, move.tempPath);
+				}
+			}
+		}
+		catch (...)
+		{
+			for (std::size_t i = movedToTemp; i > 0; --i)
+			{
+				try
+				{
+					if (fs::exists(moves[i - 1].tempPath))
+					{
+						fs::rename(moves[i - 1].tempPath, moves[i - 1].oldPath);
+					}
+				}
+				catch (...)
+				{
+				}
+			}
+			throw std::runtime_error("自动调整环境编号失败：无法重命名环境目录，请重试");
+		}
+
+		// 第二阶段：临时目录 -> 新编号目录
+		std::size_t placed = 0;
+		try
+		{
+			for (; placed < moves.size(); ++placed)
+			{
+				const RenumberMove& move = moves[placed];
+				if (fs::exists(move.tempPath))
+				{
+					fs::rename(move.tempPath, move.newPath);
+				}
+			}
+		}
+		catch (...)
+		{
+			for (std::size_t i = placed; i > 0; --i)
+			{
+				try
+				{
+					if (fs::exists(moves[i - 1].newPath))
+					{
+						fs::rename(moves[i - 1].newPath, moves[i - 1].tempPath);
+					}
+				}
+				catch (...)
+				{
+				}
+			}
+			for (std::size_t i = moves.size(); i > 0; --i)
+			{
+				try
+				{
+					if (fs::exists(moves[i - 1].tempPath))
+					{
+						fs::rename(moves[i - 1].tempPath, moves[i - 1].oldPath);
+					}
+				}
+				catch (...)
+				{
+				}
+			}
+			throw std::runtime_error(std::format("自动调整环境编号失败：目录 Env\\{} 已存在或无法访问", moves[placed].newIndex));
+		}
+
+		// 最后更新内存编号与注册表中的 Index
+		std::size_t updated = 0;
+		try
+		{
+			for (; updated < moves.size(); ++updated)
+			{
+				RenumberMove& move = moves[updated];
+				set_env_index_in_reg(move.env->getFlagName(), move.newIndex);
+				move.env->setIndex(move.newIndex);
+			}
+		}
+		catch (...)
+		{
+			for (std::size_t i = 0; i < updated; ++i)
+			{
+				try
+				{
+					set_env_index_in_reg(moves[i].env->getFlagName(), moves[i].oldIndex);
+				}
+				catch (...)
+				{
+				}
+				moves[i].env->setIndex(moves[i].oldIndex);
+			}
+			for (std::size_t i = moves.size(); i > 0; --i)
+			{
+				try
+				{
+					if (fs::exists(moves[i - 1].newPath))
+					{
+						fs::rename(moves[i - 1].newPath, moves[i - 1].oldPath);
+					}
+				}
+				catch (...)
+				{
+				}
+			}
+			throw std::runtime_error("自动调整环境编号失败：无法写入注册表，请重试");
+		}
 	}
 
 	void EnvManager::renameEnv(const std::shared_ptr<Env>& env, std::wstring_view newName)
@@ -313,6 +533,7 @@ namespace biz
 		{
 			throw std::runtime_error("add env failed! env flag error!");
 		}
+		m_usedIndices.insert(env->getIndex());
 		if (m_envChangeNotify)
 		{
 			m_envChangeNotify(EChangeType::Create, env);
@@ -332,5 +553,12 @@ namespace biz
 			m_envChangeNotify(EChangeType::Delete, it->second);
 		}
 		m_flagToEnv.erase(it);
+
+		// 同步已占用编号集合，使被删除容器的编号可以被后续创建复用
+		m_usedIndices.clear();
+		for (const auto& item : m_flagToEnv)
+		{
+			m_usedIndices.insert(item.second->getIndex());
+		}
 	}
 }

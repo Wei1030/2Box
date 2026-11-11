@@ -43,7 +43,8 @@ namespace ui
 	{
 		m_env = env;
 		m_name = m_env->getName();
-		m_strProcCount = std::format(L"{}", m_env->getAllProcessesCount());
+		m_procCount = m_env->getAllProcessesCount();
+		m_strProcCount = std::format(L"{}", m_procCount);
 
 		m_env->setProcCountChangeNotify([this](biz::Env::EProcEvent e, const std::shared_ptr<biz::ProcessInfo>& proc, std::size_t count)
 		{
@@ -148,9 +149,22 @@ namespace ui
 			{
 				MessageBoxW(m_ownerWnd->nativeHandle(), L"环境中仍有正在运行的程序时无法删除", MainApp::appName.data(), MB_OK);
 			}
-			else if (MessageBoxW(m_ownerWnd->nativeHandle(), L"确定要删除该环境吗?", MainApp::appName.data(), MB_OKCANCEL) == IDOK)
+			else if (MessageBoxW(m_ownerWnd->nativeHandle(),
+			                     L"确定要删除该环境吗？\n删除后编号更大的环境会自动前移以保持编号连续（环境名称不变）。",
+			                     MainApp::appName.data(), MB_OKCANCEL) == IDOK)
 			{
-				biz::env_mgr().deleteEnv(m_env);
+				try
+				{
+					biz::env_mgr().deleteEnv(m_env);
+				}
+				catch (const std::exception& e)
+				{
+					const std::wstring errorMsg = utf8_to_wide_string(e.what());
+					MessageBoxW(m_ownerWnd->nativeHandle(),
+					            std::format(L"删除环境失败：{}", errorMsg).c_str(),
+					            MainApp::appName.data(),
+					            MB_OK | MB_ICONERROR);
+				}
 			}
 		});
 

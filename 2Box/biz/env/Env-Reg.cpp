@@ -286,6 +286,44 @@ namespace biz
 		}
 	}
 
+	void set_env_index_in_reg(std::wstring_view flagName, std::uint32_t newIndex)
+	{
+		const std::wstring flagNameStr{flagName};
+
+		const RegKey& appKey = get_app_key();
+		const RegKey rootEnvKey{
+			[&]()-> HKEY
+			{
+				HKEY hRootEnvKey;
+				if (LSTATUS status = RegOpenKeyExW(appKey, ENV_KEY_NAME, 0, KEY_ALL_ACCESS, &hRootEnvKey);
+					status != ERROR_SUCCESS)
+				{
+					throw std::runtime_error(std::format("RegOpenKeyExW failed, error code:{}", status));
+				}
+				return hRootEnvKey;
+			}
+		};
+		const RegKey envKey{
+			[&]()-> HKEY
+			{
+				HKEY hEnvKey;
+				if (LSTATUS status = RegOpenKeyExW(rootEnvKey, flagNameStr.c_str(), 0, KEY_SET_VALUE, &hEnvKey);
+					status != ERROR_SUCCESS)
+				{
+					throw std::runtime_error(std::format("RegOpenKeyExW failed, error code:{}", status));
+				}
+				return hEnvKey;
+			}
+		};
+		DWORD value = newIndex;
+		if (LSTATUS status = RegSetValueExW(envKey, INDEX_PROP_NAME, 0, REG_DWORD,
+		                                    reinterpret_cast<const BYTE*>(&value), sizeof(value));
+			status != ERROR_SUCCESS)
+		{
+			throw std::runtime_error(std::format("Failed to set index, status:{}", status));
+		}
+	}
+
 	void delete_env_from_reg(std::wstring_view flagName)
 	{
 		const RegKey& appKey = get_app_key();
