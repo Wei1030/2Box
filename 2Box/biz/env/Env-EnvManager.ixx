@@ -16,6 +16,7 @@ namespace biz
 		std::size_t getEnvCount() const;
 
 		void deleteEnv(std::shared_ptr<Env> env);
+		void renameEnv(const std::shared_ptr<Env>& env, std::wstring_view newName);
 
 		bool containsProcessIdExclude(std::uint32_t pid, std::uint64_t excludeEnvFlag) const;
 		std::vector<DWORD> getAllProcessIdsExclude(std::uint64_t excludeEnvFlag) const;

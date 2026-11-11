@@ -72,7 +72,7 @@ namespace
 			throw std::runtime_error(std::format("Failed to set flag, status:{}", status));
 		}
 		dwType = REG_SZ;
-		std::wstring_view name = env->getName();
+		const std::wstring name{env->getName()};
 		status = RegSetValueExW(hEnvKey, NAME_PROP_NAME, 0, dwType,
 		                        reinterpret_cast<const BYTE*>(name.data()), static_cast<DWORD>((name.size() + 1) * sizeof(wchar_t)));
 		if (status != ERROR_SUCCESS)
@@ -244,6 +244,45 @@ namespace biz
 		{
 			RegDeleteTreeW(rootEnvKey, flagName.data());
 			throw std::runtime_error("unknown error in set_env_property_to_reg");
+		}
+	}
+
+	void set_env_name_in_reg(std::wstring_view flagName, std::wstring_view newName)
+	{
+		const std::wstring flagNameStr{flagName};
+		const std::wstring nameStr{newName};
+
+		const RegKey& appKey = get_app_key();
+		const RegKey rootEnvKey{
+			[&]()-> HKEY
+			{
+				HKEY hRootEnvKey;
+				if (LSTATUS status = RegOpenKeyExW(appKey, ENV_KEY_NAME, 0, KEY_ALL_ACCESS, &hRootEnvKey);
+					status != ERROR_SUCCESS)
+				{
+					throw std::runtime_error(std::format("RegOpenKeyExW failed, error code:{}", status));
+				}
+				return hRootEnvKey;
+			}
+		};
+		const RegKey envKey{
+			[&]()-> HKEY
+			{
+				HKEY hEnvKey;
+				if (LSTATUS status = RegOpenKeyExW(rootEnvKey, flagNameStr.c_str(), 0, KEY_SET_VALUE, &hEnvKey);
+					status != ERROR_SUCCESS)
+				{
+					throw std::runtime_error(std::format("RegOpenKeyExW failed, error code:{}", status));
+				}
+				return hEnvKey;
+			}
+		};
+		if (LSTATUS status = RegSetValueExW(envKey, NAME_PROP_NAME, 0, REG_SZ,
+		                                    reinterpret_cast<const BYTE*>(nameStr.data()),
+		                                    static_cast<DWORD>((nameStr.size() + 1) * sizeof(wchar_t)));
+			status != ERROR_SUCCESS)
+		{
+			throw std::runtime_error(std::format("Failed to set name, status:{}", status));
 		}
 	}
 

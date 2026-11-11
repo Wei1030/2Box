@@ -151,6 +151,12 @@ namespace ui
 		}
 
 		m_scrollBar->setTotalSize(m_envs.size() * (CARD_HEIGHT + CARD_MARGIN_BOTTOM));
+
+		if (changeType == biz::EnvManager::EChangeType::Create)
+		{
+			// 新建/自动新建环境后滚动到列表底部，保证新环境卡片可见
+			m_scrollBar->scroll(std::numeric_limits<float>::max());
+		}
 	}
 
 	void EnvBoxCardArea::addEnv(const std::shared_ptr<biz::Env>& env, bool initialIdle /*= false*/)

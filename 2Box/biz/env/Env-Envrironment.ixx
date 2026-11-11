@@ -5,6 +5,8 @@ import std;
 
 namespace biz
 {
+	export inline constexpr std::size_t ENV_NAME_MAX_LENGTH = 32;
+
 	class WaitObject
 	{
 	public:
@@ -180,7 +182,8 @@ namespace biz
 		std::uint32_t getIndex() const { return m_index; }
 		std::uint64_t getFlag() const { return m_flag; }
 		std::wstring_view getFlagName() const { return m_flagName; }
-		std::wstring_view getName() const { return m_name; }
+		std::wstring getName() const;
+		void setName(std::wstring_view name);
 		std::string ensureDllInDeviceAndReturnPath() const;
 		void deleteDllFromDevice() const;
 
@@ -217,6 +220,7 @@ namespace biz
 		std::uint64_t m_flag{0};
 		std::wstring m_flagName;
 		std::wstring m_name;
+		mutable std::shared_mutex m_nameMutex;
 
 		HandleWaiter m_waiter;
 		mutable std::shared_mutex m_mutex;

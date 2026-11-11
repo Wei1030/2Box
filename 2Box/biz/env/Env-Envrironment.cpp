@@ -367,6 +367,18 @@ namespace biz
 		return m_processes.getPids();
 	}
 
+	std::wstring Env::getName() const
+	{
+		std::shared_lock lock(m_nameMutex);
+		return m_name;
+	}
+
+	void Env::setName(std::wstring_view name)
+	{
+		std::unique_lock lock(m_nameMutex);
+		m_name = name;
+	}
+
 	bool Env::contains(const std::wstring& procFullName) const
 	{
 		std::shared_lock lock(m_mutex);

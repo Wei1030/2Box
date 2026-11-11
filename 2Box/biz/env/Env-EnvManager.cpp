@@ -135,6 +135,41 @@ namespace biz
 		delete_env_from_reg(env->getFlagName());
 	}
 
+	void EnvManager::renameEnv(const std::shared_ptr<Env>& env, std::wstring_view newName)
+	{
+		if (!env)
+		{
+			throw std::invalid_argument("env is null");
+		}
+
+		std::wstring name{newName};
+		constexpr std::wstring_view trimmedChars = L" \t\r\n";
+		const std::size_t firstPos = name.find_first_not_of(trimmedChars);
+		if (firstPos == std::wstring::npos)
+		{
+			throw std::invalid_argument("环境名称不能为空");
+		}
+		const std::size_t lastPos = name.find_last_not_of(trimmedChars);
+		name = name.substr(firstPos, lastPos - firstPos + 1);
+
+		if (name.size() > ENV_NAME_MAX_LENGTH)
+		{
+			throw std::invalid_argument(std::format("环境名称长度不能超过{}个字符", ENV_NAME_MAX_LENGTH));
+		}
+		if (std::any_of(name.begin(), name.end(), [](wchar_t c) { return std::iswcntrl(static_cast<std::wint_t>(c)) != 0; }))
+		{
+			throw std::invalid_argument("环境名称不能包含控制字符");
+		}
+		if (name == env->getName())
+		{
+			return;
+		}
+
+		// 先持久化，成功后再更新内存，避免注册表中保存的名称与界面显示不一致
+		set_env_name_in_reg(env->getFlagName(), name);
+		env->setName(name);
+	}
+
 	bool EnvManager::containsProcessIdExclude(std::uint32_t pid, std::uint64_t excludeEnvFlag) const
 	{
 		if (GetCurrentProcessId() == pid)

@@ -606,4 +606,8 @@ namespace ui
 	}
 
 	export std::optional<std::wstring> select_file(const WindowBase* owner);
+
+	// 模态文本输入对话框。点击“确定”返回去除首尾空白后的文本，取消或关闭返回 std::nullopt。
+	export std::optional<std::wstring> prompt_text_input(HWND owner, std::wstring_view title, std::wstring_view promptLabel,
+	                                                     std::wstring_view initialText, std::size_t maxLength);
 }
