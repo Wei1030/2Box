@@ -12,7 +12,7 @@ import MainApp;
 
 namespace ui
 {
-	std::optional<std::wstring> select_file(const WindowBase* owner)
+	std::optional<std::wstring> select_file_impl(const WindowBase* owner, const COMDLG_FILTERSPEC* fileTypes, UINT fileTypeCount)
 	{
 		UniqueComPtr<IFileOpenDialog> fileOpen;
 		HResult hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpen));
@@ -24,13 +24,7 @@ namespace ui
 			            MB_OK | MB_ICONERROR | MB_TASKMODAL);
 			return std::nullopt;
 		}
-		COMDLG_FILTERSPEC rgSpec[] =
-		{
-			{L"可执行文件和快捷方式", L"*.exe;*.lnk;*.url"},
-			{L"可执行文件", L"*.exe"},
-			{L"所有文件", L"*.*"}
-		};
-		fileOpen->SetFileTypes(ARRAYSIZE(rgSpec), rgSpec);
+		fileOpen->SetFileTypes(fileTypeCount, fileTypes);
 		fileOpen->SetFileTypeIndex(1);
 		DWORD dwOptions = 0;
 		fileOpen->GetOptions(&dwOptions);
@@ -70,6 +64,30 @@ namespace ui
 		std::wstring procFullPath{pszFilePath};
 		CoTaskMemFree(pszFilePath);
 		return procFullPath;
+	}
+
+	std::optional<std::wstring> select_file(const WindowBase* owner)
+	{
+		constexpr COMDLG_FILTERSPEC rgSpec[] =
+		{
+			{L"可执行文件和快捷方式", L"*.exe;*.lnk;*.url"},
+			{L"可执行文件", L"*.exe"},
+			{L"所有文件", L"*.*"}
+		};
+		return select_file_impl(owner, rgSpec, ARRAYSIZE(rgSpec));
+	}
+
+	std::optional<std::wstring> select_image_file(const WindowBase* owner)
+	{
+		constexpr COMDLG_FILTERSPEC rgSpec[] =
+		{
+			{L"图片文件", L"*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff;*.ico"},
+			{L"PNG 图片", L"*.png"},
+			{L"JPEG 图片", L"*.jpg;*.jpeg"},
+			{L"BMP 图片", L"*.bmp"},
+			{L"所有文件", L"*.*"}
+		};
+		return select_file_impl(owner, rgSpec, ARRAYSIZE(rgSpec));
 	}
 
 	namespace

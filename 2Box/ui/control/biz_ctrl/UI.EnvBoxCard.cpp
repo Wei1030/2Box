@@ -223,9 +223,11 @@ namespace ui
 		const D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(
 			D2D1::RectF(0.f, 0.f, drawSize.width, drawSize.height),
 			12.0f, 12.0f);
+		// 设置了背景图片时卡片底色半透明，让背景图片透出
+		const bool hasBackgroundImage = ui::has_app_background_image();
 		if (m_isHovered || m_isSelected || m_isBright)
 		{
-			solidBrush->SetColor(D2D1::ColorF(0xf0f8ff));
+			solidBrush->SetColor(hasBackgroundImage ? D2D1::ColorF(0xf0f8ff, 0.35f) : D2D1::ColorF(0xf0f8ff));
 			renderTarget->FillRoundedRectangle(roundedRect, solidBrush);
 
 			solidBrush->SetColor(D2D1::ColorF(0x0078d4));
@@ -233,7 +235,7 @@ namespace ui
 		}
 		else
 		{
-			solidBrush->SetColor(D2D1::ColorF(0xffffff));
+			solidBrush->SetColor(hasBackgroundImage ? D2D1::ColorF(0xffffff, 0.15f) : D2D1::ColorF(0xffffff));
 			renderTarget->FillRoundedRectangle(roundedRect, solidBrush);
 
 			solidBrush->SetColor(D2D1::ColorF(0xe9e9e9));

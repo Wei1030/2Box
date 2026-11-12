@@ -341,4 +341,60 @@ namespace biz
 		};
 		RegDeleteTreeW(rootEnvKey, flagName.data());
 	}
+
+	std::optional<std::wstring> get_app_setting(std::wstring_view name)
+	{
+		const std::wstring nameStr{name};
+		const RegKey& appKey = get_app_key();
+
+		DWORD dwType = REG_SZ;
+		DWORD dwSize = 0;
+		LSTATUS status = RegGetValueW(appKey, nullptr, nameStr.c_str(), RRF_RT_REG_SZ, &dwType, nullptr, &dwSize);
+		if (status == ERROR_FILE_NOT_FOUND)
+		{
+			return std::nullopt;
+		}
+		if (status != ERROR_SUCCESS)
+		{
+			throw std::runtime_error(std::format("Failed to get app setting size, status:{}", status));
+		}
+		std::wstring value(dwSize / sizeof(wchar_t), L'\0');
+		status = RegGetValueW(appKey, nullptr, nameStr.c_str(), RRF_RT_REG_SZ, &dwType, value.data(), &dwSize);
+		if (status != ERROR_SUCCESS)
+		{
+			throw std::runtime_error(std::format("Failed to get app setting, status:{}", status));
+		}
+		// RegGetValueW 读出的字符串包含结尾的 NUL，按实际长度截断
+		value.resize(std::wcslen(value.c_str()));
+		return value;
+	}
+
+	void set_app_setting(std::wstring_view name, std::wstring_view value)
+	{
+		const std::wstring nameStr{name};
+		const std::wstring valueStr{value};
+		const RegKey& appKey = get_app_key();
+
+		if (valueStr.empty())
+		{
+			const LSTATUS status = RegDeleteValueW(appKey, nameStr.c_str());
+			if (status != ERROR_SUCCESS && status != ERROR_FILE_NOT_FOUND)
+			{
+				throw std::runtime_error(std::format("Failed to delete app setting, status:{}", status));
+			}
+			return;
+		}
+		if (LSTATUS status = RegSetValueExW(appKey, nameStr.c_str(), 0, REG_SZ,
+		                                    reinterpret_cast<const BYTE*>(valueStr.c_str()),
+		                                    static_cast<DWORD>((valueStr.size() + 1) * sizeof(wchar_t)));
+			status != ERROR_SUCCESS)
+		{
+			throw std::runtime_error(std::format("Failed to set app setting, status:{}", status));
+		}
+	}
+
+	std::wstring app_data_dir()
+	{
+		return get_data_path().native();
+	}
 }

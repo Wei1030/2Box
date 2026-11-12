@@ -7,6 +7,7 @@ import "sys_defs.hpp";
 #endif
 
 import MainApp;
+import UI.Core;
 
 namespace
 {
@@ -250,7 +251,8 @@ namespace ui
 		const auto [width, height] = size();
 
 		const D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(D2D1::RectF(0.f, 0.f, width, height), 8.f, 8.f);
-		solidBrush->SetColor(D2D1::ColorF(0xffffff));
+		// 设置了背景图片时面板底色半透明，让背景图片透出
+		solidBrush->SetColor(ui::has_app_background_image() ? D2D1::ColorF(0xffffff, 0.12f) : D2D1::ColorF(0xffffff));
 		renderTarget->FillRoundedRectangle(roundedRect, solidBrush);
 		solidBrush->SetColor(D2D1::ColorF(0xe0e0e0));
 		renderTarget->DrawRoundedRectangle(roundedRect, solidBrush);

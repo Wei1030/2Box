@@ -18,6 +18,9 @@ namespace ui
 
 	private:
 		void initialize();
+		void onSetBackgroundBtnClick();
+		void onClearBackgroundBtnClick();
+		void updateBackgroundButtons();
 
 	protected:
 		virtual void onResize(float width, float height) override;
@@ -34,5 +37,7 @@ namespace ui
 		float m_checkBoxTextHeight;
 		UniqueComPtr<IDWriteTextLayout> m_checkBoxTextLayout;
 		Button m_syncBtn{this};
+		Button m_setBackgroundBtn{this};
+		Button m_clearBackgroundBtn{this};
 	};
 }

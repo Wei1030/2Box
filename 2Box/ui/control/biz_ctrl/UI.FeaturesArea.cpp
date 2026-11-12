@@ -8,6 +8,7 @@ import "sys_defs.hpp";
 
 import Biz.Core;
 import MainApp;
+import UI.Core;
 
 namespace
 {
@@ -320,6 +321,100 @@ namespace ui
 		{
 			MessageBoxW(owner()->nativeHandle(), SYNC_TIPS.data(), MainApp::appName.data(), MB_OK);
 		});
+
+		for (Button* bgBtn : {&m_setBackgroundBtn, &m_clearBackgroundBtn})
+		{
+			bgBtn->setBackgroundColor(D2D1::ColorF(0xf0f0f0), Button::EState::Normal);
+			bgBtn->setBackgroundColor(D2D1::ColorF(0xe0e0e0), Button::EState::Hover);
+			bgBtn->setBackgroundColor(D2D1::ColorF(0xd5d5d5), Button::EState::Active);
+			bgBtn->setTextColor(D2D1::ColorF(0x333333));
+		}
+		m_clearBackgroundBtn.setText(L"清除背景");
+		m_setBackgroundBtn.setOnClick([this] { onSetBackgroundBtnClick(); });
+		m_clearBackgroundBtn.setOnClick([this] { onClearBackgroundBtnClick(); });
+		updateBackgroundButtons();
+	}
+
+	void FeaturesArea::updateBackgroundButtons()
+	{
+		m_setBackgroundBtn.setText(ui::has_app_background_image() ? L"更换背景" : L"设置背景");
+		m_clearBackgroundBtn.update();
+	}
+
+	void FeaturesArea::onSetBackgroundBtnClick()
+	{
+		const std::optional<std::wstring> selectedPath = ui::select_image_file(owner());
+		if (!selectedPath.has_value())
+		{
+			return;
+		}
+		if (!ui::validate_image_file(selectedPath.value()))
+		{
+			MessageBoxW(owner()->nativeHandle(),
+			            L"无法加载该图片，请选择有效的图片文件（支持 png/jpg/jpeg/bmp/gif/tif 等格式）。",
+			            MainApp::appName.data(),
+			            MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		// 复制到 Env\data 目录后再使用，避免原图片被移动或删除后背景失效
+		const std::wstring dataDir = biz::app_data_dir();
+		const std::optional<std::wstring> copiedFileName = ui::import_background_image(dataDir, selectedPath.value());
+		if (!copiedFileName.has_value())
+		{
+			MessageBoxW(owner()->nativeHandle(),
+			            L"复制背景图片到数据目录失败，请检查磁盘空间或文件权限。",
+			            MainApp::appName.data(),
+			            MB_OK | MB_ICONERROR);
+			return;
+		}
+		const std::wstring imagePath = (std::filesystem::path{dataDir} / copiedFileName.value()).native();
+		if (!ui::set_app_background_image(imagePath))
+		{
+			MessageBoxW(owner()->nativeHandle(),
+			            L"无法加载复制后的背景图片。",
+			            MainApp::appName.data(),
+			            MB_OK | MB_ICONERROR);
+			return;
+		}
+		try
+		{
+			biz::set_app_setting(ui::BACKGROUND_IMAGE_SETTING_NAME, copiedFileName.value());
+		}
+		catch (const std::exception& e)
+		{
+			const std::wstring errorMsg = utf8_to_wide_string(e.what());
+			MessageBoxW(owner()->nativeHandle(),
+			            std::format(L"保存背景图片设置失败：{}", errorMsg).c_str(),
+			            MainApp::appName.data(),
+			            MB_OK | MB_ICONERROR);
+		}
+		updateBackgroundButtons();
+		owner()->invalidateRect();
+	}
+
+	void FeaturesArea::onClearBackgroundBtnClick()
+	{
+		if (!ui::has_app_background_image())
+		{
+			return;
+		}
+		ui::clear_app_background_image();
+		try
+		{
+			biz::set_app_setting(ui::BACKGROUND_IMAGE_SETTING_NAME, L"");
+		}
+		catch (const std::exception& e)
+		{
+			const std::wstring errorMsg = utf8_to_wide_string(e.what());
+			MessageBoxW(owner()->nativeHandle(),
+			            std::format(L"清除背景图片设置失败：{}", errorMsg).c_str(),
+			            MainApp::appName.data(),
+			            MB_OK | MB_ICONERROR);
+		}
+		ui::remove_background_image_files(biz::app_data_dir());
+		updateBackgroundButtons();
+		owner()->invalidateRect();
 	}
 
 	void FeaturesArea::onResize(float width, float height)
@@ -328,6 +423,15 @@ namespace ui
 		m_tileCheckbox.setBounds(D2D1::RectF(CHECK_BOX_X_POS, CHECK_BOX_Y_POS, CHECK_BOX_X_POS + CHECKBOX_SIZE, CHECK_BOX_Y_POS + CHECKBOX_SIZE));
 		const float syncBtnXPos = CHECK_BOX_TIPS_X_POS + m_checkBoxTextWidth + PADDING * 4.f;
 		m_syncBtn.setBounds(D2D1::RectF(syncBtnXPos, PADDING, syncBtnXPos + BUTTON_WIDTH, PADDING + BUTTON_HEIGHT));
+		// 背景图片相关按钮优先靠右放置；窗口过窄时紧随“同步输入”按钮排列，避免重叠
+		const float setBtnXPosAfterSync = syncBtnXPos + BUTTON_WIDTH + GAP;
+		const float setBtnXPosRightAligned = width - PADDING - BUTTON_WIDTH - GAP - BUTTON_WIDTH;
+		const float setBtnXPos = setBtnXPosRightAligned >= setBtnXPosAfterSync ? setBtnXPosRightAligned : setBtnXPosAfterSync;
+		m_setBackgroundBtn.setBounds(D2D1::RectF(setBtnXPos, PADDING,
+		                                         setBtnXPos + BUTTON_WIDTH, PADDING + BUTTON_HEIGHT));
+		const float clearBackgroundBtnXPos = setBtnXPos + BUTTON_WIDTH + GAP;
+		m_clearBackgroundBtn.setBounds(D2D1::RectF(clearBackgroundBtnXPos, PADDING,
+		                                           clearBackgroundBtnXPos + BUTTON_WIDTH, PADDING + BUTTON_HEIGHT));
 	}
 
 	void FeaturesArea::drawImpl(const RenderContext& renderCtx)
@@ -337,7 +441,8 @@ namespace ui
 		const auto [width, height] = size();
 
 		const D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(D2D1::RectF(0.f, 0.f, width, height), 8.f, 8.f);
-		solidBrush->SetColor(D2D1::ColorF(0xffffff));
+		// 设置了背景图片时面板底色半透明，让背景图片透出
+		solidBrush->SetColor(ui::has_app_background_image() ? D2D1::ColorF(0xffffff, 0.14f) : D2D1::ColorF(0xffffff));
 		renderTarget->FillRoundedRectangle(roundedRect, solidBrush);
 		solidBrush->SetColor(D2D1::ColorF(0xe0e0e0));
 		renderTarget->DrawRoundedRectangle(roundedRect, solidBrush);
@@ -359,6 +464,8 @@ namespace ui
 		}
 
 		m_syncBtn.draw(renderCtx);
+		m_setBackgroundBtn.draw(renderCtx);
+		m_clearBackgroundBtn.draw(renderCtx);
 	}
 
 	void FeaturesArea::drawCheckBox(const RenderContext& renderCtx, Button::EState) const
