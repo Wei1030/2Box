@@ -196,6 +196,8 @@ namespace biz
 		std::shared_ptr<ProcessInfo> getProcess(DWORD pid) const;
 		std::vector<DWORD> getAllProcessIds() const;
 		bool contains(const std::wstring& procFullName) const;
+		// 终结环境中的某个进程（需要该进程仍在本环境中），成功返回 true
+		bool terminateProcess(DWORD pid) const;
 
 		enum class EProcEvent:std::uint8_t
 		{

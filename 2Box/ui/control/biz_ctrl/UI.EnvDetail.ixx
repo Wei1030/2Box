@@ -40,10 +40,14 @@ namespace ui
 
 	private:
 		void updateAllItemPos();
+		void rebuildTerminateButtons();
+		void updateTerminateButtonPos();
+		void onTerminateProcessClicked(std::uint32_t pid);
 
 	private:
 		ScrollBar m_scrollBar{this};
 		bool m_isHovered = false;
+		std::unordered_map<std::uint32_t, std::unique_ptr<Button>> m_terminateButtons;
 
 	private:
 		std::shared_ptr<biz::Env> m_env;

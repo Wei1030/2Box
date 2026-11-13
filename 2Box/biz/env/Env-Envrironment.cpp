@@ -385,6 +385,16 @@ namespace biz
 		return m_processes.contains(procFullName);
 	}
 
+	bool Env::terminateProcess(DWORD pid) const
+	{
+		const std::shared_ptr<ProcessInfo> process = getProcess(pid);
+		if (!process)
+		{
+			return false;
+		}
+		return TerminateProcess(process->getHandle(), 1) != 0;
+	}
+
 	void Env::setProcCountChangeNotify(ProcCountChangeNotify notify)
 	{
 		std::unique_lock lock(m_mutex);

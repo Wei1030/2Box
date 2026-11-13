@@ -26,6 +26,10 @@ namespace
 	constexpr float LIST_ITEM_TITLE_HEIGHT = 24.f;
 	constexpr float LIST_ITEM_TIPS_HEIGHT = 20.f;
 
+	constexpr float TERMINATE_BTN_WIDTH = 24.f;
+	constexpr float TERMINATE_BTN_HEIGHT = 24.f;
+	constexpr float TERMINATE_BTN_MARGIN_LEFT = 8.f;
+
 	constexpr std::wstring_view NO_PROC_TEXT = L"暂无进程";
 }
 
@@ -45,6 +49,7 @@ namespace ui
 		{
 			m_processes.insert(std::make_pair(proc->getProcessId(), ListItem{proc}));
 		}
+		rebuildTerminateButtons();
 		m_scrollBar.setTotalSize(m_processes.size() * LIST_ITEM_HEIGHT);
 	}
 
@@ -52,6 +57,7 @@ namespace ui
 	{
 		m_env.reset();
 		m_processes.clear();
+		m_terminateButtons.clear();
 		m_scrollBar.setTotalSize(0.f);
 	}
 
@@ -69,7 +75,98 @@ namespace ui
 		{
 			m_processes.erase(proc->getProcessId());
 		}
+		rebuildTerminateButtons();
 		m_scrollBar.setTotalSize(m_processes.size() * LIST_ITEM_HEIGHT);
+	}
+
+	void ProcessList::rebuildTerminateButtons()
+	{
+		m_terminateButtons.clear();
+		for (const auto& item : m_processes)
+		{
+			const std::uint32_t pid = item.first;
+			std::unique_ptr<Button> button = std::make_unique<Button>(this);
+			button->setBackgroundColor(D2D1::ColorF(0xfff5f5), Button::EState::Normal);
+			button->setBackgroundColor(D2D1::ColorF(0xffebee), Button::EState::Hover);
+			button->setBackgroundColor(D2D1::ColorF(0xffcdd2), Button::EState::Active);
+			button->setBorderColor(D2D1::ColorF(0xef9a9a), Button::EState::Normal);
+			button->setBorderColor(D2D1::ColorF(0xf44336), Button::EState::Hover);
+			button->setBorderColor(D2D1::ColorF(0xf44336), Button::EState::Active);
+			button->setRadius(4.f);
+			// 正方形按钮内绘制一个大红叉（终结该进程）
+			button->setDrawCallback([rawButton = button.get()](const RenderContext& renderCtx, Button::EState state)
+			{
+				const D2D1_RECT_F& bounds = rawButton->getBounds();
+				const float width = bounds.right - bounds.left;
+				const float height = bounds.bottom - bounds.top;
+				const float padding = std::min(width, height) * 0.25f;
+				const float thickness = 2.5f;
+				const D2D1_COLOR_F color = (state == Button::EState::Hover || state == Button::EState::Active)
+					                           ? D2D1::ColorF(0xc62828)
+					                           : D2D1::ColorF(0xe53935);
+				renderCtx.brush->SetColor(color);
+				renderCtx.renderTarget->DrawLine(D2D1::Point2F(padding, padding),
+				                                 D2D1::Point2F(width - padding, height - padding),
+				                                 renderCtx.brush, thickness);
+				renderCtx.renderTarget->DrawLine(D2D1::Point2F(width - padding, padding),
+				                                 D2D1::Point2F(padding, height - padding),
+				                                 renderCtx.brush, thickness);
+			});
+			button->setOnClick([this, pid] { onTerminateProcessClicked(pid); });
+			m_terminateButtons.insert(std::make_pair(pid, std::move(button)));
+		}
+		updateTerminateButtonPos();
+	}
+
+	void ProcessList::updateTerminateButtonPos()
+	{
+		if (m_terminateButtons.empty())
+		{
+			return;
+		}
+		// 不可见的列表项把按钮移到控件外，避免误点击
+		const D2D1_RECT_F hiddenBounds = D2D1::RectF(-10000.f, -10000.f, -9999.f, -9999.f);
+		for (auto& pair : m_terminateButtons)
+		{
+			pair.second->setBounds(hiddenBounds);
+		}
+		for (const ListItem* item : m_processesToDraw)
+		{
+			const auto it = m_terminateButtons.find(item->process->getProcessId());
+			if (it == m_terminateButtons.end())
+			{
+				continue;
+			}
+			const D2D1_RECT_F& rc = item->rect;
+			const float top = rc.top + PADDING + (LIST_ITEM_TITLE_HEIGHT - TERMINATE_BTN_HEIGHT) * 0.5f;
+			const float left = rc.right - TERMINATE_BTN_WIDTH;
+			it->second->setBounds(D2D1::RectF(left, top, left + TERMINATE_BTN_WIDTH, top + TERMINATE_BTN_HEIGHT));		}
+	}
+
+	void ProcessList::onTerminateProcessClicked(std::uint32_t pid)
+	{
+		if (!m_env)
+		{
+			return;
+		}
+		const std::shared_ptr<biz::ProcessInfo> process = m_env->getProcess(pid);
+		if (!process)
+		{
+			return;
+		}
+		namespace fs = std::filesystem;
+		const std::wstring procName = fs::path{process->getProcessFullPath()}.stem().native();
+		const std::wstring message = std::format(L"确定要终结进程「{}」吗？\n\n强制终结可能导致进程数据丢失。", procName);
+		if (MessageBoxW(m_ownerWnd->nativeHandle(), message.c_str(), MainApp::appName.data(),
+		                MB_OKCANCEL | MB_ICONWARNING) != IDOK)
+		{
+			return;
+		}
+		if (!m_env->terminateProcess(pid))
+		{
+			MessageBoxW(m_ownerWnd->nativeHandle(), L"终结进程失败，该进程可能已经退出。",
+			            MainApp::appName.data(), MB_OK | MB_ICONERROR);
+		}
 	}
 
 	void ProcessList::onResize(float width, float height)
@@ -127,7 +224,7 @@ namespace ui
 			renderTarget->DrawTextW(procName.native().c_str(),
 			                        static_cast<UINT32>(procName.native().size()),
 			                        app().textFormat().pTitleFormat,
-			                        D2D1::RectF(0.f, yPos, rc.right, yPos + LIST_ITEM_TITLE_HEIGHT), solidBrush);
+			                        D2D1::RectF(0.f, yPos, rc.right - TERMINATE_BTN_WIDTH - TERMINATE_BTN_MARGIN_LEFT, yPos + LIST_ITEM_TITLE_HEIGHT), solidBrush);
 			yPos += LIST_ITEM_TITLE_HEIGHT + LIST_ITEM_GAP;
 			const std::wstring pid = std::format(L"PID: {}", processInfo->getProcessId());
 			solidBrush->SetColor(D2D1::ColorF(0x666666));
@@ -140,6 +237,12 @@ namespace ui
 			                        static_cast<UINT32>(fullPath.native().size()),
 			                        app().textFormat().pTipsFormat,
 			                        D2D1::RectF(0.f, yPos, rc.right, yPos + LIST_ITEM_TIPS_HEIGHT), solidBrush);
+
+			// 每个进程条目右上角的“终结”按钮
+			if (const auto btnIt = m_terminateButtons.find(processInfo->getProcessId()); btnIt != m_terminateButtons.end())
+			{
+				btnIt->second->draw(renderCtx);
+			}
 
 			solidBrush->SetColor(D2D1::ColorF(0xf0f0f0));
 			renderTarget->DrawLine(D2D1::Point2F(rc.left, rc.bottom), D2D1::Point2F(rc.right, rc.bottom), solidBrush);
@@ -158,6 +261,7 @@ namespace ui
 		if (m_processes.empty())
 		{
 			m_processesToDraw.clear();
+			updateTerminateButtonPos();
 			update();
 			return;
 		}
@@ -171,6 +275,7 @@ namespace ui
 
 		if (startIndex > endIndex)
 		{
+			updateTerminateButtonPos();
 			update();
 			return;
 		}
@@ -192,6 +297,7 @@ namespace ui
 			m_processesToDraw.push_back(&item);
 			startYPos += LIST_ITEM_HEIGHT;
 		}
+		updateTerminateButtonPos();
 		update();
 	}
 
