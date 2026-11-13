@@ -7,6 +7,7 @@ import "sys_defs.hpp";
 #endif
 
 import MainApp;
+import UI.Core;
 
 namespace
 {
@@ -87,7 +88,10 @@ namespace ui
 		const UniqueComPtr<ID2D1SolidColorBrush>& solidBrush = renderCtx.brush;
 		const auto drawSize = size();
 
-		solidBrush->SetColor(D2D1::ColorF(0xf8f9fa));
+		// 设置了背景图片时使用半透明白色底，让背景图片透出且保证文字可读
+		solidBrush->SetColor(ui::has_app_background_image()
+			                     ? D2D1::ColorF(0xf8f9fa, 0.78f)
+			                     : D2D1::ColorF(0xf8f9fa));
 		renderTarget->FillRectangle(D2D1::RectF(0.f, 0.f, drawSize.width, drawSize.height), solidBrush);
 
 		m_featuresArea.draw(renderCtx);

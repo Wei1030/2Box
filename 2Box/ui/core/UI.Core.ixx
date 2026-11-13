@@ -606,4 +606,26 @@ namespace ui
 	}
 
 	export std::optional<std::wstring> select_file(const WindowBase* owner);
+	export std::optional<std::wstring> select_image_file(const WindowBase* owner);
+
+	// 模态文本输入对话框。点击“确定”返回去除首尾空白后的文本，取消或关闭返回 std::nullopt。
+	export std::optional<std::wstring> prompt_text_input(HWND owner, std::wstring_view title, std::wstring_view promptLabel,
+	                                                     std::wstring_view initialText, std::size_t maxLength);
+
+	// 应用背景图片（仅界面效果的全局状态，持久化由调用方负责）
+	export inline constexpr std::wstring_view BACKGROUND_IMAGE_SETTING_NAME = L"BackgroundImagePath";
+	// 校验图片文件是否可以解码用作背景图片
+	export bool validate_image_file(std::wstring_view imagePath);
+	// 将图片复制到 dataDir 下的固定背景文件（保留原扩展名并替换旧背景文件），返回复制后的文件名；失败返回 std::nullopt
+	export std::optional<std::wstring> import_background_image(std::wstring_view dataDir, std::wstring_view sourceImagePath);
+	// 删除 dataDir 下由本程序复制出的背景图片文件（用于清除背景时清理）
+	export void remove_background_image_files(std::wstring_view dataDir);
+	// 加载并设置背景图片，失败（文件不存在/格式不支持）返回 false
+	export bool set_app_background_image(std::wstring_view imagePath);
+	export void clear_app_background_image();
+	export bool has_app_background_image();
+	// 设备资源丢失（如显卡驱动重置）后需要释放由渲染目标创建的位图
+	export void reset_app_background_device_resources();
+	// 在 contentRect 区域内按“保持比例铺满（居中裁剪）”绘制背景图片
+	export void draw_app_background(const RenderContext& renderCtx, const D2D1_RECT_F& contentRect);
 }

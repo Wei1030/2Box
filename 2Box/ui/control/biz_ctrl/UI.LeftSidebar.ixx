@@ -2,6 +2,7 @@ export module UI.LeftSidebar;
 
 import std;
 import UI.Core;
+import UI.Button;
 export import UI.StartAppDiv;
 export import UI.EnvBoxCardArea;
 
@@ -26,10 +27,14 @@ namespace ui
 		void initialize();
 
 	private:
+		void onCreateEnvBtnClick();
+
+	private:
 		virtual void drawImpl(const RenderContext& renderCtx) override;
 
 	private:
 		std::unique_ptr<StartAppDiv> m_startAppDiv;
 		std::unique_ptr<EnvBoxCardArea> m_envCardsArea;
+		std::unique_ptr<Button> m_btnCreateEnv;
 	};
 }

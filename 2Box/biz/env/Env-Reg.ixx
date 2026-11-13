@@ -55,5 +55,13 @@ namespace biz
 
 	export void initialize_env_reg(const EnvInitializeNotify& notify);
 	export void add_env_to_reg(std::wstring_view flagName, const Env* env);
+	export void set_env_name_in_reg(std::wstring_view flagName, std::wstring_view newName);
+	export void set_env_index_in_reg(std::wstring_view flagName, std::uint32_t newIndex);
 	export void delete_env_from_reg(std::wstring_view flagName);
+
+	// 应用级设置（保存在应用注册表根键下，例如背景图片路径）
+	export std::optional<std::wstring> get_app_setting(std::wstring_view name);
+	export void set_app_setting(std::wstring_view name, std::wstring_view value);
+	// 应用数据目录（Env\data），例如存储背景图片副本
+	export std::wstring app_data_dir();
 }

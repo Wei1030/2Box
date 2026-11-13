@@ -112,6 +112,7 @@
     </ClCompile>
     <ClCompile Include="ui\control\UI.ScrollBar.cpp" />
     <ClCompile Include="ui\control\UI.ScrollBar.ixx" />
+    <ClCompile Include="ui\core\UI.Core-Background.cpp" />
     <ClCompile Include="ui\core\UI.Core-CommonDlg.cpp" />
     <ClCompile Include="ui\core\UI.Core-WindowBase.cpp" />
     <ClCompile Include="ui\core\UI.Core.ixx" />

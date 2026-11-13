@@ -5,6 +5,8 @@ import std;
 
 namespace biz
 {
+	export inline constexpr std::size_t ENV_NAME_MAX_LENGTH = 32;
+
 	class WaitObject
 	{
 	public:
@@ -177,10 +179,12 @@ namespace biz
 		}
 
 	public:
-		std::uint32_t getIndex() const { return m_index; }
+		std::uint32_t getIndex() const { return m_index.load(std::memory_order_relaxed); }
+		void setIndex(std::uint32_t index) noexcept { m_index.store(index, std::memory_order_relaxed); }
 		std::uint64_t getFlag() const { return m_flag; }
 		std::wstring_view getFlagName() const { return m_flagName; }
-		std::wstring_view getName() const { return m_name; }
+		std::wstring getName() const;
+		void setName(std::wstring_view name);
 		std::string ensureDllInDeviceAndReturnPath() const;
 		void deleteDllFromDevice() const;
 
@@ -192,6 +196,8 @@ namespace biz
 		std::shared_ptr<ProcessInfo> getProcess(DWORD pid) const;
 		std::vector<DWORD> getAllProcessIds() const;
 		bool contains(const std::wstring& procFullName) const;
+		// 终结环境中的某个进程（需要该进程仍在本环境中），成功返回 true
+		bool terminateProcess(DWORD pid) const;
 
 		enum class EProcEvent:std::uint8_t
 		{
@@ -213,10 +219,11 @@ namespace biz
 		void removeToplevelWindowWhenProcessTerminate(const std::shared_ptr<ProcessInfo>& procInfo);
 
 	private:
-		std::uint32_t m_index{0};
+		std::atomic<std::uint32_t> m_index{0};
 		std::uint64_t m_flag{0};
 		std::wstring m_flagName;
 		std::wstring m_name;
+		mutable std::shared_mutex m_nameMutex;
 
 		HandleWaiter m_waiter;
 		mutable std::shared_mutex m_mutex;

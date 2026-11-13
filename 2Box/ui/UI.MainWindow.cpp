@@ -13,6 +13,7 @@ import std;
 import MainApp;
 import Scheduler;
 import Biz.Core;
+import UI.Core;
 
 namespace ui
 {
@@ -43,6 +44,42 @@ namespace ui
 		});
 		m_btnToTray.setDrawCallback(std::bind(&MainWindow::drawToTryBtn, this, std::placeholders::_1, std::placeholders::_2));
 
+		// 加载已保存的背景图片设置（仅影响界面显示）；图片使用 Env\data 下的副本，避免原图被删除后失效
+		try
+		{
+			if (const std::optional<std::wstring> backgroundSetting = biz::get_app_setting(BACKGROUND_IMAGE_SETTING_NAME);
+				backgroundSetting.has_value() && !backgroundSetting->empty())
+			{
+				namespace fs = std::filesystem;
+				const fs::path dataDir{biz::app_data_dir()};
+				fs::path imagePath{dataDir / *backgroundSetting};
+				if (fs::path{*backgroundSetting}.is_absolute())
+				{
+					// 兼容旧版本保存的图片原始绝对路径：复制到数据目录，之后只保存文件名
+					const std::optional<std::wstring> copiedFileName = ui::import_background_image(dataDir.native(), backgroundSetting.value());
+					if (copiedFileName.has_value())
+					{
+						biz::set_app_setting(BACKGROUND_IMAGE_SETTING_NAME, copiedFileName.value());
+						imagePath = dataDir / copiedFileName.value();
+					}
+					else
+					{
+						biz::set_app_setting(BACKGROUND_IMAGE_SETTING_NAME, L"");
+						imagePath.clear();
+					}
+				}
+				if (!imagePath.empty() && (!fs::exists(imagePath) || !ui::set_app_background_image(imagePath.native())))
+				{
+					// 数据目录中的副本缺失或无法解码，清除无效设置
+					biz::set_app_setting(BACKGROUND_IMAGE_SETTING_NAME, L"");
+					ui::remove_background_image_files(dataDir.native());
+				}
+			}
+		}
+		catch (...)
+		{
+		}
+
 #if 0	// 暂时不使用反射注入，就不需要下载pdb了
 		initSymbols().detachAndStart();
 #else
@@ -63,6 +100,8 @@ namespace ui
 		{
 			destroyTray();
 		}
+		// 在 COM 反初始化前释放背景图片相关的 WIC/D2D 资源
+		ui::clear_app_background_image();
 	}
 
 	coro::LazyTask<void> MainWindow::cliCreateProcess(std::wstring exePath, std::wstring params) const
@@ -91,6 +130,7 @@ namespace ui
 	void MainWindow::onDiscardDeviceResources()
 	{
 		m_pD2D1Bitmap.reset();
+		ui::reset_app_background_device_resources();
 	}
 
 	void MainWindow::draw(const RenderContext& renderCtx)
@@ -144,6 +184,19 @@ namespace ui
 			m_btnToTray.setBounds(D2D1::Rect(toTrayBthXPos, paddingTop + 1.f, toTrayBthXPos + toTrayBthWidth, m_margins.top));
 			m_btnToTray.draw(renderCtx);
 			renderTarget->PopAxisAlignedClip();
+		}
+
+		// 绘制应用背景图片（页面内容会以半透明面板覆盖在其上）
+		if (ui::has_app_background_image())
+		{
+			const D2D1_SIZE_F clientSize = renderCtx.renderTarget->GetSize();
+			D2D1_RECT_F contentRect = D2D1::RectF(0.f, 0.f, clientSize.width, clientSize.height);
+			if (isCompositionEnabled())
+			{
+				contentRect = D2D1::RectF(m_margins.left, m_margins.top,
+				                          clientSize.width - m_margins.right, clientSize.height - m_margins.bottom);
+			}
+			ui::draw_app_background(renderCtx, contentRect);
 		}
 
 		currentRenderer()->draw(renderCtx);
